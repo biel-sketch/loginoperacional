@@ -1278,7 +1278,7 @@ function renderEquipe(){
   const isAdmin=currentRole==='admin'||currentRole==='superadmin';
   const canDelete=currentRole==='superadmin';
   const ativos=colaboradoresAtivos();
-  let html='<div class="card"><div class="card-title"><i class="ti ti-id-badge" style="color:var(--cyan)"></i>Equipe Lins ('+ativos.length+')';
+  let html='<div class="card"><div class="card-title"><i class="ti ti-id-badge" style="color:var(--cyan)"></i>Equipe Marília ('+ativos.length+')';
   if(isAdmin)html+='<button onclick="openColabModal(-1)" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-plus"></i> Adicionar</button>';
   html+='</div>';
 

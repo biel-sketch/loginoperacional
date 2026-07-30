@@ -562,7 +562,7 @@ const NOTIF_RECIPIENTS = [
 ];
 
 // === STATE ===
-let state = {colaboradores:[], presencas:{}, backups:[], coberturas:{}, saldo:{}, coberturasAgendadas:[], saldoAuditoria:[]};
+let state = {colaboradores:[], presencas:{}, backups:[], coberturas:{}, saldo:{}, coberturasAgendadas:[], saldoAuditoria:[], presencasZeradoEm:null};
 let currentUser=null, currentRole=null;
 let isSyncing=false, lastSync=null, syncTimer=null;
 let _saldoNoUltimoSync={};
@@ -658,6 +658,7 @@ function mergeState(cloud){
   if(!cloud)return;
   if(cloud.colaboradores&&cloud.colaboradores.length) state.colaboradores=cloud.colaboradores;
   if(cloud.presencas) state.presencas=cloud.presencas;
+  if(cloud.presencasZeradoEm) state.presencasZeradoEm=cloud.presencasZeradoEm;
   if(cloud.backups) state.backups=cloud.backups;
   if(cloud.coberturas) state.coberturas=cloud.coberturas;
   if(cloud.saldo) state.saldo=cloud.saldo;
@@ -700,6 +701,7 @@ async function pushToCloud(){
     let merged={
       colaboradores:state.colaboradores,
       presencas:state.presencas,
+      presencasZeradoEm:state.presencasZeradoEm||null,
       backups:state.backups||[],
       coberturas:state.coberturas||{},
       saldo:state.saldo||{},
@@ -709,12 +711,17 @@ async function pushToCloud(){
     try{
       const cloud=await fbGet();
       if(cloud){
+        // Marcador de reset: qualquer marcação local com timestamp anterior a um
+        // "zerar presenças" feito por um superadmin é descartada, mesmo que ainda
+        // esteja na memória deste navegador — evita "ressuscitar" dado apagado.
+        const resetMarker=cloud.presencasZeradoEm||state.presencasZeradoEm||null;
         const mp=JSON.parse(JSON.stringify(cloud.presencas||{}));
         Object.entries(state.presencas).forEach(([d,postos])=>{
-          if(!mp[d])mp[d]={};
           Object.entries(postos).forEach(([posto,colabs])=>{
-            if(!mp[d][posto])mp[d][posto]={};
             Object.entries(colabs).forEach(([nome,v])=>{
+              if(resetMarker && v && v.ts && v.ts<resetMarker) return; // descarta: anterior ao reset
+              if(!mp[d])mp[d]={};
+              if(!mp[d][posto])mp[d][posto]={};
               mp[d][posto][nome]=v;
             });
           });
@@ -755,6 +762,7 @@ async function pushToCloud(){
         merged={
           colaboradores:mergedColabs,
           presencas:mp,
+          presencasZeradoEm:resetMarker,
           backups:mergedBackups,
           coberturas:mergedCoberturas,
           saldo:mergedSaldo,
@@ -766,6 +774,7 @@ async function pushToCloud(){
     await fbPut(merged);
     state.colaboradores=merged.colaboradores;
     state.presencas=merged.presencas;
+    state.presencasZeradoEm=merged.presencasZeradoEm||null;
     state.backups=merged.backups;
     state.coberturas=merged.coberturas;
     state.saldo=merged.saldo;
@@ -791,6 +800,7 @@ async function pushForceToCloud(){
     await fbPut({
       colaboradores:state.colaboradores,
       presencas:state.presencas,
+      presencasZeradoEm:state.presencasZeradoEm||null,
       backups:state.backups||[],
       coberturas:state.coberturas||{},
       saldo:state.saldo||{},
@@ -1975,6 +1985,7 @@ async function zerarPresencasLins(){
   const conf=prompt('Para confirmar, digite ZERAR em maiúsculas:');
   if(conf!=='ZERAR'){showToast('Cancelado.','warn');return;}
   state.presencas={};
+  state.presencasZeradoEm=new Date().toISOString();
   if(!state.saldoAuditoria)state.saldoAuditoria=[];
   state.saldoAuditoria.push({ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',posto:'—',valorAntigo:'—',valorNovo:'—',motivo:'Zerou todas as presenças (reset total do histórico)'});
   saveCache();

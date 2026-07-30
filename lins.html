@@ -1958,7 +1958,29 @@ function renderConfig(){
   html+='<input type="text" id="feriado-nome" placeholder="Nome do feriado" style="flex:2;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px">';
   html+='<button class="btn btn-purple btn-sm" onclick="addFeriado()"><i class="ti ti-plus"></i> Add</button></div></div>';
 
+  // Zona de risco (somente superadmin)
+  if(currentRole==='superadmin'){
+    html+='<div class="card" style="border-color:var(--red-bd)"><div class="card-title"><i class="ti ti-alert-triangle" style="color:var(--red)"></i>Zona de risco</div>';
+    html+='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Apaga o histórico de presença de todos os postos. Colaboradores cadastrados, saldo e coberturas são mantidos. Esta ação não pode ser desfeita — recomendável exportar um backup antes (botão "Backup JSON" acima).</div>';
+    html+='<button class="btn btn-sm" style="background:var(--red-bg);border:1px solid var(--red-bd);color:var(--red)" onclick="zerarPresencasLins()"><i class="ti ti-trash"></i> Zerar todas as presenças</button>';
+    html+='</div>';
+  }
+
   cont.innerHTML=html;
+}
+
+async function zerarPresencasLins(){
+  if(currentRole!=='superadmin'){showToast('Apenas Superadmin pode fazer isso.','err');return;}
+  if(!confirm('Zerar TODAS as presenças de TODOS os postos? Esta ação não pode ser desfeita.'))return;
+  const conf=prompt('Para confirmar, digite ZERAR em maiúsculas:');
+  if(conf!=='ZERAR'){showToast('Cancelado.','warn');return;}
+  state.presencas={};
+  if(!state.saldoAuditoria)state.saldoAuditoria=[];
+  state.saldoAuditoria.push({ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',posto:'—',valorAntigo:'—',valorNovo:'—',motivo:'Zerou todas as presenças (reset total do histórico)'});
+  saveCache();
+  await pushForceToCloud();
+  showToast('Presenças zeradas!','ok');
+  renderAll();
 }
 
 // Feriados management

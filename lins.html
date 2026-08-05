@@ -1374,6 +1374,40 @@ async function confirmarFerias(){
   await pushToCloud();
   showToast('Férias registradas! '+dias+' dia(s), retorna em '+dateBR(retorno)+'.','ok',4000);
 }
+function getFeriasAtivas(){
+  const map={},t=today();
+  Object.keys(state.presencas).forEach(date=>{
+    const pd=state.presencas[date];
+    POSTOS.forEach(posto=>{
+      const pp=pd[posto];if(!pp)return;
+      Object.entries(pp).forEach(([nome,v])=>{
+        if(v.status==='F'&&v.feriasInicio){
+          const key=nome+'|'+v.feriasInicio;
+          if(!map[key])map[key]={nome,posto,inicio:v.feriasInicio,fim:v.feriasFim,retorno:v.feriasRetorno,dias:v.feriasDias};
+        }
+      });
+    });
+  });
+  return Object.values(map).filter(f=>!f.retorno||f.retorno>t).sort((a,b)=>a.inicio.localeCompare(b.inicio));
+}
+async function cancelarFerias(nome,inicio){
+  if(!podeEditarPresenca()){showToast('Apenas administradores podem cancelar férias.','err');return;}
+  if(!confirm('Cancelar os dias de férias restantes (a partir de hoje) de '+nome+'?'))return;
+  const t=today();
+  Object.keys(state.presencas).forEach(date=>{
+    if(date<t)return;
+    const pd=state.presencas[date];
+    POSTOS.forEach(posto=>{
+      const pp=pd[posto];if(!pp||!pp[nome])return;
+      if(pp[nome].status==='F'&&pp[nome].feriasInicio===inicio)delete pp[nome];
+    });
+  });
+  saveCache();
+  renderConfig();renderHistMes();renderPresHist();renderPresContent();renderDashboard();
+  if(document.getElementById('abs-content'))renderAbsenteismo();
+  await pushToCloud();
+  showToast('Férias canceladas a partir de hoje.','ok');
+}
 
 // === EXTRA (trabalho na folga) ===
 let _justifPosto=null,_justifNome=null;
@@ -1682,6 +1716,26 @@ function renderEquipe(){
       html+='</div>';
     }
   }
+
+  // FÉRIAS section — colaboradores em férias ou com férias futuras agendadas
+  const feriasAtivas=getFeriasAtivas();
+  html+='<div class="card"><div class="card-title"><i class="ti ti-plane-departure" style="color:var(--violet)"></i>Colaboradores em férias ('+feriasAtivas.length+')</div>';
+  if(!feriasAtivas.length){
+    html+='<div class="empty" style="padding:16px 0"><i class="ti ti-plane-departure"></i><h3>Ninguém em férias</h3><p>Marque férias na tela Presença ou no Histórico.</p></div>';
+  }else{
+    const t=today();
+    feriasAtivas.forEach(f=>{
+      const emAndamento=f.inicio<=t;
+      html+='<div class="colab-item"><div class="colab-av" style="background:var(--violet-bg);color:var(--violet);border-color:var(--violet-bd)">'+f.nome.slice(0,2).toUpperCase()+'</div>';
+      html+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text)">'+f.nome+'</div>';
+      html+='<div style="font-size:11px;color:var(--text2);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap"><span>'+POSTOS_LABEL[f.posto]+'</span><span>'+dateBR(f.inicio)+' → '+dateBR(f.fim)+' ('+f.dias+' dias)</span>'+(emAndamento?'<span style="color:var(--violet);font-weight:700">Em andamento</span>':'<span style="color:var(--cyan);font-weight:700">Agendada</span>')+'</div></div>';
+      html+='<div style="display:flex;align-items:center;gap:8px">';
+      html+='<span style="font-size:11px;font-weight:700;color:var(--violet);background:var(--violet-bg);border:1px solid var(--violet-bd);border-radius:7px;padding:5px 10px;white-space:nowrap"><i class="ti ti-arrow-back"></i> Retorna '+dateBR(f.retorno)+'</span>';
+      if(isAdmin)html+='<button onclick="cancelarFerias(\''+f.nome.replace(/'/g,"\\'")+'\',\''+f.inicio+'\')" style="background:none;border:1px solid var(--red-bd);border-radius:7px;padding:5px 9px;color:var(--red);font-size:11px;cursor:pointer" title="Cancelar férias restantes"><i class="ti ti-x"></i></button>';
+      html+='</div></div>';
+    });
+  }
+  html+='</div>';
 
   // BACKUPS section
   html+='<div class="card"><div class="card-title"><i class="ti ti-shield-half-filled" style="color:var(--warn)"></i>Backups cadastrados ('+(state.backups||[]).length+')';

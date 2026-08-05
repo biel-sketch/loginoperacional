@@ -17,6 +17,7 @@
   --red:#ff4d6a;--red-bg:rgba(255,77,106,.10);--red-bd:rgba(255,77,106,.25);
   --warn:#f59e0b;--warn-bg:rgba(245,158,11,.10);--warn-bd:rgba(245,158,11,.25);
   --purple:#00d4d8;--purple-bg:rgba(0,212,216,.10);--purple-bd:rgba(0,212,216,.25);
+  --violet:#a78bfa;--violet-bg:rgba(167,139,250,.10);--violet-bd:rgba(167,139,250,.25);
   --r:12px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -80,6 +81,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .colab-pres-card.presente{border-left:3px solid var(--green);background:rgba(0,229,160,.05)}
 .colab-pres-card.ausente{border-left:3px solid var(--red);background:rgba(255,77,106,.05)}
 .colab-pres-card.extra{border-left:3px solid var(--warn);background:rgba(245,158,11,.05)}
+.colab-pres-card.ferias{border-left:3px solid var(--violet);background:rgba(167,139,250,.05)}
 .colab-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px}
 .colab-info{font-size:11px;color:var(--text2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .jornada-badge{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:700;background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-bd)}
@@ -92,6 +94,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .pb.active-p{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}
 .pb.active-a{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}
 .pb.active-e{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}
+.pb.active-f{background:var(--violet-bg);border-color:var(--violet-bd);color:var(--violet)}
 .justif-box{margin-top:8px;display:none}
 .justif-box input{width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--warn-bd);background:var(--warn-bg);color:var(--text);font-size:12px;font-family:inherit}
 .saldo-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -152,6 +155,15 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .hist-ausentes{display:flex;flex-wrap:wrap;gap:4px;flex:1}
 .hist-ausente-tag{font-size:11px;padding:2px 8px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:6px;color:var(--red);font-weight:600}
 .hist-ok{font-size:11px;color:var(--green);font-weight:600}
+.hist-chip{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin:2px 4px 2px 0;border:1px solid transparent}
+.hist-chip.editable{cursor:pointer}
+.hist-chip.editable:hover{filter:brightness(1.25);transform:translateY(-1px)}
+.hist-chip-p{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}
+.hist-chip-a{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}
+.hist-chip-e{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}
+.hist-chip-f{background:var(--violet-bg);border-color:var(--violet-bd);color:var(--violet)}
+.hist-chips-wrap{display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+.hist-summary{font-size:11px;color:var(--text2);margin-left:4px}
 .hist-sem-reg{font-size:11px;color:var(--text3);font-style:italic}
 
 /* Abs ranking */
@@ -514,6 +526,25 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     <div class="modal-btns">
       <button class="modal-btn-primary" onclick="confirmarExtraComJustif()"><i class="ti ti-check" style="font-size:14px"></i> Confirmar trabalho</button>
       <button class="modal-btn-ghost" onclick="closeJustifModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="edit-pres-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEditPresencaModal()">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-edit" style="color:var(--cyan)"></i>Editar registro</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px">
+      <strong id="edit-pres-nome" style="color:var(--text)"></strong><br>
+      <span id="edit-pres-info" style="font-size:12px"></span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      <button class="pb" style="justify-content:center;padding:10px" onclick="salvarEditPresenca('P')"><i class="ti ti-check" style="font-size:13px"></i> Presente</button>
+      <button class="pb" style="justify-content:center;padding:10px" onclick="salvarEditPresenca('A')"><i class="ti ti-x" style="font-size:13px"></i> Ausente</button>
+      <button class="pb" style="justify-content:center;padding:10px" onclick="salvarEditPresenca('F')"><i class="ti ti-plane-departure" style="font-size:13px"></i> Férias</button>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn-ghost" onclick="closeEditPresencaModal()">Cancelar</button>
+      <button class="modal-btn-danger" onclick="salvarEditPresenca('')"><i class="ti ti-trash" style="font-size:14px"></i> Remover registro</button>
     </div>
   </div>
 </div>
@@ -1123,12 +1154,12 @@ function renderPresContent(){
     const escalados=colabsPosto.filter(c=>deveTrabalharHoje(c,todayD));
     const folga=colabsPosto.filter(c=>!deveTrabalharHoje(c,todayD));
 
-    let presentes=0,ausentes=0;
-    escalados.forEach(c=>{const p=presPostoData[c.nome];if(p){if(p.status==='P')presentes++;else if(p.status==='A')ausentes++;}});
+    let presentes=0,ausentes=0,ferias=0;
+    escalados.forEach(c=>{const p=presPostoData[c.nome];if(p){if(p.status==='P')presentes++;else if(p.status==='A')ausentes++;else if(p.status==='F')ferias++;}});
 
     html+='<div class="card" style="margin-bottom:14px">';
     html+='<div class="card-title"><i class="ti '+POSTO_ICONS[posto]+'" style="color:var(--cyan)"></i>'+POSTOS_LABEL[posto];
-    html+='<span style="margin-left:auto;font-size:11px;color:var(--text2);font-weight:400">'+escalados.length+' escalados · <span style="color:var(--green)">'+presentes+' pres.</span>'+(ausentes>0?' · <span style="color:var(--red)">'+ausentes+' aus.</span>':'')+'</span></div>';
+    html+='<span style="margin-left:auto;font-size:11px;color:var(--text2);font-weight:400">'+escalados.length+' escalados · <span style="color:var(--green)">'+presentes+' pres.</span>'+(ausentes>0?' · <span style="color:var(--red)">'+ausentes+' aus.</span>':'')+(ferias>0?' · <span style="color:var(--violet)">'+ferias+' férias</span>':'')+'</span></div>';
 
     // Escalados section
     if(escalados.length){
@@ -1136,7 +1167,7 @@ function renderPresContent(){
       escalados.forEach(c=>{
         const pres=presPostoData[c.nome];
         const status=pres?pres.status:'';
-        const cardCls=status==='P'?'presente':status==='A'?'ausente':status==='E'?'extra':'trabalha';
+        const cardCls=status==='P'?'presente':status==='A'?'ausente':status==='F'?'ferias':status==='E'?'extra':'trabalha';
         html+='<div class="colab-pres-card '+cardCls+'">';
         html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
         html+='<div><div class="colab-name">'+c.nome+'</div>';
@@ -1144,6 +1175,7 @@ function renderPresContent(){
         html+='<div class="pres-btns">';
         html+='<button class="pb'+(status==='P'?' active-p':'')+'" onclick="setStatus(\''+posto+'\',\''+c.nome+'\',\'P\')"><i class="ti ti-check" style="font-size:12px"></i> Presente</button>';
         html+='<button class="pb'+(status==='A'?' active-a':'')+'" onclick="setStatus(\''+posto+'\',\''+c.nome+'\',\'A\')"><i class="ti ti-x" style="font-size:12px"></i> Ausente</button>';
+        html+='<button class="pb'+(status==='F'?' active-f':'')+'" onclick="setStatus(\''+posto+'\',\''+c.nome+'\',\'F\')"><i class="ti ti-plane-departure" style="font-size:12px"></i> Férias</button>';
         html+='</div></div>';
         if(pres&&pres.justificativa){html+='<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-info-circle" style="font-size:11px"></i> '+pres.justificativa+'</div>';}
         html+='</div>';
@@ -1221,6 +1253,44 @@ function showPostoSaved(posto){
   });
 }
 
+function podeEditarPresenca(){return currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor';}
+
+// === EDIÇÃO DE PRESENÇA/AUSÊNCIA/FÉRIAS (a partir do Histórico) ===
+let _editDate=null,_editPosto=null,_editNome=null;
+function abrirEditPresenca(date,posto,nome){
+  if(!podeEditarPresenca()){showToast('Apenas administradores podem editar registros.','err');return;}
+  _editDate=date;_editPosto=posto;_editNome=nome;
+  const v=(state.presencas[date]&&state.presencas[date][posto]&&state.presencas[date][posto][nome])||null;
+  const statusLbl=v?(v.status==='A'?'Ausente':v.status==='F'?'Férias':v.status==='E'?'Trabalho extra':'Presente'):'Sem registro';
+  document.getElementById('edit-pres-nome').textContent=nome;
+  document.getElementById('edit-pres-info').textContent=POSTOS_LABEL[posto]+' · '+date.split('-').reverse().join('/')+' · Atual: '+statusLbl;
+  document.getElementById('edit-pres-modal').style.display='flex';
+}
+function closeEditPresencaModal(){
+  document.getElementById('edit-pres-modal').style.display='none';
+  _editDate=null;_editPosto=null;_editNome=null;
+}
+async function salvarEditPresenca(status){
+  if(!_editDate||!_editPosto||!_editNome)return;
+  if(!podeEditarPresenca()){showToast('Apenas administradores podem editar registros.','err');return;}
+  const date=_editDate,posto=_editPosto,nome=_editNome;
+  if(!state.presencas[date])state.presencas[date]={};
+  if(!state.presencas[date][posto])state.presencas[date][posto]={};
+  if(status===''){
+    delete state.presencas[date][posto][nome];
+  }else{
+    state.presencas[date][posto][nome]={status,ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',editadoManualmente:true};
+  }
+  closeEditPresencaModal();
+  saveCache();
+  renderHistMes();renderPresHist();
+  if(date===today()){renderPresContent();renderDashboard();}
+  if(document.getElementById('abs-content'))renderAbsenteismo();
+  await pushToCloud();
+  if(date===today())verificarAusenciaLins();
+  showToast(status===''?'Registro removido!':'Registro atualizado!','ok');
+}
+
 // === EXTRA (trabalho na folga) ===
 let _justifPosto=null,_justifNome=null;
 function lancarExtra(posto,nome){
@@ -1279,6 +1349,7 @@ function renderHistMes(){
     document.getElementById('hist-content').innerHTML=html;return;
   }
 
+  const canEdit=podeEditarPresenca();
   dates.forEach(date=>{
     const presDay=state.presencas[date]||{};
     const weekday=new Date(date+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'});
@@ -1288,19 +1359,8 @@ function renderHistMes(){
     POSTOS.forEach(posto=>{
       const presPostoData=presDay[posto];
       if(!presPostoData||!Object.keys(presPostoData).length)return;
-      const ausentes=Object.entries(presPostoData).filter(([,v])=>v.status==='A').map(([n])=>n.split(' ').slice(0,2).join(' '));
-      const presentes=Object.values(presPostoData).filter(v=>v.status==='P'||v.status==='E').length;
-      if(ausentes.length)hasFalta=true;
-      postosHtml+='<div class="hist-turno-row">';
-      postosHtml+='<span class="hist-turno-lbl">'+POSTOS_LABEL[posto]+'</span>';
-      postosHtml+='<div class="hist-ausentes">';
-      if(ausentes.length){
-        ausentes.forEach(n=>{postosHtml+='<span class="hist-ausente-tag">'+n+'</span>';});
-        postosHtml+='<span style="font-size:11px;color:var(--text2);margin-left:4px">'+presentes+' pres.</span>';
-      }else{
-        postosHtml+='<span class="hist-ok"><i class="ti ti-check" style="font-size:11px"></i> '+presentes+' presente(s)</span>';
-      }
-      postosHtml+='</div></div>';
+      postosHtml+=_renderHistTurnoRow(posto,presPostoData,date,canEdit);
+      if(Object.values(presPostoData).some(v=>v.status==='A'))hasFalta=true;
     });
 
     if(!postosHtml)return;
@@ -1310,6 +1370,33 @@ function renderHistMes(){
   });
 
   document.getElementById('hist-content').innerHTML=html;
+}
+
+// Renders one posto row within a history day card as editable chips (used by both hist views)
+function _renderHistTurnoRow(posto,presPostoData,date,canEdit){
+  const entries=Object.entries(presPostoData).sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
+  let presentes=0,ausentes=0,ferias=0,extras=0;
+  let row='<div class="hist-turno-row">';
+  row+='<span class="hist-turno-lbl">'+POSTOS_LABEL[posto]+'</span>';
+  row+='<div class="hist-chips-wrap">';
+  entries.forEach(([nome,v])=>{
+    const nomeCurto=nome.split(' ').slice(0,2).join(' ');
+    let cls='hist-chip-p',icon='ti-check';
+    if(v.status==='A'){cls='hist-chip-a';icon='ti-x';ausentes++;}
+    else if(v.status==='F'){cls='hist-chip-f';icon='ti-plane-departure';ferias++;}
+    else if(v.status==='E'){cls='hist-chip-e';icon='ti-plus';extras++;}
+    else{presentes++;}
+    const clickAttr=canEdit?' onclick="abrirEditPresenca(\''+date+'\',\''+posto+'\',\''+nome.replace(/'/g,"\\'")+'\')"':'';
+    row+='<span class="hist-chip '+cls+(canEdit?' editable':'')+'"'+clickAttr+' title="'+(canEdit?'Clique para editar':'')+'"><i class="ti '+icon+'" style="font-size:10px"></i> '+nomeCurto+'</span>';
+  });
+  let summary=[];
+  if(presentes)summary.push('<span class="hist-ok"><i class="ti ti-check" style="font-size:11px"></i> '+presentes+' pres.</span>');
+  if(ausentes)summary.push('<span style="color:var(--red);font-weight:600">'+ausentes+' aus.</span>');
+  if(ferias)summary.push('<span style="color:var(--violet);font-weight:600">'+ferias+' férias</span>');
+  if(extras)summary.push('<span style="color:var(--warn);font-weight:600">'+extras+' extra</span>');
+  row+='<span class="hist-summary">'+summary.join(' · ')+'</span>';
+  row+='</div></div>';
+  return row;
 }
 
 // === HISTÓRICO PRESENÇA (aba na tela de presença) ===
@@ -1332,19 +1419,15 @@ function renderPresHist(){
 
   if(!dates.length){html+='<div class="empty"><i class="ti ti-calendar-off"></i><h3>Nenhum registro em '+mesLabel+'</h3></div>';cont.innerHTML=html;return;}
 
+  const canEdit=podeEditarPresenca();
   dates.forEach(date=>{
     const presDay=state.presencas[date]||{};
     const weekday=new Date(date+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'});
     let hasFalta=false,posHtml='';
     POSTOS.forEach(posto=>{
       const pd=presDay[posto];if(!pd||!Object.keys(pd).length)return;
-      const aus=Object.entries(pd).filter(([,v])=>v.status==='A').map(([n])=>n.split(' ').slice(0,2).join(' '));
-      const pres=Object.values(pd).filter(v=>v.status==='P'||v.status==='E').length;
-      if(aus.length)hasFalta=true;
-      posHtml+='<div class="hist-turno-row"><span class="hist-turno-lbl">'+POSTOS_LABEL[posto]+'</span><div class="hist-ausentes">';
-      if(aus.length){aus.forEach(n=>{posHtml+='<span class="hist-ausente-tag">'+n+'</span>';});posHtml+='<span style="font-size:11px;color:var(--text2);margin-left:4px">'+pres+' pres.</span>';}
-      else{posHtml+='<span class="hist-ok"><i class="ti ti-check" style="font-size:11px"></i> '+pres+' presente(s)</span>';}
-      posHtml+='</div></div>';
+      posHtml+=_renderHistTurnoRow(posto,pd,date,canEdit);
+      if(Object.values(pd).some(v=>v.status==='A'))hasFalta=true;
     });
     if(!posHtml)return;
     html+='<div class="hist-day-card '+(hasFalta?'has-falta':'all-present')+'"><div class="hist-day-date">'+weekday+'</div>'+posHtml+'</div>';
@@ -1370,7 +1453,8 @@ function renderAbsenteismo(){
     POSTOS.forEach(posto=>{
       const pd=presDay[posto]||{};
       Object.entries(pd).forEach(([nome,v])=>{
-        if(!absMap[nome])absMap[nome]={faltas:0,presencas:0,extras:0,posto};
+        if(!absMap[nome])absMap[nome]={faltas:0,presencas:0,extras:0,ferias:0,posto};
+        if(v.status==='F'){absMap[nome].ferias++;return;} // férias não conta como falta nem presença
         if(!diasMap[nome])diasMap[nome]=0;
         diasMap[nome]++;
         if(v.status==='A')absMap[nome].faltas++;
@@ -1420,7 +1504,7 @@ function renderAbsenteismo(){
     html+='<div style="min-width:140px;max-width:200px"><div style="font-size:13px;font-weight:700;color:var(--text)">'+nome+'</div>';
     html+='<div style="font-size:10px;color:var(--text2)">'+POSTOS_LABEL[d.posto]+'</div></div>';
     html+='<div class="abs-bar-wrap"><div class="abs-bar" style="width:'+pct+'%;background:'+barColor+'"></div></div>';
-    html+='<div style="text-align:right;min-width:80px"><div style="font-size:12px;font-weight:700;color:var(--text)">'+d.faltas+' falta(s)</div><div style="font-size:11px;color:var(--text2)">'+d.presencas+' pres.'+(d.extras?' · '+d.extras+' extra':'')+'</div></div>';
+    html+='<div style="text-align:right;min-width:80px"><div style="font-size:12px;font-weight:700;color:var(--text)">'+d.faltas+' falta(s)</div><div style="font-size:11px;color:var(--text2)">'+d.presencas+' pres.'+(d.extras?' · '+d.extras+' extra':'')+(d.ferias?' · '+d.ferias+' férias':'')+'</div></div>';
     html+='<div style="min-width:70px;text-align:right"><span class="badge '+statusCls+'">'+status+'</span><div style="font-size:11px;color:var(--text2);margin-top:2px">'+pct+'%</div></div>';
     html+='</div>';
   });
@@ -1435,7 +1519,8 @@ function exportarAbsLins(){
     const presDay=state.presencas[date]||{};
     POSTOS.forEach(posto=>{
       Object.entries(presDay[posto]||{}).forEach(([nome,v])=>{
-        if(!absMap[nome])absMap[nome]={faltas:0,presencas:0,extras:0,posto};
+        if(!absMap[nome])absMap[nome]={faltas:0,presencas:0,extras:0,ferias:0,posto};
+        if(v.status==='F'){absMap[nome].ferias++;return;}
         if(!diasMap[nome])diasMap[nome]=0;
         diasMap[nome]++;
         if(v.status==='A')absMap[nome].faltas++;
@@ -1444,12 +1529,12 @@ function exportarAbsLins(){
       });
     });
   });
-  let csv='Colaborador,Posto,Faltas,Presencas,Extras,Total,% Ausencia,Status\n';
+  let csv='Colaborador,Posto,Faltas,Presencas,Extras,Ferias,Total,% Ausencia,Status\n';
   Object.entries(absMap).sort((a,b)=>b[1].faltas-a[1].faltas).forEach(([nome,d])=>{
     const total=diasMap[nome]||0;
     const pct=total>0?Math.round(d.faltas/total*100):0;
     const status=pct>=15?'CRITICO':pct>=8?'ATENCAO':'OK';
-    csv+='"'+nome+'","'+POSTOS_LABEL[d.posto]+'",'+d.faltas+','+d.presencas+','+d.extras+','+total+','+pct+'%,'+status+'\n';
+    csv+='"'+nome+'","'+POSTOS_LABEL[d.posto]+'",'+d.faltas+','+d.presencas+','+d.extras+','+d.ferias+','+total+','+pct+'%,'+status+'\n';
   });
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);

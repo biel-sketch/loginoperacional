@@ -1483,7 +1483,7 @@ function renderConfig(){
     html+='<div class="card" style="border-color:var(--red-bd)">';
     html+='<div class="card-title"><i class="ti ti-trash" style="color:var(--red)"></i> Zerar dados operacionais</div>';
     html+='<div id="reset-lock-section">';
-    html+='<div style="font-size:13px;color:var(--text2);margin-bottom:14px">Apaga registros de <strong>pallets e/ou presenças</strong>. Colaboradores mantidos. Irreversível.</div>';
+    html+='<div style="font-size:13px;color:var(--text2);margin-bottom:14px">Apaga registros de <strong>pallets, presenças e/ou colaboradores</strong>. Irreversível.</div>';
     html+='<div style="display:flex;gap:8px">';
     html+='<input type="password" id="reset-admin-pw" placeholder="Senha de administrador" style="flex:1;padding:10px 13px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px">';
     html+='<button class="btn btn-ghost btn-sm" style="border-color:var(--red-bd);color:var(--red)" onclick="unlockResetSection()"><i class="ti ti-unlock"></i> Desbloquear</button>';
@@ -1491,10 +1491,11 @@ function renderConfig(){
     html+='<div id="reset-unlocked-section" style="display:none">';
     html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;padding:8px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;font-size:12px;color:var(--red);font-weight:700">';
     html+='<i class="ti ti-alert-triangle"></i> Desbloqueado — ação irreversível</div>';
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">';
     html+='<button class="btn btn-danger btn-sm" onclick="resetPallets()"><i class="ti ti-stack-2"></i> Zerar Pallets</button>';
     html+='<button class="btn btn-danger btn-sm" onclick="resetPresencas()"><i class="ti ti-users-minus"></i> Zerar Presenças</button>';
-    html+='<button class="btn btn-danger" style="grid-column:span 2;margin-top:4px" onclick="resetTudo()"><i class="ti ti-trash"></i> Zerar TUDO</button>';
+    html+='<button class="btn btn-danger btn-sm" onclick="resetColaboradores()"><i class="ti ti-id-badge-off"></i> Zerar Colaboradores</button>';
+    html+='<button class="btn btn-danger" style="grid-column:span 3;margin-top:4px" onclick="resetTudo()"><i class="ti ti-trash"></i> Zerar TUDO</button>';
     html+='</div></div></div>';
     // Notificações WhatsApp
     const notifRecip = NOTIF_RECIPIENTS[0];
@@ -1574,6 +1575,14 @@ async function resetPresencas(){
   if(!confirm('Zerar TODAS as presenças? Irreversível.'))return;
   state.presencas={};logAuditoria('Zerou todas as presenças');saveCache();await pushForceToCloud();
   showToast('Presenças zeradas!','ok');renderAll();
+  document.getElementById('reset-lock-section').style.display='block';
+  document.getElementById('reset-unlocked-section').style.display='none';
+}
+async function resetColaboradores(){
+  if(!confirm('Zerar TODOS os colaboradores cadastrados? Isso remove a equipe inteira (nomes, turnos, cargos). Irreversível.'))return;
+  if(!confirm('Tem certeza mesmo? Essa ação apaga o cadastro de TODOS os colaboradores e não pode ser desfeita.'))return;
+  state.colaboradores=[];logAuditoria('Zerou todos os colaboradores');saveCache();await pushForceToCloud();
+  showToast('Colaboradores zerados!','ok');renderAll();
   document.getElementById('reset-lock-section').style.display='block';
   document.getElementById('reset-unlocked-section').style.display='none';
 }

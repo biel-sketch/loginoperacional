@@ -540,11 +540,33 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
       <button class="pb" style="justify-content:center;padding:10px" onclick="salvarEditPresenca('P')"><i class="ti ti-check" style="font-size:13px"></i> Presente</button>
       <button class="pb" style="justify-content:center;padding:10px" onclick="salvarEditPresenca('A')"><i class="ti ti-x" style="font-size:13px"></i> Ausente</button>
-      <button class="pb" style="justify-content:center;padding:10px" onclick="salvarEditPresenca('F')"><i class="ti ti-plane-departure" style="font-size:13px"></i> Férias</button>
+      <button class="pb" style="justify-content:center;padding:10px" onclick="feriasDoEdit()"><i class="ti ti-plane-departure" style="font-size:13px"></i> Férias</button>
     </div>
     <div class="modal-btns">
       <button class="modal-btn-ghost" onclick="closeEditPresencaModal()">Cancelar</button>
       <button class="modal-btn-danger" onclick="salvarEditPresenca('')"><i class="ti ti-trash" style="font-size:14px"></i> Remover registro</button>
+    </div>
+  </div>
+</div>
+
+<div id="ferias-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeFeriasModal()">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-plane-departure" style="color:var(--violet)"></i>Registrar férias</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px">
+      <strong id="ferias-nome" style="color:var(--text)"></strong><br>
+      <span style="font-size:12px">Início: <strong id="ferias-inicio" style="color:var(--text)"></strong></span>
+    </div>
+    <label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:6px">Quantidade de dias de férias</label>
+    <input type="number" id="ferias-dias" min="1" max="60" value="30" oninput="atualizarRetornoFerias()" style="width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px;margin-bottom:14px">
+    <div style="font-size:13px;background:var(--violet-bg);border:1px solid var(--violet-bd);border-radius:9px;padding:10px 12px;margin-bottom:16px">
+      <i class="ti ti-calendar-event" style="color:var(--violet);font-size:13px"></i>
+      Último dia de férias: <strong id="ferias-fim" style="color:var(--violet)"></strong><br>
+      <i class="ti ti-arrow-back" style="color:var(--violet);font-size:13px"></i>
+      Retorna ao trabalho em: <strong id="ferias-retorno" style="color:var(--violet)"></strong>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn-primary" onclick="confirmarFerias()"><i class="ti ti-check" style="font-size:14px"></i> Confirmar férias</button>
+      <button class="modal-btn-ghost" onclick="closeFeriasModal()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -621,6 +643,13 @@ function dateFull(d){
   if(!d)return'';
   return new Date(d+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
 }
+function addDaysStr(dateStr,n){
+  const p=dateStr.split('-').map(Number);
+  const d=new Date(p[0],p[1]-1,p[2]);
+  d.setDate(d.getDate()+n);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function dateBR(d){ if(!d)return''; return d.split('-').reverse().join('/'); }
 function isFimSemanaOuFeriado(dateStr){
   const dow=new Date(dateStr+'T12:00').getDay();
   return dow===0||dow===6; // simplificado - feriados podem ser adicionados
@@ -1175,8 +1204,11 @@ function renderPresContent(){
         html+='<div class="pres-btns">';
         html+='<button class="pb'+(status==='P'?' active-p':'')+'" onclick="setStatus(\''+posto+'\',\''+c.nome+'\',\'P\')"><i class="ti ti-check" style="font-size:12px"></i> Presente</button>';
         html+='<button class="pb'+(status==='A'?' active-a':'')+'" onclick="setStatus(\''+posto+'\',\''+c.nome+'\',\'A\')"><i class="ti ti-x" style="font-size:12px"></i> Ausente</button>';
-        html+='<button class="pb'+(status==='F'?' active-f':'')+'" onclick="setStatus(\''+posto+'\',\''+c.nome+'\',\'F\')"><i class="ti ti-plane-departure" style="font-size:12px"></i> Férias</button>';
+        html+='<button class="pb'+(status==='F'?' active-f':'')+'" onclick="abrirFeriasModal(\''+posto+'\',\''+c.nome+'\',\''+today()+'\')"><i class="ti ti-plane-departure" style="font-size:12px"></i> Férias</button>';
         html+='</div></div>';
+        if(status==='F'&&pres.feriasFim){
+          html+='<div style="font-size:11px;color:var(--violet);margin-top:6px;padding-top:6px;border-top:1px solid var(--violet-bd)"><i class="ti ti-calendar-event" style="font-size:11px"></i> Férias até '+dateBR(pres.feriasFim)+' · retorna em '+dateBR(pres.feriasRetorno)+'</div>';
+        }
         if(pres&&pres.justificativa){html+='<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-info-circle" style="font-size:11px"></i> '+pres.justificativa+'</div>';}
         html+='</div>';
       });
@@ -1290,6 +1322,58 @@ async function salvarEditPresenca(status){
   if(date===today())verificarAusenciaLins();
   showToast(status===''?'Registro removido!':'Registro atualizado!','ok');
 }
+function feriasDoEdit(){
+  const posto=_editPosto,nome=_editNome,date=_editDate;
+  closeEditPresencaModal();
+  abrirFeriasModal(posto,nome,date);
+}
+
+// === FÉRIAS (automático por quantidade de dias) ===
+let _feriasPosto=null,_feriasNome=null,_feriasInicio=null;
+function abrirFeriasModal(posto,nome,startDate){
+  if(!podeEditarPresenca()){showToast('Apenas administradores podem lançar férias.','err');return;}
+  _feriasPosto=posto;_feriasNome=nome;_feriasInicio=startDate;
+  document.getElementById('ferias-nome').textContent=nome;
+  document.getElementById('ferias-inicio').textContent=dateBR(startDate);
+  document.getElementById('ferias-dias').value=30;
+  atualizarRetornoFerias();
+  document.getElementById('ferias-modal').style.display='flex';
+}
+function closeFeriasModal(){
+  document.getElementById('ferias-modal').style.display='none';
+  _feriasPosto=null;_feriasNome=null;_feriasInicio=null;
+}
+function atualizarRetornoFerias(){
+  const dias=parseInt(document.getElementById('ferias-dias').value,10)||0;
+  if(dias<1||!_feriasInicio){document.getElementById('ferias-fim').textContent='—';document.getElementById('ferias-retorno').textContent='—';return;}
+  const fim=addDaysStr(_feriasInicio,dias-1);
+  const retorno=addDaysStr(_feriasInicio,dias);
+  document.getElementById('ferias-fim').textContent=dateBR(fim);
+  document.getElementById('ferias-retorno').textContent=dateBR(retorno);
+}
+async function confirmarFerias(){
+  if(!_feriasPosto||!_feriasNome||!_feriasInicio)return;
+  const dias=parseInt(document.getElementById('ferias-dias').value,10)||0;
+  if(dias<1){showToast('Informe uma quantidade de dias válida.','err');return;}
+  if(dias>60){showToast('Máximo de 60 dias por lançamento.','err');return;}
+  const posto=_feriasPosto,nome=_feriasNome,inicio=_feriasInicio;
+  const fim=addDaysStr(inicio,dias-1);
+  const retorno=addDaysStr(inicio,dias);
+  const ts=new Date().toISOString(),who=currentUser?currentUser.user:'?';
+  for(let i=0;i<dias;i++){
+    const d=addDaysStr(inicio,i);
+    if(!state.presencas[d])state.presencas[d]={};
+    if(!state.presencas[d][posto])state.presencas[d][posto]={};
+    state.presencas[d][posto][nome]={status:'F',ts,who,feriasInicio:inicio,feriasDias:dias,feriasFim:fim,feriasRetorno:retorno};
+  }
+  closeFeriasModal();
+  saveCache();
+  renderHistMes();renderPresHist();
+  if([...Array(dias)].some((_,i)=>addDaysStr(inicio,i)===today())){renderPresContent();renderDashboard();}
+  if(document.getElementById('abs-content'))renderAbsenteismo();
+  await pushToCloud();
+  showToast('Férias registradas! '+dias+' dia(s), retorna em '+dateBR(retorno)+'.','ok',4000);
+}
 
 // === EXTRA (trabalho na folga) ===
 let _justifPosto=null,_justifNome=null;
@@ -1387,7 +1471,8 @@ function _renderHistTurnoRow(posto,presPostoData,date,canEdit){
     else if(v.status==='E'){cls='hist-chip-e';icon='ti-plus';extras++;}
     else{presentes++;}
     const clickAttr=canEdit?' onclick="abrirEditPresenca(\''+date+'\',\''+posto+'\',\''+nome.replace(/'/g,"\\'")+'\')"':'';
-    row+='<span class="hist-chip '+cls+(canEdit?' editable':'')+'"'+clickAttr+' title="'+(canEdit?'Clique para editar':'')+'"><i class="ti '+icon+'" style="font-size:10px"></i> '+nomeCurto+'</span>';
+    const tip=v.status==='F'&&v.feriasRetorno?'Férias · retorna em '+dateBR(v.feriasRetorno):(canEdit?'Clique para editar':'');
+    row+='<span class="hist-chip '+cls+(canEdit?' editable':'')+'"'+clickAttr+' title="'+tip+'"><i class="ti '+icon+'" style="font-size:10px"></i> '+nomeCurto+'</span>';
   });
   let summary=[];
   if(presentes)summary.push('<span class="hist-ok"><i class="ti ti-check" style="font-size:11px"></i> '+presentes+' pres.</span>');

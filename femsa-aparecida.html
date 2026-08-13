@@ -455,7 +455,7 @@ const LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1
 
 
 <script>
-const META_DIARIA=2400,SYNC_INTERVAL=20000;
+const META_DIARIA=2400,SYNC_INTERVAL=8000;
 const FB_URL='https://painel-operacional-96032-default-rtdb.firebaseio.com/aparecida.json';
 const LS_CACHE='femsa_cache',LS_UNIT='femsa_unit';
 const USERS=[
@@ -742,8 +742,7 @@ function startAutoSync(){syncFromCloud().then(scheduleNextSync).catch(scheduleNe
 function scheduleNextSync(){if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeout(startAutoSync,SYNC_INTERVAL);}
 
 window.addEventListener('online', ()=>{
-  if(currentUser) manualSync();
-});
+  if(currentUser) manualSync();});document.addEventListener('visibilitychange', ()=>{if(document.visibilityState==='visible' && currentUser) manualSync();});window.addEventListener('focus', ()=>{if(currentUser) manualSync();});
 window.addEventListener('offline', ()=>{
   setSyncDot('err','Sem conexão');
 });

@@ -447,7 +447,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 // === CONFIG ===
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 const LS_CACHE = 'marilia_ops_cache';
-const SYNC_INTERVAL = 20000;
+const SYNC_INTERVAL=8000;
 
 const POSTOS = ['Acim','Americas','ClinicPrev','Dallas','Dori','Emdurb','Grespan','Jazam','Mirai Marilia','Mirai Tupa','Moradas','Mustache','Pib','Prever','Ravena','TSERVICE','Tamoyo','Velocity'];
 const POSTOS_LABEL = {'Acim':'Acim','Americas':'Américas','ClinicPrev':'ClinicPrev','Dallas':'Dallas','Dori':'Dori','Emdurb':'Emdurb','Grespan':'Grespan','Jazam':'Jazam','Mirai Marilia':'Mirai Marília','Mirai Tupa':'Mirai Tupã','Moradas':'Moradas','Mustache':'Mustache','Pib':'Pib','Prever':'Prever','Ravena':'Ravena','TSERVICE':'T-Service','Tamoyo':'Tamoyo','Velocity':'Velocity'};
@@ -663,8 +663,7 @@ function scheduleNext(){if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeou
 function manualSync(){if(syncTimer)clearTimeout(syncTimer);syncFromCloud().then(scheduleNext).catch(scheduleNext);}
 
 window.addEventListener('online', ()=>{
-  if(currentUser) manualSync();
-});
+  if(currentUser) manualSync();});document.addEventListener('visibilitychange', ()=>{if(document.visibilityState==='visible' && currentUser) manualSync();});window.addEventListener('focus', ()=>{if(currentUser) manualSync();});
 window.addEventListener('offline', ()=>{
   setSyncDot('err','Sem conexão');
 });

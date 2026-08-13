@@ -577,7 +577,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 // === CONFIG ===
 const FB_URL_LINS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/lins.json';
 const LS_CACHE = 'lins_cache';
-const SYNC_INTERVAL = 20000;
+const SYNC_INTERVAL=8000;
 
 const POSTOS = ['Aeroporto','Rodoviaria','Horto','Nucleo','Copersol','Velorio Municipal'];
 const POSTOS_LABEL = {
@@ -886,8 +886,7 @@ function manualSync(){if(syncTimer)clearTimeout(syncTimer);syncFromCloud().then(
 // tenta enviar imediatamente qualquer alteração pendente, sem esperar o
 // próximo ciclo (que pode levar minutos)
 window.addEventListener('online', ()=>{
-  if(currentUser) manualSync();
-});
+  if(currentUser) manualSync();});document.addEventListener('visibilitychange', ()=>{if(document.visibilityState==='visible' && currentUser) manualSync();});window.addEventListener('focus', ()=>{if(currentUser) manualSync();});
 window.addEventListener('offline', ()=>{
   setSyncDot('err','Sem conexão');
 });

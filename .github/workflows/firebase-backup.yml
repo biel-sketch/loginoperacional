@@ -20,7 +20,7 @@ jobs:
         run: |
           mkdir -p backups
           DATA=$(date +'%Y-%m-%d_%H-%M')
-          curl -s "https://loginserv-painel-default-rtdb.firebaseio.com/.json" \
+          curl -s "https://painel-operacional-96032-default-rtdb.firebaseio.com/.json" \
             -o "backups/backup_${DATA}.json"
           echo "Backup salvo: backup_${DATA}.json"
           # Falha o job se o arquivo vier vazio ou inválido (evita commitar backup quebrado)

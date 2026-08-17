@@ -140,7 +140,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .hist-turno-row:last-child{border-bottom:none}
 .hist-turno-lbl{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;width:80px;flex-shrink:0;padding-top:2px}
 .hist-ausentes{display:flex;flex-wrap:wrap;gap:4px;flex:1}
-.hist-ausente-tag{font-size:11px;padding:2px 8px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:6px;color:var(--red);font-weight:600}
+.hist-ausente-tag{font-size:11px;padding:2px 8px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:6px;color:var(--red);font-weight:600}.hist-chip{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin:2px 4px 2px 0;border:1px solid transparent}.hist-chip.editable{cursor:pointer}.hist-chip.editable:hover{filter:brightness(1.25);transform:translateY(-1px)}.hist-chip-p{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}.hist-chip-a{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}.hist-chip-e{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}.hist-chips-wrap{display:flex;flex-wrap:wrap;align-items:center;gap:2px}
 .hist-ok{font-size:11px;color:var(--green);font-weight:600}
 .hist-sem-reg{font-size:11px;color:var(--text3);font-style:italic}
 
@@ -360,7 +360,25 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 </div></nav>
 
 <!-- Modal Colaborador -->
-<div id="colab-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeColabModal()">
+<div id="edit-pres-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEditPresencaModal()">
+  <div class="modal-box">
+  <div class="modal-title"><i class="ti ti-edit" style="color:var(--cyan)"></i>Editar registro</div>
+  <div style="font-size:13px;color:var(--text2);margin-bottom:16px">
+  <strong id="edit-pres-nome" style="color:var(--text)"></strong><br>
+  <span id="edit-pres-info" style="font-size:12px"></span>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+  <button class="pb" style="justify-content:center;padding:10px" onclick="salvarEditPresenca('P')"><i class="ti ti-check" style="font-size:13px"></i> Presente</button>
+  <button class="pb" style="justify-content:center;padding:10px" onclick="salvarEditPresenca('A')"><i class="ti ti-x" style="font-size:13px"></i> Ausente</button>
+  </div>
+  <div class="modal-btns">
+  <button class="modal-btn-ghost" onclick="closeEditPresencaModal()">Cancelar</button>
+  <button class="modal-btn-danger" onclick="salvarEditPresenca('')"><i class="ti ti-trash" style="font-size:14px"></i> Remover registro</button>
+  </div>
+  </div>
+  </div>
+  
+  <div id="colab-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeColabModal()">
   <div class="modal-box">
     <div class="modal-title"><i class="ti ti-id-badge"></i><span id="modal-title-txt">Colaborador</span></div>
     <div class="field"><label>Nome completo</label><input type="text" id="modal-nome" placeholder="Nome..."></div>
@@ -1068,6 +1086,7 @@ function renderHistMes(){
     document.getElementById('hist-content').innerHTML=html;return;
   }
 
+  const canEdit=podeEditarPresenca();
   dates.forEach(date=>{
     const presDay=state.presencas[date]||{};
     const weekday=new Date(date+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'});
@@ -1077,19 +1096,8 @@ function renderHistMes(){
     POSTOS.forEach(posto=>{
       const presPostoData=presDay[posto];
       if(!presPostoData||!Object.keys(presPostoData).length)return;
-      const ausentes=Object.entries(presPostoData).filter(([,v])=>v.status==='A').map(([n])=>n.split(' ').slice(0,2).join(' '));
-      const presentes=Object.values(presPostoData).filter(v=>v.status==='P'||v.status==='E').length;
-      if(ausentes.length)hasFalta=true;
-      postosHtml+='<div class="hist-turno-row">';
-      postosHtml+='<span class="hist-turno-lbl">'+POSTOS_LABEL[posto]+'</span>';
-      postosHtml+='<div class="hist-ausentes">';
-      if(ausentes.length){
-        ausentes.forEach(n=>{postosHtml+='<span class="hist-ausente-tag">'+n+'</span>';});
-        postosHtml+='<span style="font-size:11px;color:var(--text2);margin-left:4px">'+presentes+' pres.</span>';
-      }else{
-        postosHtml+='<span class="hist-ok"><i class="ti ti-check" style="font-size:11px"></i> '+presentes+' presente(s)</span>';
-      }
-      postosHtml+='</div></div>';
+      postosHtml+=_renderHistTurnoRow(posto,presPostoData,date,canEdit);
+      if(Object.values(presPostoData).some(v=>v.status==='A'))hasFalta=true;
     });
 
     if(!postosHtml)return;
@@ -1099,6 +1107,66 @@ function renderHistMes(){
   });
 
   document.getElementById('hist-content').innerHTML=html;
+}
+
+function podeEditarPresenca(){return currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor';}
+
+function _renderHistTurnoRow(posto,presPostoData,date,canEdit){
+  const entries=Object.entries(presPostoData).sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
+  let presentes=0,ausentes=0,extras=0;
+  let row='<div class="hist-turno-row">';
+  row+='<span class="hist-turno-lbl">'+POSTOS_LABEL[posto]+'</span>';
+  row+='<div class="hist-chips-wrap">';
+  entries.forEach(([nome,v])=>{
+    const nomeCurto=nome.split(' ').slice(0,2).join(' ');
+    let cls='hist-chip-p',icon='ti-check';
+    if(v.status==='A'){cls='hist-chip-a';icon='ti-x';ausentes++;}
+    else if(v.status==='E'){cls='hist-chip-e';icon='ti-plus';extras++;}
+    else{presentes++;}
+    const clickAttr=canEdit?' onclick="abrirEditPresenca(\'+date+\',\'+posto+\',\'+nome.replace(/'/g,"\'")+\')"':'';
+    const tip=canEdit?'Clique para editar':'';
+    row+='<span class="hist-chip '+cls+(canEdit?' editable':'')+'"'+clickAttr+' title="'+tip+'"><i class="ti '+icon+'" style="font-size:10px"></i> '+nomeCurto+'</span>';
+  });
+  let summary=[];
+  if(presentes)summary.push('<span class="hist-ok"><i class="ti ti-check" style="font-size:11px"></i> '+presentes+' pres.</span>');
+  if(ausentes)summary.push('<span style="color:var(--red);font-weight:600">'+ausentes+' aus.</span>');
+  if(extras)summary.push('<span style="color:var(--warn);font-weight:600">'+extras+' extra</span>');
+  row+='<span class="hist-summary">'+summary.join(' · ')+'</span>';
+  row+='</div></div>';
+  return row;
+}
+
+let _editDate=null,_editPosto=null,_editNome=null;
+function abrirEditPresenca(date,posto,nome){
+  if(!podeEditarPresenca()){showToast('Apenas administradores podem editar registros.','err');return;}
+  _editDate=date;_editPosto=posto;_editNome=nome;
+  const v=(state.presencas[date]&&state.presencas[date][posto]&&state.presencas[date][posto][nome])||null;
+  const statusLbl=v?(v.status==='A'?'Ausente':v.status==='E'?'Trabalho extra':'Presente'):'Sem registro';
+  document.getElementById('edit-pres-nome').textContent=nome;
+  document.getElementById('edit-pres-info').textContent=POSTOS_LABEL[posto]+' · '+date.split('-').reverse().join('/')+' · Atual: '+statusLbl;
+  document.getElementById('edit-pres-modal').style.display='flex';
+}
+function closeEditPresencaModal(){
+  document.getElementById('edit-pres-modal').style.display='none';
+  _editDate=null;_editPosto=null;_editNome=null;
+}
+async function salvarEditPresenca(status){
+  if(!_editDate||!_editPosto||!_editNome)return;
+  if(!podeEditarPresenca()){showToast('Apenas administradores podem editar registros.','err');return;}
+  const date=_editDate,posto=_editPosto,nome=_editNome;
+  if(!state.presencas[date])state.presencas[date]={};
+  if(!state.presencas[date][posto])state.presencas[date][posto]={};
+  if(status===''){
+    delete state.presencas[date][posto][nome];
+  }else{
+    state.presencas[date][posto][nome]={status,ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',editadoManualmente:true};
+  }
+  closeEditPresencaModal();
+  saveCache();
+  renderHistMes();renderPresHist();
+  if(date===today()){renderPresContent();renderDashboard();}
+  await pushToCloud();
+  showToast(status===''?'Registro removido!':'Registro atualizado!','ok');
 }
 
 // === HISTÓRICO PRESENÇA (aba na tela de presença) ===
@@ -1121,19 +1189,15 @@ function renderPresHist(){
 
   if(!dates.length){html+='<div class="empty"><i class="ti ti-calendar-off"></i><h3>Nenhum registro em '+mesLabel+'</h3></div>';cont.innerHTML=html;return;}
 
+    const canEdit=podeEditarPresenca();
   dates.forEach(date=>{
     const presDay=state.presencas[date]||{};
     const weekday=new Date(date+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'});
     let hasFalta=false,posHtml='';
     POSTOS.forEach(posto=>{
       const pd=presDay[posto];if(!pd||!Object.keys(pd).length)return;
-      const aus=Object.entries(pd).filter(([,v])=>v.status==='A').map(([n])=>n.split(' ').slice(0,2).join(' '));
-      const pres=Object.values(pd).filter(v=>v.status==='P'||v.status==='E').length;
-      if(aus.length)hasFalta=true;
-      posHtml+='<div class="hist-turno-row"><span class="hist-turno-lbl">'+POSTOS_LABEL[posto]+'</span><div class="hist-ausentes">';
-      if(aus.length){aus.forEach(n=>{posHtml+='<span class="hist-ausente-tag">'+n+'</span>';});posHtml+='<span style="font-size:11px;color:var(--text2);margin-left:4px">'+pres+' pres.</span>';}
-      else{posHtml+='<span class="hist-ok"><i class="ti ti-check" style="font-size:11px"></i> '+pres+' presente(s)</span>';}
-      posHtml+='</div></div>';
+      posHtml+=_renderHistTurnoRow(posto,pd,date,canEdit);
+      if(Object.values(pd).some(v=>v.status==='A'))hasFalta=true;
     });
     if(!posHtml)return;
     html+='<div class="hist-day-card '+(hasFalta?'has-falta':'all-present')+'"><div class="hist-day-date">'+weekday+'</div>'+posHtml+'</div>';

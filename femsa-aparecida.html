@@ -339,6 +339,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
             </div>
             <div class="buf-box"><div style="font-size:10px;color:var(--cyan);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:6px">Estoque (buffer histórico)</div><div class="buf-val" id="buf-preview">+0</div><div style="font-size:11px;color:var(--text2);margin-top:4px">produzidos − enviados</div></div>
             <button class="btn btn-primary" onclick="lancar()"><i class="ti ti-check" style="font-size:16px"></i> Lançar movimentação</button>
+            <button class="btn btn-ghost" style="margin-top:8px" onclick="abrirLancamentoRetroativo()"><i class="ti ti-calendar-plus" style="font-size:16px"></i> Lançar retroativo</button>
             <div id="lanc-ok-inline" style="display:none;margin-top:14px;padding:14px 16px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;align-items:center;gap:10px">
               <i class="ti ti-circle-check" style="font-size:22px;color:var(--green);flex-shrink:0"></i>
               <div><div style="font-size:14px;font-weight:700;color:var(--green)">Lançamento realizado com sucesso!</div>
@@ -373,7 +374,40 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 </nav>
 
 <!-- MODAL COLABORADOR -->
-<div id="colab-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeColabModal()">
+<!-- MODAL EDITAR LANCAMENTO (pallets) -->
+ <div id="editmov-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEditMovModal()">
+ <div class="modal-box">
+ <div class="modal-title"><i class="ti ti-edit" style="color:var(--cyan)"></i>Editar lançamento</div>
+ <div id="editmov-info" style="font-size:12px;color:var(--text2);margin-bottom:16px"></div>
+ <div class="modal-field"><label>Recebidos</label><input type="number" id="editmov-rec" min="0" inputmode="numeric"></div>
+ <div class="modal-field"><label>Produzidos</label><input type="number" id="editmov-prod" min="0" inputmode="numeric"></div>
+ <div class="modal-field"><label>Enviados</label><input type="number" id="editmov-env" min="0" inputmode="numeric"></div>
+ <div class="modal-field"><label>Descarte</label><input type="number" id="editmov-desc" min="0" inputmode="numeric"></div>
+ <div class="modal-btns">
+ <button class="modal-btn-ghost" onclick="closeEditMovModal()">Cancelar</button>
+ <button class="modal-btn-danger" onclick="excluirMov()"><i class="ti ti-trash" style="font-size:14px"></i> Excluir</button>
+ </div>
+ <button class="btn btn-primary" style="margin-top:10px" onclick="salvarEditMov()"><i class="ti ti-check" style="font-size:16px"></i> Salvar alterações</button>
+ </div>
+ </div>
+ 
+ <!-- MODAL LANCAMENTO RETROATIVO (pallets) -->
+ <div id="retro-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeRetroModal()">
+ <div class="modal-box">
+ <div class="modal-title"><i class="ti ti-calendar-plus" style="color:var(--cyan)"></i>Lançamento retroativo</div>
+ <div class="modal-field"><label>Data</label><input type="date" id="retro-date"></div>
+ <div class="modal-field"><label>Recebidos</label><input type="number" id="retro-rec" min="0" inputmode="numeric"></div>
+ <div class="modal-field"><label>Produzidos</label><input type="number" id="retro-prod" min="0" inputmode="numeric"></div>
+ <div class="modal-field"><label>Enviados</label><input type="number" id="retro-env" min="0" inputmode="numeric"></div>
+ <div class="modal-field"><label>Descarte</label><input type="number" id="retro-desc" min="0" inputmode="numeric"></div>
+ <div class="modal-btns">
+ <button class="modal-btn-ghost" onclick="closeRetroModal()">Cancelar</button>
+ <button class="modal-btn-primary" onclick="lancarRetroativo()"><i class="ti ti-check" style="font-size:14px"></i> Lançar</button>
+ </div>
+ </div>
+ </div>
+ 
+ <div id="colab-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeColabModal()">
   <div class="modal-box">
     <div class="modal-title"><i class="ti ti-id-badge" id="modal-icon"></i><span id="modal-title-text">Colaborador</span></div>
     <div class="modal-field">
@@ -1253,7 +1287,7 @@ function renderOperacao(){
   el('tt-rec',tR+' hoje');el('tt-prod',tP+' hoje');el('tt-env',tE+' hoje');el('tt-desc',tD+' hoje');
   updBuf();
   const hc=document.getElementById('op-hist-card'),ho=document.getElementById('op-hist');
-  if(movs.length&&hc&&ho){hc.style.display='block';ho.innerHTML=movs.slice().reverse().map(m=>'<div class="log-entry"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · '+m.who+'</div><div class="log-vals">'+(m.rec?'Rec:'+m.rec+' ':'')+(m.prod?'Prod:'+m.prod+' ':'')+(m.env?'Env:'+m.env+' ':'')+(m.desc?'Desc:'+m.desc:'')+'</div></div>').join('');}
+if(movs.length&&hc&&ho){hc.style.display='block';ho.innerHTML=movs.map((m,i)=>({m,i})).slice().reverse().map(({m,i})=>'<div class="log-entry" style="cursor:pointer" onclick="abrirEditMov(\'+todayD+\','+i+')"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · '+m.who+(m.editadoManualmente?' <i class="ti ti-edit" style="font-size:10px;color:var(--cyan)"></i>':'')+'</div><div class="log-vals">'+(m.rec?'Rec:'+m.rec+' ':'')+(m.prod?'Prod:'+m.prod+' ':'')+(m.env?'Env:'+m.env+' ':'')+(m.desc?'Desc:'+m.desc+'':'')+'</div></div>').join('');}
   else if(hc)hc.style.display='none';
 }
 function adj(id,d){const e=document.getElementById(id);if(e){e.value=Math.max(0,(parseInt(e.value)||0)+d);updBuf();}}
@@ -1278,7 +1312,66 @@ async function lancar(){
   state.movimentos[todayD].push({ts:new Date().toISOString(),who,rec,prod,env,desc});
   ['mv-rec','mv-prod','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
   saveCache();await pushToCloud();verificarAusencia();showLancamentoOK();renderOperacao();
-}
+
+// === EDICAO E LANCAMENTO RETROATIVO DE MOVIMENTOS (PALLETS) ===
+function abrirLancamentoRetroativo(){
+  const dt=document.getElementById('retro-date');dt.value=today();dt.max=today();
+    ['retro-rec','retro-prod','retro-env','retro-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
+      document.getElementById('retro-modal').style.display='flex';
+      }
+      function closeRetroModal(){document.getElementById('retro-modal').style.display='none';}
+      async function lancarRetroativo(){
+        const data=document.getElementById('retro-date').value;
+          if(!data){showToast('Escolha uma data.','warn');return;}
+            const rec=parseInt(document.getElementById('retro-rec').value)||0;
+              const prod=parseInt(document.getElementById('retro-prod').value)||0;
+                const env=parseInt(document.getElementById('retro-env').value)||0;
+                  const desc=parseInt(document.getElementById('retro-desc').value)||0;
+                    if(!rec&&!prod&&!env&&!desc){showToast('Informe pelo menos um valor.','warn');return;}
+                      const who=currentUser?currentUser.user:'Desconhecido';
+                        if(!state.movimentos[data])state.movimentos[data]=[];
+                          state.movimentos[data].push({ts:new Date().toISOString(),who,rec,prod,env,desc,lancadoRetroativo:true});
+                            closeRetroModal();
+                              saveCache();await pushToCloud();
+                                renderOperacao();
+                                  showToast('Lançamento retroativo registrado em '+data.split('-').reverse().join('/')+'!','ok');
+                                  }
+                                  
+                                  let _editMovDate=null,_editMovIdx=null;
+                                  function abrirEditMov(date,idx){
+                                    const m=(state.movimentos[date]||[])[idx];if(!m)return;
+                                      _editMovDate=date;_editMovIdx=idx;
+                                        document.getElementById('editmov-rec').value=m.rec||0;
+                                          document.getElementById('editmov-prod').value=m.prod||0;
+                                            document.getElementById('editmov-env').value=m.env||0;
+                                              document.getElementById('editmov-desc').value=m.desc||0;
+                                                document.getElementById('editmov-info').textContent=date.split('-').reverse().join('/')+' · '+timeFmt(m.ts)+' · '+m.who;
+                                                  document.getElementById('editmov-modal').style.display='flex';
+                                                  }
+                                                  function closeEditMovModal(){document.getElementById('editmov-modal').style.display='none';_editMovDate=null;_editMovIdx=null;}
+                                                  async function salvarEditMov(){
+                                                    if(_editMovDate===null||_editMovIdx===null)return;
+                                                      const rec=parseInt(document.getElementById('editmov-rec').value)||0;
+                                                        const prod=parseInt(document.getElementById('editmov-prod').value)||0;
+                                                          const env=parseInt(document.getElementById('editmov-env').value)||0;
+                                                            const desc=parseInt(document.getElementById('editmov-desc').value)||0;
+                                                              const m=state.movimentos[_editMovDate][_editMovIdx];
+                                                                m.rec=rec;m.prod=prod;m.env=env;m.desc=desc;
+                                                                  m.editadoManualmente=true;m.editadoPor=currentUser?currentUser.user:'?';m.editadoEm=new Date().toISOString();
+                                                                    closeEditMovModal();
+                                                                      saveCache();await pushToCloud();
+                                                                        renderOperacao();
+                                                                          showToast('Lançamento atualizado!','ok');
+                                                                          }
+                                                                          async function excluirMov(){
+                                                                            if(_editMovDate===null||_editMovIdx===null)return;
+                                                                              state.movimentos[_editMovDate].splice(_editMovIdx,1);
+                                                                                closeEditMovModal();
+                                                                                  saveCache();await pushToCloud();
+                                                                                    renderOperacao();
+                                                                                      showToast('Lançamento removido!','ok');
+                                                                                      }
+                                                                                      }
 </script>
 <script>
 // ABSENTEÍSMO

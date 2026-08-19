@@ -1129,8 +1129,6 @@ async function salvarPresenca(){
   const todayD=today();
   if(!state.presencas[todayD])state.presencas[todayD]={};
   if(!state.presencas[todayD][selTurnoAtivo])state.presencas[todayD][selTurnoAtivo]={presenca:{}};
-  const colabs=colaboradoresAtivos().filter(c=>c.turno===selTurnoAtivo);
-  colabs.forEach(c=>{if(!state.presencas[todayD][selTurnoAtivo].presenca[c.nome])state.presencas[todayD][selTurnoAtivo].presenca[c.nome]='P';});
   state.presencas[todayD][selTurnoAtivo].savedAt=new Date().toISOString();
   saveCache();await pushToCloud();verificarAusencia();showToast('Presença do Turno '+selTurnoAtivo+' salva!','ok');renderPresenca();
 }

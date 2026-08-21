@@ -923,8 +923,8 @@ function launchApp(){
   // Força timestamp fresco para o hub saber que o painel esta aberto
   try{localStorage.setItem('femsa_cache_ts', Date.now());}catch(e){}
   saveCache();
-  setTimeout(renderAll,80);
-  startAutoSync();
+  renderAll();
+  syncFromCloud().then(()=>{scheduleNextSync();}).catch(scheduleNextSync);
   setTimeout(restoreSidebarState,50);
   goTo('dashboard');
 }
@@ -1906,6 +1906,7 @@ function modoTV(){
   var ov=document.getElementById('tv-overlay');ov.classList.add('active');
   if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(function(){});
   renderTV();
+  syncFromCloud().then(renderTV);
   if(tvTimer)clearInterval(tvTimer);
   tvTimer=setInterval(function(){syncFromCloud().then(renderTV);},20000);
   var fill=document.getElementById('tv-sync-fill'),pct2=0;

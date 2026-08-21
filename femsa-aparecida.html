@@ -506,7 +506,7 @@ const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',wpp:''},{
 let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[]};
 let currentUser=null,currentRole=null,unitName='Aparecida';
 // Firebase - no api key or bin id vars needed
-let isSyncing=false,lastSync=null,syncTimer=null;
+let isSyncing=false,lastSync=null,syncTimer=null,resetLock=false;
 function colaboradoresAtivos(){ return state.colaboradores.filter(c=>c.ativo!==false); }
 function markPending(){ try{ localStorage.setItem(LS_CACHE+'_pending','1'); }catch(e){} }
 function clearPending(){ try{ localStorage.removeItem(LS_CACHE+'_pending'); }catch(e){} }
@@ -690,7 +690,7 @@ function verificarNotificacoes(){
 setInterval(verificarNotificacoes, 60000);
 
 async function syncFromCloud(){
-  if(isSyncing)return;
+  if(isSyncing||resetLock)return;
   isSyncing=true;
   if(hasPending()){
     isSyncing=false;
@@ -702,6 +702,7 @@ async function syncFromCloud(){
     const r=await fetch(FB_URL);
     if(!r.ok)throw new Error(r.status);
     const data=await r.json();
+    if(resetLock){isSyncing=false;return;}
     if(data)mergeState(data);
     saveCache(); // sempre salva timestamp mesmo sem dados novos
     lastSync=new Date();
@@ -715,6 +716,7 @@ async function syncFromCloud(){
 }
 
 async function pushToCloud(){
+  if(resetLock){markPending();return;}
   setSyncDot('syncing','Salvando...');
   try{
     // Read current cloud state for smart merge
@@ -1660,51 +1662,76 @@ function unlockResetSection(){
 }
 async function resetPallets(){
   if(!confirm('Zerar TODOS os pallets? Irreversível.'))return;
-  state.movimentos={};logAuditoria('Zerou todos os pallets');saveCache();await pushForceToCloud();
-  showToast('Pallets zerados!','ok');renderAll();
+  state.movimentos={};logAuditoria('Zerou todos os pallets');saveCache();
+  const ok=await pushForceToCloud();
+  showToast(ok?'Pallets zerados!':'Nao foi possivel confirmar na nuvem. Verifique a conexao e tente de novo.',ok?'ok':'err');
+  renderAll();
   document.getElementById('reset-lock-section').style.display='block';
   document.getElementById('reset-unlocked-section').style.display='none';
 }
 async function resetPresencas(){
   if(!confirm('Zerar TODAS as presenças? Irreversível.'))return;
-  state.presencas={};logAuditoria('Zerou todas as presenças');saveCache();await pushForceToCloud();
-  showToast('Presenças zeradas!','ok');renderAll();
+  state.presencas={};logAuditoria('Zerou todas as presencas');saveCache();
+  const ok=await pushForceToCloud();
+  showToast(ok?'Presencas zeradas!':'Nao foi possivel confirmar na nuvem. Verifique a conexao e tente de novo.',ok?'ok':'err');
+  renderAll();
   document.getElementById('reset-lock-section').style.display='block';
   document.getElementById('reset-unlocked-section').style.display='none';
 }
 async function resetColaboradores(){
   if(!confirm('Zerar TODOS os colaboradores cadastrados? Isso remove a equipe inteira (nomes, turnos, cargos). Irreversível.'))return;
   if(!confirm('Tem certeza mesmo? Essa ação apaga o cadastro de TODOS os colaboradores e não pode ser desfeita.'))return;
-  state.colaboradores=[];logAuditoria('Zerou todos os colaboradores');saveCache();await pushForceToCloud();
-  showToast('Colaboradores zerados!','ok');renderAll();
+  state.colaboradores=[];logAuditoria('Zerou todos os colaboradores');saveCache();
+  const ok=await pushForceToCloud();
+  showToast(ok?'Colaboradores zerados!':'Nao foi possivel confirmar na nuvem. Verifique a conexao e tente de novo.',ok?'ok':'err');
+  renderAll();
   document.getElementById('reset-lock-section').style.display='block';
   document.getElementById('reset-unlocked-section').style.display='none';
 }
 async function resetTudo(){
   if(!confirm('Zerar TUDO (pallets + presenças)? Irreversível.'))return;
-  state.movimentos={};state.presencas={};logAuditoria('Zerou pallets + presenças (reset total)');saveCache();await pushForceToCloud();
-  showToast('Todos os dados zerados!','ok');renderAll();
+  state.movimentos={};state.presencas={};logAuditoria('Zerou pallets + presencas (reset total)');saveCache();
+  const ok=await pushForceToCloud();
+  showToast(ok?'Todos os dados zerados!':'Nao foi possivel confirmar na nuvem. Verifique a conexao e tente de novo.',ok?'ok':'err');
+  renderAll();
   document.getElementById('reset-lock-section').style.display='block';
   document.getElementById('reset-unlocked-section').style.display='none';
 }
 async function pushForceToCloud(){
   // Diferente de pushToCloud(): sobrescreve a nuvem com o estado local exatamente
-  // como está, sem mesclar. Usado nos resets, onde o objetivo é zerar de verdade.
+  // como esta, sem mesclar. Usado nos resets, onde o objetivo e zerar de verdade.
+  // resetLock impede que o auto-sync busque dados antigos da nuvem e os mescle
+  // de volta enquanto o reset ainda esta em andamento; a checagem pos-PUT confirma
+  // que a nuvem realmente zerou antes de reportar sucesso.
+  resetLock=true;
   setSyncDot('syncing','Salvando...');
-  try{
-    const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,auditoria:state.auditoria||[]};
-    const rp=await fetch(FB_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!rp.ok)throw new Error(rp.status);
+  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,auditoria:state.auditoria||[]};
+  let ok=false;
+  for(let tentativa=0;tentativa<3&&!ok;tentativa++){
+    try{
+      const rp=await fetch(FB_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(!rp.ok)throw new Error(rp.status);
+      const rc=await fetch(FB_URL);
+      if(!rc.ok)throw new Error(rc.status);
+      const check=await rc.json()||{};
+      ok=JSON.stringify(check.movimentos||{})===JSON.stringify(payload.movimentos)&&JSON.stringify(check.presencas||{})===JSON.stringify(payload.presencas)&&JSON.stringify(check.colaboradores||[])===JSON.stringify(payload.colaboradores);
+    }catch(e){
+      console.error('ForcePush tentativa '+tentativa+':',e);
+    }
+    if(!ok)await new Promise(res=>setTimeout(res,700));
+  }
+  if(ok){
     clearPending();
     saveCache();
     lastSync=new Date();
     setSyncDot('ok','Salvo '+lastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
-  }catch(e){
+  }else{
     markPending();
     saveCache();
-    setSyncDot('err','Alterações pendentes — sem conexão');
-    console.error('ForcePush:',e);
+    setSyncDot('err','Falha ao confirmar na nuvem - tente novamente com conexao estavel');
   }
+  resetLock=false;
+  return ok;
 }
 function unlockApiSection(){
   var pw=document.getElementById('api-admin-pw').value;

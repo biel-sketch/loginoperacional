@@ -863,8 +863,11 @@ function renderAll(){
   const cur=document.querySelector('.screen.active');if(!cur)return;
   const id=cur.id.replace('sc-','');
   if(id==='dashboard')renderDash();
+  if(id==='presenca')renderPresenca();
   if(id==='operacao')renderOperacao();
   if(id==='absenteismo')renderAbsenteismo();
+  if(id==='equipe')renderEquipe();
+  if(id==='config')renderConfig();
 }
 
 function updateUserDisplay(){

@@ -504,7 +504,7 @@ const USERS=[
   {user:'Gabriel',   senha:'L@gin982',   role:'superadmin'},
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',wpp:''}];
-let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[]};
+let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:''};
 let currentUser=null,currentRole=null,unitName='Aparecida';
 // Firebase - no api key or bin id vars needed
 let isSyncing=false,lastSync=null,syncTimer=null,resetLock=false;
@@ -533,11 +533,40 @@ function addDaysStr(dateStr,n){const p=dateStr.split('-').map(Number);const d=ne
 function dateBR(d){if(!d)return'';return d.split('-').reverse().join('/');}
 function podeEditarPresenca(){return currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor';}
 function allDates(){const s=new Set([...Object.keys(state.movimentos),...Object.keys(state.presencas)]);return Array.from(s).sort();}
-function calcBufferGlobal(){
-  // Estoque acumulado: soma de produzidos - soma de enviados de TODOS os dias
+function calcBufferBruto(){
+  // Estoque acumulado: soma de produzidos - soma de enviados de TODOS os dias (sem correção manual)
   let totP=0,totE=0;
   Object.values(state.movimentos).forEach(ms=>{ms.forEach(m=>{totP+=(m.prod||0);totE+=(m.env||0);});});
   return totP-totE;
+}
+function calcBufferGlobal(){
+  // Estoque acumulado + correção manual (ver corrigirBuffer())
+  return calcBufferBruto()+(state.bufferAjuste||0);
+}
+async function corrigirBuffer(valorDesejado){
+  if(!podeEditarPresenca()){showToast('Sem permissão para corrigir o buffer.','err');return;}
+  if(valorDesejado===null||valorDesejado===undefined||isNaN(valorDesejado)){showToast('Informe um valor numérico.','warn');return;}
+  valorDesejado=Math.round(valorDesejado);
+  const bruto=calcBufferBruto();
+  const ajuste=valorDesejado-bruto;
+  if(!confirm('Ajustar o buffer para '+(valorDesejado>=0?'+':'')+valorDesejado+'?'))return;
+  state.bufferAjuste=ajuste;
+  state.bufferAjusteTs=new Date().toISOString();
+  logAuditoria('Correção manual de buffer: novo valor = '+(valorDesejado>=0?'+':'')+valorDesejado+' (ajuste aplicado: '+(ajuste>=0?'+':'')+ajuste+')');
+  saveCache();
+  await pushToCloud();
+  showToast('Buffer atualizado para '+(valorDesejado>=0?'+':'')+valorDesejado+'!','ok');
+  renderAll();
+}
+function zerarBuffer(){
+  const inp=document.getElementById('buffer-corr-input');
+  if(inp)inp.value='0';
+  corrigirBuffer(0);
+}
+function salvarNovoBuffer(){
+  const inp=document.getElementById('buffer-corr-input');
+  const v=inp?parseInt(inp.value,10):NaN;
+  corrigirBuffer(v);
 }
 function showToast(msg,type='ok',dur=3000){const t=document.getElementById('app-toast');if(!t)return;t.textContent=msg;t.className='toast show '+type;setTimeout(()=>{t.className='toast';},dur);}
 
@@ -555,6 +584,8 @@ function mergeState(cloud){
   if(cloud.movimentos)state.movimentos=cloud.movimentos;
   if(cloud.presencas)state.presencas=cloud.presencas;
   if(cloud.auditoria)state.auditoria=cloud.auditoria;
+  if(cloud.bufferAjuste!==undefined)state.bufferAjuste=cloud.bufferAjuste;
+  if(cloud.bufferAjusteTs!==undefined)state.bufferAjusteTs=cloud.bufferAjusteTs;
 }
 function saveCache(){try{localStorage.setItem(LS_CACHE,JSON.stringify(state));localStorage.setItem('femsa_cache_ts',Date.now());}catch(e){}}
 
@@ -721,7 +752,7 @@ async function pushToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
     // Read current cloud state for smart merge
-    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,auditoria:state.auditoria||[]};
+    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,auditoria:state.auditoria||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||''};
     try{
       const r=await fetch(FB_URL);
       if(r.ok){
@@ -753,7 +784,11 @@ async function pushToCloud(){
           const localAuditTs=new Set((state.auditoria||[]).map(a=>a.ts));
           const mergedAudit=[...(state.auditoria||[])];
           cloudAudit.forEach(ca=>{ if(!localAuditTs.has(ca.ts)) mergedAudit.push(ca); });
-          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,auditoria:mergedAudit};
+          const cloudAjusteTs=cloud.bufferAjusteTs||'';
+          const localAjusteTs=state.bufferAjusteTs||'';
+          const bufferAjuste=localAjusteTs>=cloudAjusteTs?(state.bufferAjuste||0):(cloud.bufferAjuste||0);
+          const bufferAjusteTs=localAjusteTs>=cloudAjusteTs?localAjusteTs:cloudAjusteTs;
+          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,auditoria:mergedAudit,bufferAjuste,bufferAjusteTs};
         }
       }
     }catch(e){}
@@ -763,6 +798,8 @@ async function pushToCloud(){
     state.movimentos=merged.movimentos;
     state.presencas=merged.presencas;
     state.auditoria=merged.auditoria;
+    state.bufferAjuste=merged.bufferAjuste||0;
+    state.bufferAjusteTs=merged.bufferAjusteTs||'';
     clearPending();
     saveCache(); // salva cache e timestamp
     lastSync=new Date();
@@ -1577,6 +1614,17 @@ function renderConfig(){
     html+='<div style="font-size:12px;color:var(--warn);margin-bottom:10px;font-weight:700">Exporta e remove dados do mês anterior. Continuar?</div>';
     html+='<div style="display:flex;gap:8px"><button class="btn btn-sm" style="background:var(--warn);color:#000" onclick="arquivar()">Confirmar</button>';
     html+='<button class="btn btn-ghost btn-sm" onclick="hideArchive()">Cancelar</button></div></div></div>';
+    if(podeEditarPresenca()){
+      var bufAtual=calcBufferGlobal();
+      html+='<div class="card" style="border-color:var(--cyan-bd)">';
+      html+='<div class="card-title"><i class="ti ti-layers-difference" style="color:var(--cyan)"></i> Corrigir Buffer (Estoque)</div>';
+      html+='<div style="font-size:13px;color:var(--text2);margin-bottom:10px">Buffer atual: <strong style="color:'+(bufAtual>=0?'var(--cyan)':'var(--red)')+'">'+(bufAtual>=0?'+':'')+bufAtual+'</strong>. Ajusta o estoque calculado (produzidos − enviados) sem alterar o histórico de pallets lançados.</div>';
+      html+='<div style="display:flex;gap:8px">';
+      html+='<input type="number" id="buffer-corr-input" placeholder="Novo valor correto" style="flex:1;padding:10px 13px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px">';
+      html+='<button class="btn btn-primary btn-sm" onclick="salvarNovoBuffer()"><i class="ti ti-check"></i> Salvar</button>';
+      html+='<button class="btn btn-ghost btn-sm" style="border-color:var(--red-bd);color:var(--red)" onclick="zerarBuffer()"><i class="ti ti-backspace"></i> Zerar</button>';
+      html+='</div></div>';
+    }
     html+='<div class="card" style="border-color:var(--red-bd)">';
     html+='<div class="card-title"><i class="ti ti-trash" style="color:var(--red)"></i> Zerar dados operacionais</div>';
     html+='<div id="reset-lock-section">';
@@ -1663,7 +1711,7 @@ function unlockResetSection(){
 }
 async function resetPallets(){
   if(!confirm('Zerar TODOS os pallets? Irreversível.'))return;
-  state.movimentos={};logAuditoria('Zerou todos os pallets');saveCache();
+  state.movimentos={};state.bufferAjuste=0;state.bufferAjusteTs=new Date().toISOString();logAuditoria('Zerou todos os pallets');saveCache();
   const ok=await pushForceToCloud();
   showToast(ok?'Pallets zerados!':'Nao foi possivel confirmar na nuvem. Verifique a conexao e tente de novo.',ok?'ok':'err');
   renderAll();
@@ -1691,7 +1739,7 @@ async function resetColaboradores(){
 }
 async function resetTudo(){
   if(!confirm('Zerar TUDO (pallets + presenças)? Irreversível.'))return;
-  state.movimentos={};state.presencas={};logAuditoria('Zerou pallets + presencas (reset total)');saveCache();
+  state.movimentos={};state.presencas={};state.bufferAjuste=0;state.bufferAjusteTs=new Date().toISOString();logAuditoria('Zerou pallets + presencas (reset total)');saveCache();
   const ok=await pushForceToCloud();
   showToast(ok?'Todos os dados zerados!':'Nao foi possivel confirmar na nuvem. Verifique a conexao e tente de novo.',ok?'ok':'err');
   renderAll();
@@ -1706,7 +1754,7 @@ async function pushForceToCloud(){
   // que a nuvem realmente zerou antes de reportar sucesso.
   resetLock=true;
   setSyncDot('syncing','Salvando...');
-  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,auditoria:state.auditoria||[]};
+  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,auditoria:state.auditoria||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||''};
   let ok=false;
   for(let tentativa=0;tentativa<3&&!ok;tentativa++){
     try{

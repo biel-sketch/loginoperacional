@@ -1154,7 +1154,7 @@ function renderPresGrid(){
     '<div class="pres-grid" style="margin-bottom:16px">'+cells+'</div>'+
     (saved?
       '<div style="padding:10px 14px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:9px;font-size:12px;color:var(--green);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px"><i class="ti ti-check" style="font-size:14px"></i>Apontamento salvo — '+new Date(presDay.savedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'</div>'+
-      '<button class="btn btn-ghost btn-sm" onclick="unlockPres()"><i class="ti ti-lock-open" style="font-size:13px"></i> Editar (requer senha)</button>'
+      '<button class="btn btn-ghost btn-sm" onclick="unlockPres()"><i class="ti ti-lock-open" style="font-size:13px"></i> Editar</button>'
       :
       '<button class="btn btn-primary" onclick="salvarPresenca()"><i class="ti ti-check" style="font-size:16px"></i> Confirmar presença do Turno '+selTurnoAtivo+'</button>'
     );
@@ -1176,10 +1176,9 @@ async function salvarPresenca(){
   saveCache();await pushToCloud();verificarAusencia();showToast('Presença do Turno '+selTurnoAtivo+' salva!','ok');renderPresenca();
 }
 function unlockPres(){
-  const pw=prompt('Senha para editar:');if(!pw)return;
-  const ok=USERS.some(u=>(u.role==='admin'||u.role==='superadmin'||u.role==='gestor')&&u.senha===pw);
-  if(ok){const todayD=today();if(state.presencas[todayD]&&state.presencas[todayD][selTurnoAtivo])delete state.presencas[todayD][selTurnoAtivo].savedAt;renderPresenca();}
-  else showToast('Senha incorreta','err');
+  const todayD=today();
+  if(state.presencas[todayD]&&state.presencas[todayD][selTurnoAtivo])delete state.presencas[todayD][selTurnoAtivo].savedAt;
+  renderPresenca();
 }
 
 // === EDIÇÃO DE PRESENÇA/AUSÊNCIA/FÉRIAS (a partir do Histórico) ===
@@ -1353,6 +1352,7 @@ async function lancar(){
   state.movimentos[todayD].push({ts:new Date().toISOString(),who,rec,prod,env,desc});
   ['mv-rec','mv-prod','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
   saveCache();await pushToCloud();verificarAusencia();showLancamentoOK();renderOperacao();
+}
 
 // === EDICAO E LANCAMENTO RETROATIVO DE MOVIMENTOS (PALLETS) ===
 function abrirLancamentoRetroativo(){
@@ -1411,7 +1411,6 @@ function abrirLancamentoRetroativo(){
                                                                                   saveCache();await pushToCloud();
                                                                                     renderOperacao();
                                                                                       showToast('Lançamento removido!','ok');
-                                                                                      }
                                                                                       }
 </script>
 <script>

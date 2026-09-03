@@ -1098,9 +1098,34 @@ function renderMes(){
   const envArr=dates.map(d=>state.movimentos[d].reduce((s,m)=>s+(m.env||0),0));
   const bufArr=prodArr.map((p,i)=>p-envArr[i]);
   const absArr=dates.map(d=>{let a=0;const pr=state.presencas[d]||{};['A','B','C'].forEach(t=>{if(pr[t])Object.values(pr[t].presenca||{}).forEach(v=>{if(v==='A')a++;});});return a;});
+  // Resumos por período (mês atual e ano atual)
+  const nowD=new Date();
+  const ymNow=nowD.getFullYear()+'-'+String(nowD.getMonth()+1).padStart(2,'0');
+  const yNow=String(nowD.getFullYear());
+  function sumPeriodo(filterFn){
+    const ds=dates.filter(filterFn);
+    let tP=0,tR=0,tE=0,tD=0,n=0;
+    ds.forEach(d=>{state.movimentos[d].forEach(m=>{tP+=(m.prod||0);tR+=(m.rec||0);tE+=(m.env||0);tD+=(m.desc||0);n++;});});
+    return{tP,tR,tE,tD,n,buf:tP-tE,days:ds.length};
+  }
+  const rMes=sumPeriodo(d=>d.startsWith(ymNow));
+  const rAno=sumPeriodo(d=>d.startsWith(yNow));
+  function kpiRow(titulo,icone,m){
+    const bPos=m.buf>=0;
+    return'<div class="sec"><i class="ti '+icone+'" style="font-size:13px;margin-right:5px"></i>'+titulo+'</div>'+
+      '<div class="kpi-grid">'+
+      '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+m.tP+'</div><div class="kpi-sub">'+m.n+' lançamento(s) · '+m.days+' dia(s)</div></div>'+
+      '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-truck" style="font-size:12px"></i> Recebidos</div><div class="kpi-val">'+m.tR+'</div></div>'+
+      '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-send" style="font-size:12px"></i> Enviados</div><div class="kpi-val">'+m.tE+'</div></div>'+
+      '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-trash" style="font-size:12px"></i> Descarte</div><div class="kpi-val'+(m.tD>0?' red':'')+'">'+m.tD+'</div>'+(m.tD>0?'<div class="kpi-sub red">'+Math.round(m.tD/(m.tP||1)*100)+'%</div>':'')+'</div>'+
+      '<div class="kpi buf"><div class="kpi-lbl"><i class="ti ti-layers-difference" style="font-size:12px;color:var(--cyan)"></i> Estoque (Buffer)</div><div class="kpi-val '+(bPos?'blue':'red')+'">'+(bPos?'+':'')+m.buf+'</div><div class="kpi-sub blue">Produzidos − enviados no período</div></div>'+
+      '</div>';
+  }
   const co={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1923',borderColor:'rgba(255,255,255,.1)',borderWidth:1,titleColor:'#fff',bodyColor:'#7a92a8'}},scales:{x:{grid:{display:false},ticks:{color:'#4a6070',font:{size:10},maxRotation:45}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a6070',font:{size:10}},border:{display:false}}}};
   Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});charts={};
   cont.innerHTML=
+    kpiRow('Resumo do mês','ti-calendar-month',rMes)+
+    kpiRow('Resumo do ano','ti-calendar-stats',rAno)+
     '<div class="card"><div class="card-title"><i class="ti ti-chart-bar"></i>Pallets por dia</div>'+
     '<div style="font-size:11px;color:var(--text2);margin-bottom:12px;display:flex;gap:12px">'+
     '<span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#2a7fd4;display:inline-block"></span>Produzidos</span>'+

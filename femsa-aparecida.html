@@ -1087,10 +1087,55 @@ function renderDia(){
     movLog;
 }
 
+let mesFiltroDe=null,mesFiltroAte=null;
+function mesRangeDefault(){
+  const d=new Date();
+  const de=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';
+  return{de,ate:today()};
+}
+function sumPeriodoDatas(de,ate){
+  const ds=Object.keys(state.movimentos).filter(d=>d>=de&&d<=ate).sort();
+  let tP=0,tR=0,tE=0,tD=0,n=0;
+  ds.forEach(d=>{state.movimentos[d].forEach(m=>{tP+=(m.prod||0);tR+=(m.rec||0);tE+=(m.env||0);tD+=(m.desc||0);n++;});});
+  return{tP,tR,tE,tD,n,buf:tP-tE,days:ds.length};
+}
+function kpiRowResumo(m){
+  const bPos=m.buf>=0;
+  return'<div class="kpi-grid">'+
+    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+m.tP+'</div><div class="kpi-sub">'+m.n+' lançamento(s) · '+m.days+' dia(s)</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-truck" style="font-size:12px"></i> Recebidos</div><div class="kpi-val">'+m.tR+'</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-send" style="font-size:12px"></i> Enviados</div><div class="kpi-val">'+m.tE+'</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-trash" style="font-size:12px"></i> Descarte</div><div class="kpi-val'+(m.tD>0?' red':'')+'">'+m.tD+'</div>'+(m.tD>0?'<div class="kpi-sub red">'+Math.round(m.tD/(m.tP||1)*100)+'%</div>':'')+'</div>'+
+    '<div class="kpi buf"><div class="kpi-lbl"><i class="ti ti-layers-difference" style="font-size:12px;color:var(--cyan)"></i> Estoque (Buffer)</div><div class="kpi-val '+(bPos?'blue':'red')+'">'+(bPos?'+':'')+m.buf+'</div><div class="kpi-sub blue">Produzidos − enviados no período</div></div>'+
+    '</div>';
+}
+function renderMesResumo(){
+  const el=document.getElementById('mes-resumo-kpis');if(!el)return;
+  el.innerHTML=kpiRowResumo(sumPeriodoDatas(mesFiltroDe,mesFiltroAte));
+}
+function setMesPreset(tipo){
+  const d=new Date();let de,ate=today();
+  if(tipo==='mes')de=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';
+  else if(tipo==='ano')de=d.getFullYear()+'-01-01';
+  else{const dts=Object.keys(state.movimentos).sort();de=dts.length?dts[0]:today();}
+  mesFiltroDe=de;mesFiltroAte=ate;
+  const inDe=document.getElementById('mes-filtro-de');if(inDe)inDe.value=de;
+  const inAte=document.getElementById('mes-filtro-ate');if(inAte)inAte.value=ate;
+  renderMesResumo();
+}
+function aplicarFiltroMes(){
+  const de=document.getElementById('mes-filtro-de').value;
+  const ate=document.getElementById('mes-filtro-ate').value;
+  if(!de||!ate){showToast('Selecione as duas datas.','warn');return;}
+  if(de>ate){showToast('Data inicial deve ser antes da final.','warn');return;}
+  mesFiltroDe=de;mesFiltroAte=ate;
+  renderMesResumo();
+}
 function renderMes(){
   const cont=document.getElementById('mes-content');
   const dates=Object.keys(state.movimentos).sort();
   if(!dates.length){cont.innerHTML='<div class="empty"><i class="ti ti-database-off"></i><h3>Nenhum dado</h3></div>';return;}
+  if(!mesFiltroDe||!mesFiltroAte){const def=mesRangeDefault();mesFiltroDe=def.de;mesFiltroAte=def.ate;}
   const labels=dates.map(dateFmt);
   const prodArr=dates.map(d=>state.movimentos[d].reduce((s,m)=>s+(m.prod||0),0));
   const recArr=dates.map(d=>state.movimentos[d].reduce((s,m)=>s+(m.rec||0),0));
@@ -1098,34 +1143,21 @@ function renderMes(){
   const envArr=dates.map(d=>state.movimentos[d].reduce((s,m)=>s+(m.env||0),0));
   const bufArr=prodArr.map((p,i)=>p-envArr[i]);
   const absArr=dates.map(d=>{let a=0;const pr=state.presencas[d]||{};['A','B','C'].forEach(t=>{if(pr[t])Object.values(pr[t].presenca||{}).forEach(v=>{if(v==='A')a++;});});return a;});
-  // Resumos por período (mês atual e ano atual)
-  const nowD=new Date();
-  const ymNow=nowD.getFullYear()+'-'+String(nowD.getMonth()+1).padStart(2,'0');
-  const yNow=String(nowD.getFullYear());
-  function sumPeriodo(filterFn){
-    const ds=dates.filter(filterFn);
-    let tP=0,tR=0,tE=0,tD=0,n=0;
-    ds.forEach(d=>{state.movimentos[d].forEach(m=>{tP+=(m.prod||0);tR+=(m.rec||0);tE+=(m.env||0);tD+=(m.desc||0);n++;});});
-    return{tP,tR,tE,tD,n,buf:tP-tE,days:ds.length};
-  }
-  const rMes=sumPeriodo(d=>d.startsWith(ymNow));
-  const rAno=sumPeriodo(d=>d.startsWith(yNow));
-  function kpiRow(titulo,icone,m){
-    const bPos=m.buf>=0;
-    return'<div class="sec"><i class="ti '+icone+'" style="font-size:13px;margin-right:5px"></i>'+titulo+'</div>'+
-      '<div class="kpi-grid">'+
-      '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+m.tP+'</div><div class="kpi-sub">'+m.n+' lançamento(s) · '+m.days+' dia(s)</div></div>'+
-      '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-truck" style="font-size:12px"></i> Recebidos</div><div class="kpi-val">'+m.tR+'</div></div>'+
-      '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-send" style="font-size:12px"></i> Enviados</div><div class="kpi-val">'+m.tE+'</div></div>'+
-      '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-trash" style="font-size:12px"></i> Descarte</div><div class="kpi-val'+(m.tD>0?' red':'')+'">'+m.tD+'</div>'+(m.tD>0?'<div class="kpi-sub red">'+Math.round(m.tD/(m.tP||1)*100)+'%</div>':'')+'</div>'+
-      '<div class="kpi buf"><div class="kpi-lbl"><i class="ti ti-layers-difference" style="font-size:12px;color:var(--cyan)"></i> Estoque (Buffer)</div><div class="kpi-val '+(bPos?'blue':'red')+'">'+(bPos?'+':'')+m.buf+'</div><div class="kpi-sub blue">Produzidos − enviados no período</div></div>'+
-      '</div>';
-  }
   const co={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1923',borderColor:'rgba(255,255,255,.1)',borderWidth:1,titleColor:'#fff',bodyColor:'#7a92a8'}},scales:{x:{grid:{display:false},ticks:{color:'#4a6070',font:{size:10},maxRotation:45}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a6070',font:{size:10}},border:{display:false}}}};
   Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});charts={};
   cont.innerHTML=
-    kpiRow('Resumo do mês','ti-calendar-month',rMes)+
-    kpiRow('Resumo do ano','ti-calendar-stats',rAno)+
+    '<div class="card" style="margin-bottom:16px">'+
+    '<div class="card-title"><i class="ti ti-filter"></i>Filtrar período</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">'+
+    '<div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">De</div><input type="date" id="mes-filtro-de" value="'+mesFiltroDe+'" style="padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px"></div>'+
+    '<div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Até</div><input type="date" id="mes-filtro-ate" value="'+mesFiltroAte+'" style="padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px"></div>'+
+    '<button class="btn btn-primary btn-sm" onclick="aplicarFiltroMes()"><i class="ti ti-check"></i> Aplicar</button>'+
+    '<button class="btn btn-ghost btn-sm" onclick="setMesPreset(\'mes\')">Este mês</button>'+
+    '<button class="btn btn-ghost btn-sm" onclick="setMesPreset(\'ano\')">Este ano</button>'+
+    '<button class="btn btn-ghost btn-sm" onclick="setMesPreset(\'tudo\')">Tudo</button>'+
+    '</div>'+
+    '<div id="mes-resumo-kpis">'+kpiRowResumo(sumPeriodoDatas(mesFiltroDe,mesFiltroAte))+'</div>'+
+    '</div>'+
     '<div class="card"><div class="card-title"><i class="ti ti-chart-bar"></i>Pallets por dia</div>'+
     '<div style="font-size:11px;color:var(--text2);margin-bottom:12px;display:flex;gap:12px">'+
     '<span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#2a7fd4;display:inline-block"></span>Produzidos</span>'+

@@ -485,7 +485,7 @@ const LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1
 
 
 <script>
-const META_DIARIA=1923,SYNC_INTERVAL=60000;
+const META_DIARIA=2000,SYNC_INTERVAL=60000;
 const FB_URL='https://painel-operacional-96032-default-rtdb.firebaseio.com/mogi.json';
 const LS_CACHE='mogi_cache',LS_UNIT='mogi_unit';
 const USERS=[
@@ -503,8 +503,10 @@ const USERS=[
 const TURNOS=[
   {key:'OPM',cargo:'Operador de Empilhadeira',label:'Turno Manhã',hor:'06h00–14h20'},
   {key:'OPT',cargo:'Operador de Empilhadeira',label:'Turno Tarde',hor:'14h00–22h20'},
+  {key:'OPC',cargo:'Operador de Empilhadeira',label:'Turno Comercial',hor:'07h00–17h00'},
   {key:'AXM',cargo:'Auxiliar de Expedição',label:'Turno Manhã',hor:'07h00–15h20'},
   {key:'AXT',cargo:'Auxiliar de Expedição',label:'Turno Tarde',hor:'10h00–18h20'},
+  {key:'AXC',cargo:'Auxiliar de Expedição',label:'Turno Comercial',hor:'07h00–17h00'},
 ];
 function turnoInfo(t){return TURNOS.find(x=>x.key===t);}
 function turnoHor(t){const x=turnoInfo(t);return x?x.hor:'';}
@@ -514,6 +516,7 @@ function turnosDoCargo(cargo){return TURNOS.filter(x=>x.cargo===cargo);}
 const TURNO_GRUPOS={
   GERAL_M:{nome:'Visão geral · Manhã',turnos:['OPM','AXM']},
   GERAL_T:{nome:'Visão geral · Tarde',turnos:['OPT','AXT']},
+  GERAL_C:{nome:'Visão geral · Comercial',turnos:['OPC','AXC']},
 };
 function turnosEfetivos(sel){return TURNO_GRUPOS[sel]?TURNO_GRUPOS[sel].turnos:[sel];}
 function nomeSelecao(sel){return TURNO_GRUPOS[sel]?TURNO_GRUPOS[sel].nome:turnoNomeCompleto(sel);}

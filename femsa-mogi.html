@@ -509,6 +509,13 @@ function turnoInfo(t){return TURNOS.find(x=>x.key===t);}
 function turnoHor(t){const x=turnoInfo(t);return x?x.hor:'';}
 function turnoNomeCompleto(t){const x=turnoInfo(t);return x?x.cargo+' · '+x.label:t;}
 function turnosDoCargo(cargo){return TURNOS.filter(x=>x.cargo===cargo);}
+// Visão geral: agrupa os 2 turnos de mesmo período (manhã/tarde) entre os cargos
+const TURNO_GRUPOS={
+  GERAL_M:{nome:'Visão geral · Manhã',turnos:['OPM','AXM']},
+  GERAL_T:{nome:'Visão geral · Tarde',turnos:['OPT','AXT']},
+};
+function turnosEfetivos(sel){return TURNO_GRUPOS[sel]?TURNO_GRUPOS[sel].turnos:[sel];}
+function nomeSelecao(sel){return TURNO_GRUPOS[sel]?TURNO_GRUPOS[sel].nome:turnoNomeCompleto(sel);}
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'OPM',cargo:'Operador de Empilhadeira',wpp:''},{nome:'Colaborador 2',turno:'AXM',cargo:'Auxiliar de Expedição',wpp:''}];
 let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:''};
 let currentUser=null,currentRole=null,unitName='Mogi';
@@ -1190,11 +1197,18 @@ function renderPresenca(){
   const todayD=today();
   const wrap=document.getElementById('turno-btns-wrap');
   if(wrap){
-    wrap.innerHTML=TURNOS.map(t=>{
+    let html=TURNOS.map(t=>{
       const done=state.presencas[todayD]&&state.presencas[todayD][t.key]&&state.presencas[todayD][t.key].savedAt;
       const cls='tbtn'+(t.key===selTurnoAtivo?' active':'')+(done?' done':'');
       return'<button class="'+cls+'" id="tbtn-'+t.key+'" onclick="selTurno(\''+t.key+'\')"><div class="turno-lbl">'+t.cargo+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">'+t.label+' · '+t.hor+'</div></button>';
     }).join('');
+    html+=Object.keys(TURNO_GRUPOS).map(k=>{
+      const g=TURNO_GRUPOS[k];
+      const done=g.turnos.every(tk=>state.presencas[todayD]&&state.presencas[todayD][tk]&&state.presencas[todayD][tk].savedAt);
+      const cls='tbtn'+(k===selTurnoAtivo?' active':'')+(done?' done':'');
+      return'<button class="'+cls+'" id="tbtn-'+k+'" onclick="selTurno(\''+k+'\')" style="border-style:dashed"><div class="turno-lbl"><i class="ti ti-layout-grid" style="font-size:11px;margin-right:3px"></i>'+g.nome+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Operador + Auxiliar</div></button>';
+    }).join('');
+    wrap.innerHTML=html;
   }
   renderPresGrid();
 }
@@ -1202,46 +1216,54 @@ function selTurno(t){selTurnoAtivo=t;renderPresenca();}
 function renderPresGrid(){
   const cont=document.getElementById('pres-content');if(!cont)return;
   const todayD=today();
-  const presDay=state.presencas[todayD]&&state.presencas[todayD][selTurnoAtivo];
-  const saved=presDay&&presDay.savedAt;
-  const presSaved=presDay&&presDay.presenca||{};
-  const colabs=colaboradoresAtivos().filter(c=>c.turno===selTurnoAtivo);
-  if(!colabs.length){cont.innerHTML='<div class="empty"><i class="ti ti-users"></i><h3>Nenhum colaborador no '+turnoNomeCompleto(selTurnoAtivo)+'</h3><p>Adicione colaboradores na tela Equipe.</p></div>';return;}
+  const efetivos=turnosEfetivos(selTurnoAtivo);
+  const presDayAll=state.presencas[todayD]||{};
+  const todosSalvos=efetivos.every(tk=>presDayAll[tk]&&presDayAll[tk].savedAt);
+  const colabs=colaboradoresAtivos().filter(c=>efetivos.includes(c.turno));
+  if(!colabs.length){cont.innerHTML='<div class="empty"><i class="ti ti-users"></i><h3>Nenhum colaborador no '+nomeSelecao(selTurnoAtivo)+'</h3><p>Adicione colaboradores na tela Equipe.</p></div>';return;}
   const cells=colabs.map(c=>{
+    const pd=presDayAll[c.turno];
+    const presSaved=(pd&&pd.presenca)||{};
+    const cardSalvo=pd&&pd.savedAt;
     const st=presSaved[c.nome]||'';
     const cls=st==='P'?' pc-p':st==='A'?' pc-a':st==='F'?' pc-f':'';
     const lbl=st==='P'?'Presente':st==='A'?'Ausente':st==='F'?'Férias':'—';
-    const feriasBtn=(!saved&&podeEditarPresenca())?'<div class="pc-ferias-btn" onclick="event.stopPropagation();abrirFeriasModal(selTurnoAtivo,\''+c.nome.replace(/'/g,"\\'")+'\',today())" title="Marcar férias"><i class="ti ti-plane-departure"></i></div>':'';
-    return'<div class="pc'+cls+'" onclick="'+(saved?'unlockPres()':'togglePres(\''+c.nome+'\')')+'">'+feriasBtn+'<div class="pc-n">'+c.nome.split(' ').slice(0,2).join(' ')+'</div>'+(c.cargo?'<div class="pc-c">'+c.cargo+'</div>':'')+'<div class="pc-s">'+lbl+'</div></div>';
+    const feriasBtn=(!cardSalvo&&podeEditarPresenca())?'<div class="pc-ferias-btn" onclick="event.stopPropagation();abrirFeriasModal(\''+c.turno+'\',\''+c.nome.replace(/'/g,"\\'")+'\',today())" title="Marcar férias"><i class="ti ti-plane-departure"></i></div>':'';
+    return'<div class="pc'+cls+'" onclick="'+(cardSalvo?'unlockPres()':'togglePres(\''+c.nome+'\',\''+c.turno+'\')')+'">'+feriasBtn+'<div class="pc-n">'+c.nome.split(' ').slice(0,2).join(' ')+'</div>'+(c.cargo?'<div class="pc-c">'+c.cargo+'</div>':'')+'<div class="pc-s">'+lbl+'</div></div>';
   }).join('');
   cont.innerHTML=
     '<div class="pres-grid" style="margin-bottom:16px">'+cells+'</div>'+
-    (saved?
-      '<div style="padding:10px 14px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:9px;font-size:12px;color:var(--green);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px"><i class="ti ti-check" style="font-size:14px"></i>Apontamento salvo — '+new Date(presDay.savedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'</div>'+
+    (todosSalvos?
+      '<div style="padding:10px 14px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:9px;font-size:12px;color:var(--green);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px"><i class="ti ti-check" style="font-size:14px"></i>Apontamento salvo</div>'+
       '<button class="btn btn-ghost btn-sm" onclick="unlockPres()"><i class="ti ti-lock-open" style="font-size:13px"></i> Editar</button>'
       :
-      '<button class="btn btn-primary" onclick="salvarPresenca()"><i class="ti ti-check" style="font-size:16px"></i> Confirmar presença do '+turnoNomeCompleto(selTurnoAtivo)+'</button>'
+      '<button class="btn btn-primary" onclick="salvarPresenca()"><i class="ti ti-check" style="font-size:16px"></i> Confirmar presença — '+nomeSelecao(selTurnoAtivo)+'</button>'
     );
 }
-function togglePres(nome){
+function togglePres(nome,turno){
+  const t=turno||selTurnoAtivo;
   const todayD=today();
   if(!state.presencas[todayD])state.presencas[todayD]={};
-  if(!state.presencas[todayD][selTurnoAtivo])state.presencas[todayD][selTurnoAtivo]={presenca:{}};
-  const cur=state.presencas[todayD][selTurnoAtivo].presenca[nome]||'';
-  state.presencas[todayD][selTurnoAtivo].presenca[nome]=cur===''?'P':cur==='P'?'A':'';
-  if(cur==='F'&&state.presencas[todayD][selTurnoAtivo].feriasInfo)delete state.presencas[todayD][selTurnoAtivo].feriasInfo[nome];
+  if(!state.presencas[todayD][t])state.presencas[todayD][t]={presenca:{}};
+  const cur=state.presencas[todayD][t].presenca[nome]||'';
+  state.presencas[todayD][t].presenca[nome]=cur===''?'P':cur==='P'?'A':'';
+  if(cur==='F'&&state.presencas[todayD][t].feriasInfo)delete state.presencas[todayD][t].feriasInfo[nome];
   renderPresGrid();
 }
 async function salvarPresenca(){
   const todayD=today();
   if(!state.presencas[todayD])state.presencas[todayD]={};
-  if(!state.presencas[todayD][selTurnoAtivo])state.presencas[todayD][selTurnoAtivo]={presenca:{}};
-  state.presencas[todayD][selTurnoAtivo].savedAt=new Date().toISOString();
-  saveCache();await pushToCloud();verificarAusencia();showToast('Presença do '+turnoNomeCompleto(selTurnoAtivo)+' salva!','ok');renderPresenca();
+  turnosEfetivos(selTurnoAtivo).forEach(t=>{
+    if(!state.presencas[todayD][t])state.presencas[todayD][t]={presenca:{}};
+    state.presencas[todayD][t].savedAt=new Date().toISOString();
+  });
+  saveCache();await pushToCloud();verificarAusencia();showToast('Presença salva — '+nomeSelecao(selTurnoAtivo)+'!','ok');renderPresenca();
 }
 function unlockPres(){
   const todayD=today();
-  if(state.presencas[todayD]&&state.presencas[todayD][selTurnoAtivo])delete state.presencas[todayD][selTurnoAtivo].savedAt;
+  turnosEfetivos(selTurnoAtivo).forEach(t=>{
+    if(state.presencas[todayD]&&state.presencas[todayD][t])delete state.presencas[todayD][t].savedAt;
+  });
   renderPresenca();
 }
 

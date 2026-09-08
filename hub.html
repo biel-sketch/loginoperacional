@@ -226,6 +226,49 @@ html,body{
       </div>
     </a>
 
+    <!-- FEMSA Mogi -->
+    <a class="op-card" id="card-mogi" href="femsa-mogi.html" target="_blank">
+      <div class="op-header">
+        <div class="op-icon" style="width:52px;height:52px;font-size:24px;border-width:2px"><i class="ti ti-stack-2"></i></div>
+        <div class="op-status">
+          <div class="status-dot loading" id="dot-mogi"></div>
+          <span id="lbl-mogi">Conectando...</span>
+        </div>
+      </div>
+      <div class="op-name">FEMSA Mogi</div>
+      <div class="op-desc">Operação de pallets com controle de presença por turno A/B/C.</div>
+      <div class="op-stats">
+        <div class="op-stat">
+          <div class="op-stat-lbl">Quadro Colab.</div>
+          <div class="op-stat-val" id="mg-quadro">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Presentes</div>
+          <div class="op-stat-val green" id="mg-presentes">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Ausentes</div>
+          <div class="op-stat-val red" id="mg-ausentes">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Buffer pallets</div>
+          <div class="op-stat-val cyan" id="mg-buffer">—</div>
+        </div>
+      </div>
+      <div id="mg-absence-alert" style="display:none" class="absence-alert">
+        <i class="ti ti-alert-triangle"></i>
+        <span id="mg-absence-msg">Ausência alta</span>
+      </div>
+      <div class="freshness" id="mg-freshness">
+        <i class="ti ti-clock"></i>
+        <span id="mg-freshness-lbl">Aguardando dados...</span>
+      </div>
+      <div class="op-footer">
+        <span class="op-footer-lbl">Abrir painel completo</span>
+        <i class="ti ti-arrow-right op-arrow"></i>
+      </div>
+    </a>
+
     <!-- FEMSA Marília -->
     <a class="op-card" id="card-marilia" href="femsa-marilia.html" target="_blank">
       <div class="op-header">

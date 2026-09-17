@@ -343,9 +343,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
               <div style="font-size:12px;color:var(--text2);margin-top:2px">Dados sincronizados</div></div>
             </div>
           </div>
-          <div class="card">
-            <div class="card-title"><i class="ti ti-users"></i> Produção por Colaborador (opcional)</div>
-            <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Lance a produção de cada colaborador de Recuperação de Pallets. O total entra automaticamente na soma de Produzidos do dia.</div>
+          <div class="card" id="prod-pessoas-section" style="border-color:var(--warn-bd)">
+            <div class="card-title"><i class="ti ti-users" style="color:var(--warn)"></i> Produção por Colaborador <span style="font-size:11px;color:var(--warn);font-weight:700;text-transform:uppercase;letter-spacing:.05em">· obrigatório</span></div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Lance a produção de cada colaborador de Recuperação de Pallets deste turno antes de lançar a movimentação geral. É só pra acompanhamento individual — <strong>não soma</strong> no total de Produzidos nem na meta mensal.</div>
             <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="prod-turno-btns-wrap"></div>
             <div id="prod-pessoas-info" style="font-size:12px;color:var(--text2);margin-bottom:10px"></div>
             <div id="prod-pessoas-list"></div>
@@ -1700,7 +1700,6 @@ function setMotivoPessoa(nome,val){
   dia.pessoas[nome].motivo=val;
 }
 async function salvarProducaoPessoas(){
-  const todayD=today();
   const dia=_prodBuf();
   const info=calcMetaIndividual();
   const colabs=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===selTurnoProd);
@@ -1713,11 +1712,7 @@ async function salvarProducaoPessoas(){
     }
   }
   dia.savedAt=new Date().toISOString();
-  const totalTurno=colabs.reduce((s,c)=>s+((dia.pessoas[c.nome]&&dia.pessoas[c.nome].prod)||0),0);
-  const who=currentUser?currentUser.user:'Desconhecido';
-  if(!state.movimentos[todayD])state.movimentos[todayD]=[];
-  state.movimentos[todayD].push({ts:new Date().toISOString(),who,rec:0,prod:totalTurno,env:0,desc:0,porPessoa:true,turno:selTurnoProd});
-  saveCache();await pushToCloud();showToast('Produção do turno salva!','ok');renderProdPessoas();renderOperacao();
+  saveCache();await pushToCloud();showToast('Produção individual salva! (não soma no total — é só visualização)','ok');renderProdPessoas();renderOperacao();
 }
 function unlockProdPessoas(){
   const dia=_prodBuf();

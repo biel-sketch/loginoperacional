@@ -314,11 +314,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
           <!-- VIEW: Hoje -->
           <div id="pv-hoje">
             <div style="font-size:13px;color:var(--text2);margin-bottom:16px" id="pres-date-lbl"></div>
-            <div style="display:flex;gap:8px;margin-bottom:20px">
-              <button class="tbtn" id="tbtn-A" onclick="selTurno('A')"><div class="turno-lbl">Turno A</div><div style="font-size:10px;color:var(--text2);margin-top:2px">06h00–14h20</div></button>
-              <button class="tbtn" id="tbtn-B" onclick="selTurno('B')"><div class="turno-lbl">Turno B</div><div style="font-size:10px;color:var(--text2);margin-top:2px">14h00–22h20</div></button>
-              <button class="tbtn" id="tbtn-C" onclick="selTurno('C')"><div class="turno-lbl">Turno C</div><div style="font-size:10px;color:var(--text2);margin-top:2px">22h00–06h20</div></button>
-            </div>
+            <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap" id="turno-btns-wrap"></div>
             <div id="pres-content"></div>
           </div>
           <!-- VIEW: Histórico -->
@@ -346,6 +342,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
               <div><div style="font-size:14px;font-weight:700;color:var(--green)">Lançamento realizado com sucesso!</div>
               <div style="font-size:12px;color:var(--text2);margin-top:2px">Dados sincronizados</div></div>
             </div>
+          </div>
+          <div class="card">
+            <div class="card-title"><i class="ti ti-users"></i> Produção por Colaborador (opcional)</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Lance a produção de cada colaborador de Recuperação de Pallets. O total entra automaticamente na soma de Produzidos do dia.</div>
+            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="prod-turno-btns-wrap"></div>
+            <div id="prod-pessoas-info" style="font-size:12px;color:var(--text2);margin-bottom:10px"></div>
+            <div id="prod-pessoas-list"></div>
           </div>
           <div class="card" id="op-hist-card" style="display:none">
             <div class="card-title"><i class="ti ti-history"></i> Lançamentos do dia</div>
@@ -421,11 +424,22 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
         <option value="A">Turno A — 06h00 às 14h20</option>
         <option value="B">Turno B — 14h00 às 22h20</option>
         <option value="C">Turno C — 22h00 às 06h20</option>
+        <option value="D" id="modal-turno-d-opt" style="display:none">Turno Extraordinário</option>
       </select>
     </div>
     <div class="modal-field">
       <label>Cargo / Função</label>
       <input type="text" id="modal-cargo" placeholder="Ex: Operador, Auxiliar..." autocomplete="off">
+    </div>
+    <div class="modal-field">
+      <label>Atividade</label>
+      <select id="modal-atividade">
+        <option>Recuperação de Pallets</option>
+        <option>Produção de Insumos</option>
+        <option>Operação de Empilhadeira</option>
+        <option>Inspeção da Qualidade</option>
+      </select>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">Só "Recuperação de Pallets" entra na meta e no ranking de produtividade.</div>
     </div>
     <div class="modal-btns">
       <button class="modal-btn-primary" id="modal-save-btn" onclick="saveColabModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
@@ -503,8 +517,10 @@ const USERS=[
   {user:'João',      senha:'Login@982',  role:'superadmin'},
   {user:'Gabriel',   senha:'L@gin982',   role:'superadmin'},
 ];
-const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',wpp:''}];
-let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:''};
+const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
+let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:''};
+const ATIVIDADES=['Recuperação de Pallets','Produção de Insumos','Operação de Empilhadeira','Inspeção da Qualidade'];
+function produzPallets(c){return !c.atividade||c.atividade==='Recuperação de Pallets';}
 let currentUser=null,currentRole=null,unitName='Aparecida';
 // Firebase - no api key or bin id vars needed
 let isSyncing=false,lastSync=null,syncTimer=null,resetLock=false;
@@ -534,14 +550,48 @@ function dateBR(d){if(!d)return'';return d.split('-').reverse().join('/');}
 function podeEditarPresenca(){return currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor';}
 function allDates(){const s=new Set([...Object.keys(state.movimentos),...Object.keys(state.presencas)]);return Array.from(s).sort();}
 function calcBufferBruto(){
-  // Estoque acumulado: soma de produzidos - soma de enviados de TODOS os dias (sem correção manual)
+  // Estoque acumulado: saldo inicial + soma de produzidos - soma de enviados de TODOS os dias (sem correção manual)
   let totP=0,totE=0;
   Object.values(state.movimentos).forEach(ms=>{ms.forEach(m=>{totP+=(m.prod||0);totE+=(m.env||0);});});
-  return totP-totE;
+  return (state.bufferSaldoInicial||0)+totP-totE;
 }
 function calcBufferGlobal(){
   // Estoque acumulado + correção manual (ver corrigirBuffer())
   return calcBufferBruto()+(state.bufferAjuste||0);
+}
+// === TURNOS (incl. Turno Extraordinário opcional) ===
+const TURNOS_FIXOS=[
+  {key:'A',label:'Turno A',horario:'06h00–14h20'},
+  {key:'B',label:'Turno B',horario:'14h00–22h20'},
+  {key:'C',label:'Turno C',horario:'22h00–06h20'},
+];
+function turnosAtivos(){
+  const lista=TURNOS_FIXOS.slice();
+  if(state.turnoExtra&&state.turnoExtra.ativo)lista.push({key:'D',label:'Turno Extraordinário',horario:state.turnoExtra.horario||'(horário a definir)',extra:true});
+  return lista;
+}
+function turnoInfo(key){return turnosAtivos().find(t=>t.key===key)||(key==='D'?{key:'D',label:'Turno Extraordinário',horario:(state.turnoExtra&&state.turnoExtra.horario)||''}:{key,label:'Turno '+key,horario:''});}
+// === META MENSAL E META INDIVIDUAL POR COLABORADOR ===
+function diasUteisNoMes(ano,mes){
+  const d=new Date(ano,mes,1);let count=0;
+  while(d.getMonth()===mes){if(d.getDay()!==0)count++;d.setDate(d.getDate()+1);}
+  return count;
+}
+function diasUteisRestantesNoMes(){
+  const now=new Date();const ano=now.getFullYear(),mes=now.getMonth();
+  const fim=new Date(ano,mes+1,0).getDate();
+  let count=0;
+  for(let dia=now.getDate();dia<=fim;dia++){const d=new Date(ano,mes,dia);if(d.getDay()!==0)count++;}
+  return count;
+}
+function getMetaMensal(){return state.metaMensal||(META_DIARIA*26);}
+function calcMetaIndividual(){
+  const produtores=colaboradoresAtivos().filter(produzPallets);
+  const diasUteisMes=diasUteisNoMes(new Date().getFullYear(),new Date().getMonth());
+  const metaMensal=getMetaMensal();
+  const metaDiariaGeral=diasUteisMes>0?metaMensal/diasUteisMes:0;
+  const metaPorPessoa=produtores.length>0?Math.round(metaDiariaGeral/produtores.length):0;
+  return{metaPorPessoa,diasUteisMes,qtd:produtores.length,metaDiariaGeral,metaMensal,nTurnosAtivos:turnosAtivos().length};
 }
 async function corrigirBuffer(valorDesejado){
   if(!podeEditarPresenca()){showToast('Sem permissão para corrigir o buffer.','err');return;}
@@ -568,6 +618,34 @@ function salvarNovoBuffer(){
   const v=inp?parseInt(inp.value,10):NaN;
   corrigirBuffer(v);
 }
+async function salvarConfigMeta(){
+  if(!podeEditarPresenca())return;
+  const metaEl=document.getElementById('cfg-meta-mensal');
+  const saldoEl=document.getElementById('cfg-buffer-saldo');
+  const meta=metaEl?parseInt(metaEl.value,10):NaN;
+  const saldo=saldoEl?parseInt(saldoEl.value,10):NaN;
+  if(isNaN(meta)||meta<0){showToast('Informe uma meta mensal válida.','warn');return;}
+  state.metaMensal=meta;
+  state.bufferSaldoInicial=isNaN(saldo)?0:saldo;
+  state.configTs=new Date().toISOString();
+  logAuditoria('Atualizou meta mensal ('+meta+') e saldo inicial do buffer ('+state.bufferSaldoInicial+')');
+  saveCache();await pushToCloud();
+  showToast('Configuração de meta salva!','ok');
+  renderAll();
+}
+async function salvarTurnoExtra(){
+  if(!podeEditarPresenca())return;
+  const ativoEl=document.getElementById('cfg-turno-extra-ativo');
+  const horEl=document.getElementById('cfg-turno-extra-horario');
+  const ativo=!!(ativoEl&&ativoEl.checked);
+  const horario=horEl?horEl.value.trim():'';
+  state.turnoExtra={ativo,horario,inicioMin:null};
+  state.configTs=new Date().toISOString();
+  logAuditoria('Turno Extraordinário '+(ativo?'ativado ('+horario+')':'desativado'));
+  saveCache();await pushToCloud();
+  showToast('Turno Extraordinário '+(ativo?'ativado!':'desativado.'),'ok');
+  renderAll();
+}
 function showToast(msg,type='ok',dur=3000){const t=document.getElementById('app-toast');if(!t)return;t.textContent=msg;t.className='toast show '+type;setTimeout(()=>{t.className='toast';},dur);}
 
 async function fbFetch(method='GET', body=null){
@@ -583,9 +661,16 @@ function mergeState(cloud){
   if(cloud.colaboradores&&cloud.colaboradores.length)state.colaboradores=cloud.colaboradores;
   if(cloud.movimentos)state.movimentos=cloud.movimentos;
   if(cloud.presencas)state.presencas=cloud.presencas;
+  if(cloud.producaoPessoas)state.producaoPessoas=cloud.producaoPessoas;
   if(cloud.auditoria)state.auditoria=cloud.auditoria;
   if(cloud.bufferAjuste!==undefined)state.bufferAjuste=cloud.bufferAjuste;
   if(cloud.bufferAjusteTs!==undefined)state.bufferAjusteTs=cloud.bufferAjusteTs;
+  if(cloud.configTs!==undefined){
+    state.metaMensal=cloud.metaMensal;
+    state.bufferSaldoInicial=cloud.bufferSaldoInicial||0;
+    state.turnoExtra=cloud.turnoExtra||{ativo:false,horario:'',inicioMin:null};
+    state.configTs=cloud.configTs;
+  }
 }
 function saveCache(){try{localStorage.setItem(LS_CACHE,JSON.stringify(state));localStorage.setItem('femsa_cache_ts',Date.now());}catch(e){}}
 
@@ -752,7 +837,7 @@ async function pushToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
     // Read current cloud state for smart merge
-    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,auditoria:state.auditoria||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||''};
+    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||''};
     try{
       const r=await fetch(FB_URL);
       if(r.ok){
@@ -774,6 +859,15 @@ async function pushToCloud(){
               if(ls>=cs)mp[d][t]=v;
             });
           });
+          const mpp=JSON.parse(JSON.stringify(cloud.producaoPessoas||{}));
+          Object.entries(state.producaoPessoas||{}).forEach(([d,ts])=>{
+            if(!mpp[d])mpp[d]={};
+            Object.entries(ts).forEach(([t,v])=>{
+              const cs=mpp[d]&&mpp[d][t]&&mpp[d][t].savedAt||'';
+              const ls=v&&v.savedAt||'';
+              if(ls>=cs)mpp[d][t]=v;
+            });
+          });
           // Merge colaboradores por nome: mantém edições/adições locais, mas
           // preserva quem outro usuário cadastrou na nuvem entre o último sync e agora
           const cloudColabs=cloud.colaboradores||[];
@@ -788,7 +882,14 @@ async function pushToCloud(){
           const localAjusteTs=state.bufferAjusteTs||'';
           const bufferAjuste=localAjusteTs>=cloudAjusteTs?(state.bufferAjuste||0):(cloud.bufferAjuste||0);
           const bufferAjusteTs=localAjusteTs>=cloudAjusteTs?localAjusteTs:cloudAjusteTs;
-          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,auditoria:mergedAudit,bufferAjuste,bufferAjusteTs};
+          const cloudConfigTs=cloud.configTs||'';
+          const localConfigTs=state.configTs||'';
+          const usaConfigLocal=localConfigTs>=cloudConfigTs;
+          const metaMensal=usaConfigLocal?state.metaMensal:cloud.metaMensal;
+          const bufferSaldoInicial=usaConfigLocal?(state.bufferSaldoInicial||0):(cloud.bufferSaldoInicial||0);
+          const turnoExtra=usaConfigLocal?(state.turnoExtra||{ativo:false,horario:'',inicioMin:null}):(cloud.turnoExtra||{ativo:false,horario:'',inicioMin:null});
+          const configTs=usaConfigLocal?localConfigTs:cloudConfigTs;
+          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,bufferAjuste,bufferAjusteTs,metaMensal,bufferSaldoInicial,turnoExtra,configTs};
         }
       }
     }catch(e){}
@@ -797,9 +898,14 @@ async function pushToCloud(){
     state.colaboradores=merged.colaboradores;
     state.movimentos=merged.movimentos;
     state.presencas=merged.presencas;
+    state.producaoPessoas=merged.producaoPessoas||{};
     state.auditoria=merged.auditoria;
     state.bufferAjuste=merged.bufferAjuste||0;
     state.bufferAjusteTs=merged.bufferAjusteTs||'';
+    state.metaMensal=merged.metaMensal;
+    state.bufferSaldoInicial=merged.bufferSaldoInicial||0;
+    state.turnoExtra=merged.turnoExtra||{ativo:false,horario:'',inicioMin:null};
+    state.configTs=merged.configTs||'';
     clearPending();
     saveCache(); // salva cache e timestamp
     lastSync=new Date();
@@ -969,7 +1075,7 @@ function launchApp(){
 
 function boot(){
   unitName=localStorage.getItem(LS_UNIT)||'Aparecida';
-  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;}}catch(e){}
+  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;}}catch(e){}
   if(!state.colaboradores||!state.colaboradores.length)state.colaboradores=DEFAULT_COLABS;
   try{
     const raw=sessionStorage.getItem('femsa_session')||localStorage.getItem('femsa_session');
@@ -1036,6 +1142,32 @@ if(!dates.includes(selDate)){
   renderDia();
 }
 function selDay(d){selDate=d;renderDash();}
+function buildMetaMensalCards(){
+  const info=calcMetaIndividual();
+  const todayD=today();
+  const metaDoDia=Math.round(info.metaDiariaGeral);
+  const produzidoHoje=(state.movimentos[todayD]||[]).reduce((s,m)=>s+(m.prod||0),0);
+  const pctGeralDia=metaDoDia>0?Math.min(999,Math.round(produzidoHoje/metaDoDia*1000)/10):0;
+  const inicioMes=new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0')+'-01';
+  const acumuladoMes=sumPeriodoDatas(inicioMes,todayD).tP;
+  const pctMetaMensal=info.metaMensal>0?Math.min(999,Math.round(acumuladoMes/info.metaMensal*1000)/10):0;
+  const faltaMetaMensal=Math.max(0,info.metaMensal-acumuladoMes);
+  const diasUteisRest=diasUteisRestantesNoMes();
+  const ritmoDiarioNec=diasUteisRest>0?Math.round(faltaMetaMensal/diasUteisRest):0;
+  const ritmoPorPessoa=info.qtd>0?Math.round(ritmoDiarioNec/info.qtd):0;
+  const cor=(pct)=>pct>=100?'green':(pct>=80?'':'red');
+  return'<div class="sec">Meta Mensal</div>'+
+    '<div class="kpi-grid">'+
+    '<div class="kpi"><div class="kpi-lbl">Meta do dia ('+info.nTurnosAtivos+' turnos)</div><div class="kpi-val blue">'+metaDoDia.toLocaleString('pt-BR')+'</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl">Produzido hoje</div><div class="kpi-val green">'+produzidoHoje.toLocaleString('pt-BR')+'</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl">% geral do dia</div><div class="kpi-val '+cor(pctGeralDia)+'">'+pctGeralDia+'%</div><div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-top:6px"><div style="height:100%;width:'+Math.min(100,pctGeralDia)+'%;background:'+(pctGeralDia>=100?'var(--green)':'var(--red)')+'"></div></div></div>'+
+    '<div class="kpi"><div class="kpi-lbl">Acumulado do mês</div><div class="kpi-val" style="color:var(--purple)">'+acumuladoMes.toLocaleString('pt-BR')+'</div><div class="kpi-sub">de '+info.metaMensal.toLocaleString('pt-BR')+' pallets</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl">% meta mensal atingida</div><div class="kpi-val '+cor(pctMetaMensal)+'">'+pctMetaMensal+'%</div><div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-top:6px"><div style="height:100%;width:'+Math.min(100,pctMetaMensal)+'%;background:'+(pctMetaMensal>=100?'var(--green)':'var(--red)')+'"></div></div></div>'+
+    '<div class="kpi"><div class="kpi-lbl">Falta p/ meta mensal</div><div class="kpi-val red">'+faltaMetaMensal.toLocaleString('pt-BR')+'</div><div class="kpi-sub">'+(100-pctMetaMensal).toFixed(1)+'% restante</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl">Dias úteis restantes no mês</div><div class="kpi-val blue">'+diasUteisRest+'</div><div class="kpi-sub">(seg–sáb)</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl">Ritmo diário necessário</div><div class="kpi-val red">'+ritmoDiarioNec.toLocaleString('pt-BR')+'</div><div class="kpi-sub">vs. meta diária atual de '+metaDoDia.toLocaleString('pt-BR')+' · '+ritmoPorPessoa+'/pessoa/dia</div></div>'+
+    '</div>';
+}
 function renderDia(){
   const cont=document.getElementById('dia-content');
   if(!selDate){cont.innerHTML='<div class="empty"><i class="ti ti-database-off"></i><h3>Nenhum dado ainda</h3><p>Aguarde a sincronização</p></div>';return;}
@@ -1066,6 +1198,7 @@ function renderDia(){
   }).join('');
   const movLog=movs.length?'<div class="card"><div class="card-title"><i class="ti ti-history"></i>Lançamentos '+lastTag+'</div>'+movs.slice().reverse().map(m=>{const pts=[];if(m.rec)pts.push('Rec:<b>'+m.rec+'</b>');if(m.prod)pts.push('Prod:<b>'+m.prod+'</b>');if(m.env)pts.push('Env:<b>'+m.env+'</b>');if(m.desc)pts.push('Desc:<b>'+m.desc+'</b>');return'<div class="log-entry"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · <strong>'+m.who+'</strong></div><div class="log-vals">'+pts.join(' · ')+'</div></div>';}).join('')+'</div>':'';
   cont.innerHTML=
+    buildMetaMensalCards()+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;color:var(--text2)">'+dateFull(selDate)+'</div>'+lastTag+'</div>'+
     '<div class="sec">Pallets — totais acumulados</div>'+
     '<div class="kpi-grid">'+
@@ -1129,6 +1262,73 @@ function aplicarFiltroMes(){
   mesFiltroDe=de;mesFiltroAte=ate;
   renderMesResumo();
 }
+function rankingProducaoPeriodo(de,ate){
+  const totals={};
+  Object.entries(state.producaoPessoas||{}).forEach(([d,turnos])=>{
+    if(d<de||d>ate)return;
+    Object.values(turnos).forEach(t=>{
+      Object.entries(t.pessoas||{}).forEach(([nome,reg])=>{
+        totals[nome]=(totals[nome]||0)+(reg.prod||0);
+      });
+    });
+  });
+  return Object.entries(totals).map(([nome,total])=>{
+    const c=state.colaboradores.find(x=>x.nome===nome);
+    return{nome,total,turnoLbl:c?turnoInfo(c.turno).label:''};
+  });
+}
+function buildRankingCard(de,ate){
+  const arr=rankingProducaoPeriodo(de,ate);
+  const top=arr.slice().sort((a,b)=>b.total-a.total).slice(0,5);
+  const bottom=arr.slice().sort((a,b)=>a.total-b.total).slice(0,5);
+  const maxTop=top.length?top[0].total:1;
+  const maxBottom=bottom.length?bottom[bottom.length-1].total:1;
+  const linha=(r,idx,max,cor)=>'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">'+
+    '<div style="width:20px;height:20px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0">'+(idx+1)+'</div>'+
+    '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">'+r.nome+'</div><div style="font-size:11px;color:var(--text2)">'+r.turnoLbl+'</div>'+
+    '<div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-top:4px"><div style="height:100%;width:'+Math.max(4,Math.round(r.total/(max||1)*100))+'%;background:'+cor+'"></div></div></div>'+
+    '<div style="font-weight:700;font-size:13px;color:'+cor+';flex-shrink:0">'+r.total.toLocaleString('pt-BR')+'</div></div>';
+  return'<div class="card"><div class="card-title"><i class="ti ti-trophy"></i>Top 5 — Ranking do Período</div>'+
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:14px">'+dateBR(de)+' a '+dateBR(ate)+'</div>'+
+    (arr.length?
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px">'+
+    '<div><div class="sec" style="margin-bottom:6px">Maior produtividade</div>'+top.map((r,i)=>linha(r,i,maxTop,'var(--green)')).join('')+'</div>'+
+    '<div><div class="sec" style="margin-bottom:6px">Menor produtividade</div>'+bottom.map((r,i)=>linha(r,i,maxBottom,'var(--red)')).join('')+'</div>'+
+    '</div>'
+    :'<div class="empty" style="padding:16px 0"><i class="ti ti-trophy"></i><h3>Sem lançamentos de Produção por Colaborador nesse período</h3></div>')+
+    '</div>';
+}
+function buildProjecaoMensalData(){
+  const now=new Date();const ano=now.getFullYear(),mes=now.getMonth();
+  const diasNoMes=new Date(ano,mes+1,0).getDate();
+  const hojeDia=now.getDate();
+  const metaMensal=getMetaMensal();
+  const labels=[],real=[],metaLinear=[],projecao=[];
+  const porDia={};
+  for(let dia=1;dia<=diasNoMes;dia++){
+    const dstr=ano+'-'+String(mes+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
+    porDia[dia]=(state.movimentos[dstr]||[]).reduce((s,m)=>s+(m.prod||0),0);
+  }
+  let acumulado=0,diasUteisDecorridos=0;
+  for(let dia=1;dia<=diasNoMes;dia++){
+    labels.push(String(dia));
+    if(dia<=hojeDia){
+      acumulado+=porDia[dia]||0;
+      real.push(acumulado);
+      if(new Date(ano,mes,dia).getDay()!==0)diasUteisDecorridos++;
+    }else real.push(null);
+    metaLinear.push(Math.round(metaMensal/diasNoMes*dia));
+  }
+  const ritmoMedio=diasUteisDecorridos>0?acumulado/diasUteisDecorridos:0;
+  let acumProj=acumulado;
+  for(let dia=1;dia<=diasNoMes;dia++){
+    if(dia<hojeDia){projecao.push(null);continue;}
+    if(dia===hojeDia){projecao.push(acumulado);continue;}
+    if(new Date(ano,mes,dia).getDay()!==0)acumProj+=ritmoMedio;
+    projecao.push(Math.round(acumProj));
+  }
+  return{labels,real,metaLinear,projecao,fechamentoProjetado:Math.round(acumProj),metaMensal};
+}
 function renderMes(){
   const cont=document.getElementById('mes-content');
   const dates=Object.keys(state.movimentos).sort();
@@ -1156,6 +1356,13 @@ function renderMes(){
     '</div>'+
     '<div id="mes-resumo-kpis">'+kpiRowResumo(sumPeriodoDatas(mesFiltroDe,mesFiltroAte))+'</div>'+
     '</div>'+
+    buildRankingCard(mesFiltroDe,mesFiltroAte)+
+    '<div class="card"><div class="card-title"><i class="ti ti-chart-line"></i>Projeção da Meta Mensal</div>'+
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap">'+
+    '<span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#2a7fd4;display:inline-block"></span>Real acumulado</span>'+
+    '<span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:2px;background:#4a6070;display:inline-block"></span>Meta linear</span>'+
+    '<span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:2px;border-top:2px dashed #ffc021;display:inline-block"></span>Projeção no ritmo atual</span></div>'+
+    '<div style="height:200px"><canvas id="chart-projecao"></canvas></div></div>'+
     '<div class="card"><div class="card-title"><i class="ti ti-chart-bar"></i>Pallets por dia</div>'+
     '<div style="font-size:11px;color:var(--text2);margin-bottom:12px;display:flex;gap:12px">'+
     '<span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#2a7fd4;display:inline-block"></span>Produzidos</span>'+
@@ -1168,6 +1375,13 @@ function renderMes(){
     const c1=document.getElementById('chart-mc1');if(c1)charts.mc1=new Chart(c1,{type:'bar',data:{labels,datasets:[{label:'Produzidos',data:prodArr,backgroundColor:'#2a7fd4',borderRadius:5},{label:'Recebidos',data:recArr,backgroundColor:'#27ae76',borderRadius:5},{label:'Descarte',data:descArr,backgroundColor:'#c0392b',borderRadius:5}]},options:{...co}});
     const c3=document.getElementById('chart-mc3');if(c3)charts.mc3=new Chart(c3,{type:'bar',data:{labels,datasets:[{label:'Buffer',data:bufArr,backgroundColor:bufArr.map(v=>v>=0?'#2a7fd4':'#c0392b'),borderRadius:5}]},options:{...co}});
     const c2=document.getElementById('chart-mc2');if(c2)charts.mc2=new Chart(c2,{type:'line',data:{labels,datasets:[{label:'Ausências',data:absArr,borderColor:'#c0392b',backgroundColor:'rgba(192,57,43,.08)',borderWidth:2,pointRadius:3,fill:true,tension:.3}]},options:{...co}});
+    const projData=buildProjecaoMensalData();
+    const cp=document.getElementById('chart-projecao');
+    if(cp)charts.projecao=new Chart(cp,{type:'line',data:{labels:projData.labels,datasets:[
+      {label:'Real acumulado',data:projData.real,borderColor:'#2a7fd4',backgroundColor:'rgba(42,127,212,.08)',borderWidth:2,pointRadius:0,fill:true,tension:.2,spanGaps:false},
+      {label:'Meta linear',data:projData.metaLinear,borderColor:'#4a6070',borderWidth:1.5,pointRadius:0,borderDash:[2,3],fill:false,tension:0},
+      {label:'Projeção',data:projData.projecao,borderColor:projData.fechamentoProjetado>=projData.metaMensal?'#27ae76':'#ffc021',borderWidth:2,pointRadius:0,borderDash:[6,4],fill:false,tension:0,spanGaps:false},
+    ]},options:{...co}});
   },50);
 }
 
@@ -1182,11 +1396,14 @@ function renderLog(){
 // PRESENÇA
 function renderPresenca(){
   const todayD=today();
-  ['A','B','C'].forEach(t=>{
-    const btn=document.getElementById('tbtn-'+t);if(!btn)return;
-    const done=state.presencas[todayD]&&state.presencas[todayD][t]&&state.presencas[todayD][t].savedAt;
-    btn.className='tbtn'+(t===selTurnoAtivo?' active':'')+(done?' done':'');
-  });
+  const wrap=document.getElementById('turno-btns-wrap');
+  if(wrap){
+    wrap.innerHTML=turnosAtivos().map(t=>{
+      const done=state.presencas[todayD]&&state.presencas[todayD][t.key]&&state.presencas[todayD][t.key].savedAt;
+      const cls='tbtn'+(t.key===selTurnoAtivo?' active':'')+(done?' done':'')+(t.extra?' tbtn-extra':'');
+      return'<button class="'+cls+'" id="tbtn-'+t.key+'" onclick="selTurno(\''+t.key+'\')"'+(t.extra?' style="border-style:dashed"':'')+'><div class="turno-lbl">'+t.label+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">'+t.horario+'</div></button>';
+    }).join('');
+  }
   renderPresGrid();
 }
 function selTurno(t){selTurnoAtivo=t;renderPresenca();}
@@ -1197,7 +1414,7 @@ function renderPresGrid(){
   const saved=presDay&&presDay.savedAt;
   const presSaved=presDay&&presDay.presenca||{};
   const colabs=colaboradoresAtivos().filter(c=>c.turno===selTurnoAtivo);
-  if(!colabs.length){cont.innerHTML='<div class="empty"><i class="ti ti-users"></i><h3>Nenhum colaborador no Turno '+selTurnoAtivo+'</h3><p>Adicione colaboradores na tela Equipe.</p></div>';return;}
+  if(!colabs.length){cont.innerHTML='<div class="empty"><i class="ti ti-users"></i><h3>Nenhum colaborador no '+turnoInfo(selTurnoAtivo).label+'</h3><p>Adicione colaboradores na tela Equipe.</p></div>';return;}
   const cells=colabs.map(c=>{
     const st=presSaved[c.nome]||'';
     const cls=st==='P'?' pc-p':st==='A'?' pc-a':st==='F'?' pc-f':'';
@@ -1211,7 +1428,7 @@ function renderPresGrid(){
       '<div style="padding:10px 14px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:9px;font-size:12px;color:var(--green);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px"><i class="ti ti-check" style="font-size:14px"></i>Apontamento salvo — '+new Date(presDay.savedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'</div>'+
       '<button class="btn btn-ghost btn-sm" onclick="unlockPres()"><i class="ti ti-lock-open" style="font-size:13px"></i> Editar</button>'
       :
-      '<button class="btn btn-primary" onclick="salvarPresenca()"><i class="ti ti-check" style="font-size:16px"></i> Confirmar presença do Turno '+selTurnoAtivo+'</button>'
+      '<button class="btn btn-primary" onclick="salvarPresenca()"><i class="ti ti-check" style="font-size:16px"></i> Confirmar presença do '+turnoInfo(selTurnoAtivo).label+'</button>'
     );
 }
 function togglePres(nome){
@@ -1228,7 +1445,7 @@ async function salvarPresenca(){
   if(!state.presencas[todayD])state.presencas[todayD]={};
   if(!state.presencas[todayD][selTurnoAtivo])state.presencas[todayD][selTurnoAtivo]={presenca:{}};
   state.presencas[todayD][selTurnoAtivo].savedAt=new Date().toISOString();
-  saveCache();await pushToCloud();verificarAusencia();showToast('Presença do Turno '+selTurnoAtivo+' salva!','ok');renderPresenca();
+  saveCache();await pushToCloud();verificarAusencia();showToast('Presença do '+turnoInfo(selTurnoAtivo).label+' salva!','ok');renderPresenca();
 }
 function unlockPres(){
   const todayD=today();
@@ -1384,6 +1601,7 @@ function renderOperacao(){
   const hc=document.getElementById('op-hist-card'),ho=document.getElementById('op-hist');
 if(movs.length&&hc&&ho){hc.style.display='block';ho.innerHTML=movs.map((m,i)=>({m,i})).slice().reverse().map(({m,i})=>'<div class="log-entry" style="cursor:pointer" onclick="abrirEditMov(\'+todayD+\','+i+')"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · '+m.who+(m.editadoManualmente?' <i class="ti ti-edit" style="font-size:10px;color:var(--cyan)"></i>':'')+'</div><div class="log-vals">'+(m.rec?'Rec:'+m.rec+' ':'')+(m.prod?'Prod:'+m.prod+' ':'')+(m.env?'Env:'+m.env+' ':'')+(m.desc?'Desc:'+m.desc+'':'')+'</div></div>').join('');}
   else if(hc)hc.style.display='none';
+  renderProdPessoas();
 }
 function adj(id,d){const e=document.getElementById(id);if(e){e.value=Math.max(0,(parseInt(e.value)||0)+d);updBuf();}}
 function updBuf(){
@@ -1407,6 +1625,98 @@ async function lancar(){
   state.movimentos[todayD].push({ts:new Date().toISOString(),who,rec,prod,env,desc});
   ['mv-rec','mv-prod','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
   saveCache();await pushToCloud();verificarAusencia();showLancamentoOK();renderOperacao();
+}
+
+// === PRODUÇÃO POR COLABORADOR (meta individual + motivo obrigatório) ===
+const MOTIVOS_NAO_META=['Baixa eficiência','Falta de material (Paletes)','Falta de material (Insumos)','Chegou atrasado','Faltou ao trabalho','Atestado médico','Inspeção de Qualidade','Outro'];
+let selTurnoProd=null;
+function _prodBuf(){
+  const todayD=today();
+  if(!state.producaoPessoas[todayD])state.producaoPessoas[todayD]={};
+  if(!state.producaoPessoas[todayD][selTurnoProd])state.producaoPessoas[todayD][selTurnoProd]={pessoas:{}};
+  return state.producaoPessoas[todayD][selTurnoProd];
+}
+function renderProdPessoas(){
+  const wrap=document.getElementById('prod-turno-btns-wrap');if(!wrap)return;
+  if(!selTurnoProd||!turnosAtivos().some(t=>t.key===selTurnoProd))selTurnoProd=turnosAtivos()[0].key;
+  const todayD=today();
+  wrap.innerHTML=turnosAtivos().map(t=>{
+    const done=state.producaoPessoas[todayD]&&state.producaoPessoas[todayD][t.key]&&state.producaoPessoas[todayD][t.key].savedAt;
+    const cls='btn btn-ghost btn-sm'+(t.key===selTurnoProd?' active':'');
+    return'<button class="'+cls+'" style="'+(t.key===selTurnoProd?'border-color:var(--cyan-bd);background:var(--cyan-bg);color:var(--cyan)':'')+'" onclick="selTurnoProd_(\''+t.key+'\')">'+t.label+(done?' <i class="ti ti-check" style="font-size:11px"></i>':'')+'</button>';
+  }).join('');
+  const info=calcMetaIndividual();
+  const dia=state.producaoPessoas[todayD]&&state.producaoPessoas[todayD][selTurnoProd];
+  const saved=dia&&dia.savedAt;
+  const infoEl=document.getElementById('prod-pessoas-info');
+  if(infoEl)infoEl.innerHTML='Meta individual hoje: <strong style="color:var(--cyan)">'+info.metaPorPessoa+'</strong> pallets/pessoa ('+info.qtd+' pessoa(s) · meta mensal '+info.metaMensal.toLocaleString('pt-BR')+')'+(saved?' <span style="color:var(--green);font-weight:700">· salvo</span>':'');
+  const colabs=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===selTurnoProd);
+  const listEl=document.getElementById('prod-pessoas-list');if(!listEl)return;
+  if(!colabs.length){listEl.innerHTML='<div class="empty" style="padding:16px 0"><i class="ti ti-users"></i><h3>Nenhum colaborador de Recuperação de Pallets nesse turno</h3></div>';return;}
+  const pessoas=(dia&&dia.pessoas)||{};
+  listEl.innerHTML=colabs.map(c=>{
+    const reg=pessoas[c.nome]||{prod:0,motivo:'',motivoDesc:''};
+    const abaixo=reg.prod<info.metaPorPessoa;
+    const safeId=c.nome.replace(/[^a-zA-Z0-9]/g,'_');
+    return'<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
+      '<div style="font-size:13px;font-weight:600;color:var(--text)">'+c.nome+'</div>'+
+      '<div class="num-wrap" style="width:140px"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+c.nome+'\',-1)">−</button><input type="number" min="0" '+(saved?'disabled':'')+' value="'+reg.prod+'" oninput="setProdPessoa(\''+c.nome+'\',this.value)"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+c.nome+'\',1)">+</button></div>'+
+      '</div>'+
+      (abaixo&&!saved?'<select id="motivo-'+safeId+'" style="width:100%;margin-top:8px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px" onchange="setMotivoPessoa(\''+c.nome+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
+        MOTIVOS_NAO_META.map(m=>'<option value="'+m+'" '+(reg.motivo===m?'selected':'')+'>'+m+'</option>').join('')+
+      '</select>':'')+
+      (abaixo&&saved&&reg.motivo?'<div style="font-size:11px;color:var(--text2);margin-top:4px">Motivo: '+reg.motivo+'</div>':'')+
+    '</div>';
+  }).join('')+
+  (saved?
+    '<button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="unlockProdPessoas()"><i class="ti ti-lock-open" style="font-size:13px"></i> Editar</button>'
+    :
+    '<button class="btn btn-primary" style="margin-top:12px" onclick="salvarProducaoPessoas()"><i class="ti ti-check" style="font-size:16px"></i> Salvar produção do turno</button>'
+  );
+}
+function selTurnoProd_(t){selTurnoProd=t;renderProdPessoas();}
+function setProdPessoa(nome,val){
+  const dia=_prodBuf();
+  if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
+  dia.pessoas[nome].prod=Math.max(0,parseInt(val)||0);
+  renderProdPessoas();
+}
+function adjProdPessoa(nome,d){
+  const dia=_prodBuf();
+  if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
+  dia.pessoas[nome].prod=Math.max(0,(dia.pessoas[nome].prod||0)+d);
+  renderProdPessoas();
+}
+function setMotivoPessoa(nome,val){
+  const dia=_prodBuf();
+  if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
+  dia.pessoas[nome].motivo=val;
+}
+async function salvarProducaoPessoas(){
+  const todayD=today();
+  const dia=_prodBuf();
+  const info=calcMetaIndividual();
+  const colabs=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===selTurnoProd);
+  for(const c of colabs){
+    const reg=dia.pessoas[c.nome];
+    const prod=reg?(reg.prod||0):0;
+    if(prod<info.metaPorPessoa&&(!reg||!reg.motivo)){
+      showToast('Informe o motivo de '+c.nome+' não bater a meta.','warn');
+      return;
+    }
+  }
+  dia.savedAt=new Date().toISOString();
+  const totalTurno=colabs.reduce((s,c)=>s+((dia.pessoas[c.nome]&&dia.pessoas[c.nome].prod)||0),0);
+  const who=currentUser?currentUser.user:'Desconhecido';
+  if(!state.movimentos[todayD])state.movimentos[todayD]=[];
+  state.movimentos[todayD].push({ts:new Date().toISOString(),who,rec:0,prod:totalTurno,env:0,desc:0,porPessoa:true,turno:selTurnoProd});
+  saveCache();await pushToCloud();showToast('Produção do turno salva!','ok');renderProdPessoas();renderOperacao();
+}
+function unlockProdPessoas(){
+  const dia=_prodBuf();
+  delete dia.savedAt;
+  renderProdPessoas();
 }
 
 // === EDICAO E LANCAMENTO RETROATIVO DE MOVIMENTOS (PALLETS) ===
@@ -1545,7 +1855,7 @@ function renderEquipe(){
   var colabs=colaboradoresAtivos();
   var html='<div class="card"><div class="card-title"><i class="ti ti-id-badge"></i>Colaboradores ('+colabs.length+')'+(isAdmin?'<button onclick="addColab()" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-plus" style="font-size:13px"></i> Adicionar</button>':'')+'</div>';
   if(!colabs.length){html+='<div class="empty" style="padding:24px 0"><i class="ti ti-users"></i><h3>Nenhum colaborador</h3></div>';}
-  else{colabs.forEach(function(c){var i=state.colaboradores.indexOf(c);html+='<div class="colab-item"><div class="colab-av">'+c.nome.slice(0,2).toUpperCase()+'</div><div style="flex:1;min-width:0"><div class="colab-name">'+c.nome+'</div><div class="colab-role">Turno '+c.turno+(c.cargo?' · '+c.cargo:'')+'</div></div>'+(isAdmin?'<button onclick="editColab('+i+')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text2);font-size:11px;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')+'</div>';});}
+  else{colabs.forEach(function(c){var i=state.colaboradores.indexOf(c);html+='<div class="colab-item"><div class="colab-av">'+c.nome.slice(0,2).toUpperCase()+'</div><div style="flex:1;min-width:0"><div class="colab-name">'+c.nome+'</div><div class="colab-role">'+turnoInfo(c.turno).label+(c.cargo?' · '+c.cargo:'')+(c.atividade&&c.atividade!=='Recuperação de Pallets'?' · '+c.atividade:'')+'</div></div>'+(isAdmin?'<button onclick="editColab('+i+')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text2);font-size:11px;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')+'</div>';});}
   html+='</div>';
   if(canDelete){
     var excluidos=state.colaboradores.filter(function(c){return c.ativo===false;});
@@ -1573,8 +1883,11 @@ function openColabModal(idx){
   document.getElementById('modal-title-text').textContent = isEdit ? 'Editar colaborador' : 'Novo colaborador';
   document.getElementById('modal-icon').className = 'ti ti-id-badge';
   document.getElementById('modal-nome').value = isEdit ? c.nome : '';
+  const dOpt=document.getElementById('modal-turno-d-opt');
+  if(dOpt)dOpt.style.display=(state.turnoExtra&&state.turnoExtra.ativo)?'block':'none';
   document.getElementById('modal-turno').value = isEdit ? c.turno : 'A';
   document.getElementById('modal-cargo').value = isEdit ? (c.cargo||'') : 'Operador';
+  document.getElementById('modal-atividade').value = isEdit ? (c.atividade||'Recuperação de Pallets') : 'Recuperação de Pallets';
   document.getElementById('modal-delete-btn').style.display = (isEdit&&currentRole==='superadmin') ? 'block' : 'none';
   document.getElementById('modal-save-btn').className = 'modal-btn-primary';
   document.getElementById('colab-modal').style.display = 'flex';
@@ -1587,14 +1900,15 @@ async function saveColabModal(){
   const nome = document.getElementById('modal-nome').value.trim();
   const turno = document.getElementById('modal-turno').value;
   const cargo = document.getElementById('modal-cargo').value.trim() || 'Operador';
+  const atividade = document.getElementById('modal-atividade').value || 'Recuperação de Pallets';
   if(!nome){ document.getElementById('modal-nome').style.borderColor='var(--red)'; return; }
   document.getElementById('modal-nome').style.borderColor='';
   if(_modalEditIdx >= 0){
     const c = state.colaboradores[_modalEditIdx];
-    state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo});
+    state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo,atividade});
     showToast('Colaborador atualizado!','ok');
   } else {
-    state.colaboradores.push({nome,turno,cargo,wpp:''});
+    state.colaboradores.push({nome,turno,cargo,atividade,wpp:''});
     showToast('Colaborador adicionado!','ok');
   }
   closeColabModal();
@@ -1677,6 +1991,21 @@ function renderConfig(){
       html+='<input type="number" id="buffer-corr-input" placeholder="Novo valor correto" style="flex:1;padding:10px 13px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px">';
       html+='<button class="btn btn-primary btn-sm" onclick="salvarNovoBuffer()"><i class="ti ti-check"></i> Salvar</button>';
       html+='<button class="btn btn-ghost btn-sm" style="border-color:var(--red-bd);color:var(--red)" onclick="zerarBuffer()"><i class="ti ti-backspace"></i> Zerar</button>';
+      html+='</div></div>';
+    }
+    if(podeEditarPresenca()){
+      var metaMensalAtual=getMetaMensal();
+      var infoMeta=calcMetaIndividual();
+      html+='<div class="card" style="border-color:var(--cyan-bd)">';
+      html+='<div class="card-title"><i class="ti ti-target-arrow" style="color:var(--cyan)"></i> Meta Mensal & Turno Extraordinário</div>';
+      html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta mensal (pallets)</div><div class="cfg-sub">Usada pra calcular a meta diária individual de cada colaborador</div></div><input type="number" id="cfg-meta-mensal" value="'+metaMensalAtual+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
+      html+='<div class="cfg-row"><div><div class="cfg-lbl">Saldo inicial do buffer</div><div class="cfg-sub">Somado ao cálculo produzidos − enviados</div></div><input type="number" id="cfg-buffer-saldo" value="'+(state.bufferSaldoInicial||0)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
+      html+='<button class="btn btn-primary btn-sm" style="margin-top:6px;margin-bottom:14px" onclick="salvarConfigMeta()"><i class="ti ti-check"></i> Salvar</button>';
+      html+='<div style="font-size:11px;color:var(--text2);margin-bottom:14px">Meta diária individual atual: <strong style="color:var(--cyan)">'+infoMeta.metaPorPessoa+'</strong> pallets/pessoa · '+infoMeta.qtd+' pessoa(s) produzindo · '+infoMeta.diasUteisMes+' dias úteis no mês</div>';
+      html+='<div style="border-top:1px solid var(--border);padding-top:14px">';
+      html+='<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer;margin-bottom:10px"><input type="checkbox" id="cfg-turno-extra-ativo" '+((state.turnoExtra&&state.turnoExtra.ativo)?'checked':'')+' style="width:16px;height:16px"> Ativar Turno Extraordinário (3º turno opcional)</label>';
+      html+='<input type="text" id="cfg-turno-extra-horario" placeholder="Ex: 06h00–14h20" value="'+((state.turnoExtra&&state.turnoExtra.horario)||'')+'" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;margin-bottom:10px">';
+      html+='<button class="btn btn-primary btn-sm" onclick="salvarTurnoExtra()"><i class="ti ti-check"></i> Salvar turno extraordinário</button>';
       html+='</div></div>';
     }
     html+='<div class="card" style="border-color:var(--red-bd)">';
@@ -1808,7 +2137,7 @@ async function pushForceToCloud(){
   // que a nuvem realmente zerou antes de reportar sucesso.
   resetLock=true;
   setSyncDot('syncing','Salvando...');
-  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,auditoria:state.auditoria||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||''};
+  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||''};
   let ok=false;
   for(let tentativa=0;tentativa<3&&!ok;tentativa++){
     try{

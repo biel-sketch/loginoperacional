@@ -99,7 +99,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .num-wrap{display:flex;align-items:center;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:rgba(255,255,255,.04)}
 .num-btn{width:46px;height:50px;border:none;background:transparent;font-size:20px;cursor:pointer;color:var(--cyan);flex-shrink:0;transition:background .12s}
 .num-btn:active{background:var(--cyan-bg)}
-.num-wrap input{flex:1;border:none;background:transparent;color:var(--text);font-size:22px;font-weight:700;text-align:center;padding:0;font-family:inherit}
+.num-wrap input{flex:1;min-width:0;width:0;border:none;background:transparent;color:var(--text);font-size:22px;font-weight:700;text-align:center;padding:0;font-family:inherit}
 .num-wrap input:focus{outline:none}
 .pf-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:flex;align-items:center;gap:6px}
 .tt-badge{font-size:10px;padding:2px 7px;background:var(--bg4);border-radius:10px;color:var(--text3);border:1px solid var(--border);font-weight:600}
@@ -1675,7 +1675,7 @@ function renderProdPessoas(){
     return'<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
       '<div style="font-size:13px;font-weight:600;color:var(--text)">'+c.nome+'</div>'+
-      '<div class="num-wrap" style="width:140px"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" '+(saved?'disabled':'')+' value="'+reg.prod+'" oninput="setProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderProdPessoas()"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
+      '<div class="num-wrap" style="width:170px"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" '+(saved?'disabled':'')+' value="'+reg.prod+'" oninput="setProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderProdPessoas()"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
       '</div>'+
       (abaixo&&!saved?'<select id="motivo-'+safeId+'" style="width:100%;margin-top:8px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px" onchange="setMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
         MOTIVOS_NAO_META.map(m=>'<option value="'+m+'" '+(reg.motivo===m?'selected':'')+'>'+m+'</option>').join('')+

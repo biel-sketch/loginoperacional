@@ -1619,8 +1619,14 @@ async function lancar(){
   const env=parseInt(document.getElementById('mv-env')?.value)||0;
   const desc=parseInt(document.getElementById('mv-desc')?.value)||0;
   if(!rec&&!prod&&!env&&!desc){showToast('Informe pelo menos um valor.','warn');return;}
-  const who=currentUser?currentUser.user:'Desconhecido';
   const todayD=today();
+  const diaProd=state.producaoPessoas[todayD]&&state.producaoPessoas[todayD][selTurnoProd];
+  if(!diaProd||!diaProd.savedAt){
+    showToast('Preencha e salve a produção individual do turno antes de lançar.','warn');
+    const sec=document.getElementById('prod-pessoas-section');if(sec)sec.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+  const who=currentUser?currentUser.user:'Desconhecido';
   if(!state.movimentos[todayD])state.movimentos[todayD]=[];
   state.movimentos[todayD].push({ts:new Date().toISOString(),who,rec,prod,env,desc});
   ['mv-rec','mv-prod','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});

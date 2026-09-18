@@ -660,17 +660,30 @@ async function fbFetch(method='GET', body=null){
   return r.json();
 }
 
+function _mantemLocalNoMerge(localSavedAt,cloudExiste,cloudSavedAt){
+  // Regra única usada em toda mesclagem por data+turno:
+  // - rascunho local ainda não salvo -> sempre protege (nunca perde o que está sendo digitado)
+  // - nuvem não tem esse turno (foi zerado/resetado por um admin) -> respeita o reset, descarta o local
+  // - os dois já salvos -> o savedAt mais recente vence
+  if(!localSavedAt)return true;
+  if(!cloudExiste)return false;
+  return localSavedAt>=cloudSavedAt;
+}
 function mergeDatedTurnos(localObj,cloudObj){
   // Mescla objetos no formato {data:{turno:{savedAt,...}}} sem nunca descartar
   // um rascunho local ainda não salvo (savedAt vazio) — evita que a sincronização
-  // de fundo apague o que está sendo digitado antes de confirmar.
+  // de fundo apague o que está sendo digitado antes de confirmar. Mas se a nuvem
+  // não tem mais aquele turno (foi zerado), o reset é respeitado.
   const out=JSON.parse(JSON.stringify(cloudObj||{}));
   Object.entries(localObj||{}).forEach(([d,turnos])=>{
-    if(!out[d])out[d]={};
     Object.entries(turnos||{}).forEach(([t,v])=>{
       const localSavedAt=(v&&v.savedAt)||'';
-      const cloudSavedAt=(out[d][t]&&out[d][t].savedAt)||'';
-      if(!localSavedAt||localSavedAt>=cloudSavedAt)out[d][t]=v;
+      const cloudExiste=!!(cloudObj&&cloudObj[d]&&cloudObj[d][t]);
+      const cloudSavedAt=cloudExiste?(cloudObj[d][t].savedAt||''):'';
+      if(_mantemLocalNoMerge(localSavedAt,cloudExiste,cloudSavedAt)){
+        if(!out[d])out[d]={};
+        out[d][t]=v;
+      }
     });
   });
   return out;
@@ -882,20 +895,26 @@ async function pushToCloud(){
           });
           const mp=JSON.parse(JSON.stringify(cloud.presencas||{}));
           Object.entries(state.presencas).forEach(([d,ts])=>{
-            if(!mp[d])mp[d]={};
             Object.entries(ts).forEach(([t,v])=>{
-              const cs=mp[d]&&mp[d][t]&&mp[d][t].savedAt||'';
-              const ls=v&&v.savedAt||'';
-              if(ls>=cs)mp[d][t]=v;
+              const localSavedAt=v&&v.savedAt||'';
+              const cloudExiste=!!(cloud.presencas&&cloud.presencas[d]&&cloud.presencas[d][t]);
+              const cloudSavedAt=cloudExiste?(cloud.presencas[d][t].savedAt||''):'';
+              if(_mantemLocalNoMerge(localSavedAt,cloudExiste,cloudSavedAt)){
+                if(!mp[d])mp[d]={};
+                mp[d][t]=v;
+              }
             });
           });
           const mpp=JSON.parse(JSON.stringify(cloud.producaoPessoas||{}));
           Object.entries(state.producaoPessoas||{}).forEach(([d,ts])=>{
-            if(!mpp[d])mpp[d]={};
             Object.entries(ts).forEach(([t,v])=>{
-              const cs=mpp[d]&&mpp[d][t]&&mpp[d][t].savedAt||'';
-              const ls=v&&v.savedAt||'';
-              if(ls>=cs)mpp[d][t]=v;
+              const localSavedAt=v&&v.savedAt||'';
+              const cloudExiste=!!(cloud.producaoPessoas&&cloud.producaoPessoas[d]&&cloud.producaoPessoas[d][t]);
+              const cloudSavedAt=cloudExiste?(cloud.producaoPessoas[d][t].savedAt||''):'';
+              if(_mantemLocalNoMerge(localSavedAt,cloudExiste,cloudSavedAt)){
+                if(!mpp[d])mpp[d]={};
+                mpp[d][t]=v;
+              }
             });
           });
           // Merge colaboradores por nome: mantém edições/adições locais, mas
@@ -1220,6 +1239,45 @@ function buildProducaoPorTurnoCard(){
     (semTurno>0?linha('Sem turno (retroativo)',semTurno,'var(--text2)'):'')+
     '</div>';
 }
+function buildProducaoIndividualHojeCard(){
+  const todayD=today();
+  const info=calcMetaIndividual();
+  const producers=colaboradoresAtivos().filter(produzPallets);
+  if(!producers.length)return'';
+  const porTurno={};
+  producers.forEach(c=>{
+    const reg=state.producaoPessoas[todayD]&&state.producaoPessoas[todayD][c.turno]&&state.producaoPessoas[todayD][c.turno].pessoas&&state.producaoPessoas[todayD][c.turno].pessoas[c.nome];
+    const prod=reg?(reg.prod||0):0;
+    if(!porTurno[c.turno])porTurno[c.turno]=[];
+    porTurno[c.turno].push({nome:c.nome,prod});
+  });
+  const turnosComGente=turnosAtivos().filter(t=>porTurno[t.key]&&porTurno[t.key].length);
+  if(!turnosComGente.length)return'';
+  const linhaHtml=(l,max)=>{
+    const cor=l.prod>=info.metaPorPessoa?'var(--green)':'var(--red)';
+    return'<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)">'+
+      '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">'+l.nome+'</div>'+
+      '<div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-top:4px"><div style="height:100%;width:'+Math.max(2,Math.round(l.prod/max*100))+'%;background:'+cor+'"></div></div></div>'+
+      '<div style="font-weight:700;font-size:13px;color:'+cor+';flex-shrink:0">'+l.prod.toLocaleString('pt-BR')+'</div></div>';
+  };
+  const grupoHtml=(t)=>{
+    const lista=porTurno[t.key].slice().sort((a,b)=>b.prod-a.prod);
+    const max=Math.max(1,...lista.map(l=>l.prod));
+    const salvo=state.producaoPessoas[todayD]&&state.producaoPessoas[todayD][t.key]&&state.producaoPessoas[todayD][t.key].savedAt;
+    const totalTurno=lista.reduce((s,l)=>s+l.prod,0);
+    return'<div style="margin-bottom:16px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
+      '<div style="font-size:12px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.05em">'+t.label+'</div>'+
+      '<div style="font-size:11px;color:var(--text2)">'+(salvo?'<span style="color:var(--green)">salvo</span>':'<span style="color:var(--warn)">ainda não salvo</span>')+' · total '+totalTurno.toLocaleString('pt-BR')+'</div>'+
+      '</div>'+
+      lista.map(l=>linhaHtml(l,max)).join('')+
+      '</div>';
+  };
+  return'<div class="card"><div class="card-title"><i class="ti ti-users"></i>Produção Individual por Turno (hoje)</div>'+
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:14px">Meta individual: '+info.metaPorPessoa+' pallets/pessoa · não soma no total geral</div>'+
+    turnosComGente.map(grupoHtml).join('')+
+    '</div>';
+}
 function renderDia(){
   const cont=document.getElementById('dia-content');
   if(!selDate){cont.innerHTML='<div class="empty"><i class="ti ti-database-off"></i><h3>Nenhum dado ainda</h3><p>Aguarde a sincronização</p></div>';return;}
@@ -1252,6 +1310,7 @@ function renderDia(){
   cont.innerHTML=
     buildMetaMensalCards()+
     buildProducaoPorTurnoCard()+
+    buildProducaoIndividualHojeCard()+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;color:var(--text2)">'+dateFull(selDate)+'</div>'+lastTag+'</div>'+
     '<div class="sec">Pallets — totais acumulados</div>'+
     '<div class="kpi-grid">'+

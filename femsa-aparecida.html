@@ -2029,11 +2029,12 @@ function renderConfig(){
     html+='<div id="reset-unlocked-section" style="display:none">';
     html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;padding:8px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;font-size:12px;color:var(--red);font-weight:700">';
     html+='<i class="ti ti-alert-triangle"></i> Desbloqueado — ação irreversível</div>';
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">';
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">';
     html+='<button class="btn btn-danger btn-sm" onclick="resetPallets()"><i class="ti ti-stack-2"></i> Zerar Pallets</button>';
     html+='<button class="btn btn-danger btn-sm" onclick="resetPresencas()"><i class="ti ti-users-minus"></i> Zerar Presenças</button>';
+    html+='<button class="btn btn-danger btn-sm" onclick="resetProducaoIndividual()"><i class="ti ti-chart-bar-off"></i> Zerar Produção Individual</button>';
     html+='<button class="btn btn-danger btn-sm" onclick="resetColaboradores()"><i class="ti ti-id-badge-off"></i> Zerar Colaboradores</button>';
-    html+='<button class="btn btn-danger" style="grid-column:span 3;margin-top:4px" onclick="resetTudo()"><i class="ti ti-trash"></i> Zerar TUDO</button>';
+    html+='<button class="btn btn-danger" style="grid-column:span 4;margin-top:4px" onclick="resetTudo()"><i class="ti ti-trash"></i> Zerar TUDO</button>';
     html+='</div></div></div>';
     // Notificações WhatsApp
     const notifRecip = NOTIF_RECIPIENTS[0];
@@ -2120,6 +2121,15 @@ async function resetPresencas(){
   document.getElementById('reset-lock-section').style.display='block';
   document.getElementById('reset-unlocked-section').style.display='none';
 }
+async function resetProducaoIndividual(){
+  if(!confirm('Zerar TODA a produção individual dos colaboradores? Isso não afeta pallets, presenças ou a meta mensal. Irreversível.'))return;
+  state.producaoPessoas={};logAuditoria('Zerou toda a produção individual dos colaboradores');saveCache();
+  const ok=await pushForceToCloud();
+  showToast(ok?'Produção individual zerada!':'Nao foi possivel confirmar na nuvem. Verifique a conexao e tente de novo.',ok?'ok':'err');
+  renderAll();
+  document.getElementById('reset-lock-section').style.display='block';
+  document.getElementById('reset-unlocked-section').style.display='none';
+}
 async function resetColaboradores(){
   if(!confirm('Zerar TODOS os colaboradores cadastrados? Isso remove a equipe inteira (nomes, turnos, cargos). Irreversível.'))return;
   if(!confirm('Tem certeza mesmo? Essa ação apaga o cadastro de TODOS os colaboradores e não pode ser desfeita.'))return;
@@ -2131,8 +2141,8 @@ async function resetColaboradores(){
   document.getElementById('reset-unlocked-section').style.display='none';
 }
 async function resetTudo(){
-  if(!confirm('Zerar TUDO (pallets + presenças)? Irreversível.'))return;
-  state.movimentos={};state.presencas={};state.bufferAjuste=0;state.bufferAjusteTs=new Date().toISOString();logAuditoria('Zerou pallets + presencas (reset total)');saveCache();
+  if(!confirm('Zerar TUDO (pallets + presenças + produção individual)? Irreversível.'))return;
+  state.movimentos={};state.presencas={};state.producaoPessoas={};state.bufferAjuste=0;state.bufferAjusteTs=new Date().toISOString();logAuditoria('Zerou pallets + presencas + producao individual (reset total)');saveCache();
   const ok=await pushForceToCloud();
   showToast(ok?'Todos os dados zerados!':'Nao foi possivel confirmar na nuvem. Verifique a conexao e tente de novo.',ok?'ok':'err');
   renderAll();

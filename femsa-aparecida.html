@@ -1200,6 +1200,26 @@ function buildMetaMensalCards(){
     '<div class="kpi"><div class="kpi-lbl">Ritmo diário necessário</div><div class="kpi-val red">'+ritmoDiarioNec.toLocaleString('pt-BR')+'</div><div class="kpi-sub">vs. meta diária atual de '+metaDoDia.toLocaleString('pt-BR')+' · '+ritmoPorPessoa+'/pessoa/dia</div></div>'+
     '</div>';
 }
+function buildProducaoPorTurnoCard(){
+  const todayD=today();
+  const movs=state.movimentos[todayD]||[];
+  const porTurno={};
+  let semTurno=0;
+  movs.forEach(m=>{
+    if(m.turno)porTurno[m.turno]=(porTurno[m.turno]||0)+(m.prod||0);
+    else semTurno+=(m.prod||0);
+  });
+  const turnos=turnosAtivos();
+  const max=Math.max(1,...turnos.map(t=>porTurno[t.key]||0),semTurno);
+  const linha=(label,val,cor)=>'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">'+
+    '<div style="width:140px;flex-shrink:0;font-size:13px;font-weight:600;color:var(--text)">'+label+'</div>'+
+    '<div style="flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.max(2,Math.round(val/max*100))+'%;background:'+cor+'"></div></div>'+
+    '<div style="width:60px;text-align:right;font-weight:700;font-size:13px;color:'+cor+'">'+val.toLocaleString('pt-BR')+'</div></div>';
+  return'<div class="card"><div class="card-title"><i class="ti ti-chart-bar"></i>Produção por Turno (hoje)</div>'+
+    turnos.map(t=>linha(t.label,porTurno[t.key]||0,'var(--cyan)')).join('')+
+    (semTurno>0?linha('Sem turno (retroativo)',semTurno,'var(--text2)'):'')+
+    '</div>';
+}
 function renderDia(){
   const cont=document.getElementById('dia-content');
   if(!selDate){cont.innerHTML='<div class="empty"><i class="ti ti-database-off"></i><h3>Nenhum dado ainda</h3><p>Aguarde a sincronização</p></div>';return;}
@@ -1231,6 +1251,7 @@ function renderDia(){
   const movLog=movs.length?'<div class="card"><div class="card-title"><i class="ti ti-history"></i>Lançamentos '+lastTag+'</div>'+movs.slice().reverse().map(m=>{const pts=[];if(m.rec)pts.push('Rec:<b>'+m.rec+'</b>');if(m.prod)pts.push('Prod:<b>'+m.prod+'</b>');if(m.env)pts.push('Env:<b>'+m.env+'</b>');if(m.desc)pts.push('Desc:<b>'+m.desc+'</b>');return'<div class="log-entry"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · <strong>'+m.who+'</strong></div><div class="log-vals">'+pts.join(' · ')+'</div></div>';}).join('')+'</div>':'';
   cont.innerHTML=
     buildMetaMensalCards()+
+    buildProducaoPorTurnoCard()+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;color:var(--text2)">'+dateFull(selDate)+'</div>'+lastTag+'</div>'+
     '<div class="sec">Pallets — totais acumulados</div>'+
     '<div class="kpi-grid">'+
@@ -1660,7 +1681,7 @@ async function lancar(){
   }
   const who=currentUser?currentUser.user:'Desconhecido';
   if(!state.movimentos[todayD])state.movimentos[todayD]=[];
-  state.movimentos[todayD].push({ts:new Date().toISOString(),who,rec,prod,env,desc});
+  state.movimentos[todayD].push({ts:new Date().toISOString(),who,rec,prod,env,desc,turno:selTurnoProd});
   ['mv-rec','mv-prod','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
   saveCache();await pushToCloud();verificarAusencia();showLancamentoOK();renderOperacao();
 }
@@ -2191,7 +2212,7 @@ async function pushForceToCloud(){
       const rc=await fetch(FB_URL);
       if(!rc.ok)throw new Error(rc.status);
       const check=await rc.json()||{};
-      ok=JSON.stringify(check.movimentos||{})===JSON.stringify(payload.movimentos)&&JSON.stringify(check.presencas||{})===JSON.stringify(payload.presencas)&&JSON.stringify(check.colaboradores||[])===JSON.stringify(payload.colaboradores);
+      ok=JSON.stringify(check.movimentos||{})===JSON.stringify(payload.movimentos)&&JSON.stringify(check.presencas||{})===JSON.stringify(payload.presencas)&&JSON.stringify(check.colaboradores||[])===JSON.stringify(payload.colaboradores)&&JSON.stringify(check.producaoPessoas||{})===JSON.stringify(payload.producaoPessoas);
     }catch(e){
       console.error('ForcePush tentativa '+tentativa+':',e);
     }

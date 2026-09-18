@@ -504,7 +504,7 @@ const LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1
 
 
 <script>
-const META_DIARIA=2400,SYNC_INTERVAL=60000;
+const META_DIARIA=2400,SYNC_INTERVAL=180000;
 const FB_URL='https://painel-operacional-96032-default-rtdb.firebaseio.com/aparecida.json';
 const LS_CACHE='femsa_cache',LS_UNIT='femsa_unit';
 const USERS=[
@@ -660,12 +660,27 @@ async function fbFetch(method='GET', body=null){
   return r.json();
 }
 
+function mergeDatedTurnos(localObj,cloudObj){
+  // Mescla objetos no formato {data:{turno:{savedAt,...}}} sem nunca descartar
+  // um rascunho local ainda não salvo (savedAt vazio) — evita que a sincronização
+  // de fundo apague o que está sendo digitado antes de confirmar.
+  const out=JSON.parse(JSON.stringify(cloudObj||{}));
+  Object.entries(localObj||{}).forEach(([d,turnos])=>{
+    if(!out[d])out[d]={};
+    Object.entries(turnos||{}).forEach(([t,v])=>{
+      const localSavedAt=(v&&v.savedAt)||'';
+      const cloudSavedAt=(out[d][t]&&out[d][t].savedAt)||'';
+      if(!localSavedAt||localSavedAt>=cloudSavedAt)out[d][t]=v;
+    });
+  });
+  return out;
+}
 function mergeState(cloud){
   if(!cloud)return;
   if(cloud.colaboradores&&cloud.colaboradores.length)state.colaboradores=cloud.colaboradores;
   if(cloud.movimentos)state.movimentos=cloud.movimentos;
-  if(cloud.presencas)state.presencas=cloud.presencas;
-  if(cloud.producaoPessoas)state.producaoPessoas=cloud.producaoPessoas;
+  if(cloud.presencas)state.presencas=mergeDatedTurnos(state.presencas,cloud.presencas);
+  if(cloud.producaoPessoas)state.producaoPessoas=mergeDatedTurnos(state.producaoPessoas,cloud.producaoPessoas);
   if(cloud.auditoria)state.auditoria=cloud.auditoria;
   if(cloud.bufferAjuste!==undefined)state.bufferAjuste=cloud.bufferAjuste;
   if(cloud.bufferAjusteTs!==undefined)state.bufferAjusteTs=cloud.bufferAjusteTs;
@@ -811,6 +826,13 @@ function verificarNotificacoes(){
 
 setInterval(verificarNotificacoes, 60000);
 
+function usuarioEstaEditando(){
+  const ae=document.activeElement;
+  if(ae&&/^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName))return true;
+  return['editmov-modal','retro-modal','colab-modal','edit-pres-modal','ferias-modal'].some(id=>{
+    const el=document.getElementById(id);return el&&el.style.display==='flex';
+  });
+}
 async function syncFromCloud(){
   if(isSyncing||resetLock)return;
   isSyncing=true;
@@ -834,7 +856,10 @@ async function syncFromCloud(){
     setSyncDot('err','Sem conexão');
     console.error('Sync:',e);
   }
-  isSyncing=false;renderAll();
+  isSyncing=false;
+  // Se o usuário está digitando ou com um modal aberto, os dados já foram
+  // mesclados no state (nada se perde) — só adia o repaint pra não tirar o foco.
+  if(!usuarioEstaEditando())renderAll();
 }
 
 async function pushToCloud(){

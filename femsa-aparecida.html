@@ -343,9 +343,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
               <div style="font-size:12px;color:var(--text2);margin-top:2px">Dados sincronizados</div></div>
             </div>
           </div>
-          <div class="card" id="prod-pessoas-section" style="border-color:var(--warn-bd)">
-            <div class="card-title"><i class="ti ti-users" style="color:var(--warn)"></i> Produção por Colaborador <span style="font-size:11px;color:var(--warn);font-weight:700;text-transform:uppercase;letter-spacing:.05em">· obrigatório</span></div>
-            <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Lance a produção de cada colaborador de Recuperação de Pallets deste turno antes de lançar a movimentação geral. É só pra acompanhamento individual — <strong>não soma</strong> no total de Produzidos nem na meta mensal.</div>
+          <div class="card" id="prod-pessoas-section" style="border-color:var(--cyan-bd)">
+            <div class="card-title"><i class="ti ti-users" style="color:var(--cyan)"></i> Produção por Colaborador</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Lance a produção de cada colaborador de Recuperação de Pallets deste turno. Pode lançar isso, o lançamento geral abaixo, ou os dois — são independentes. É só pra acompanhamento individual — <strong>não soma</strong> no total de Produzidos nem na meta mensal.</div>
             <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="prod-turno-btns-wrap"></div>
             <div id="prod-pessoas-info" style="font-size:12px;color:var(--text2);margin-bottom:10px"></div>
             <div id="prod-pessoas-list"></div>
@@ -401,11 +401,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
  <div class="modal-title"><i class="ti ti-calendar-plus" style="color:var(--cyan)"></i>Lançamento retroativo</div>
  <div class="modal-field"><label>Data</label><input type="date" id="retro-date" onchange="renderRetroProdPessoas()"></div>
  <div class="modal-field"><label>Turno</label><select id="retro-turno" onchange="renderRetroProdPessoas()"></select></div>
+ <div style="display:flex;gap:16px;margin:4px 0 14px">
+ <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" id="retro-incl-geral" checked onchange="toggleRetroSecoes()" style="width:15px;height:15px"> Lançamento geral</label>
+ <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" id="retro-incl-individual" checked onchange="toggleRetroSecoes()" style="width:15px;height:15px"> Produção individual</label>
+ </div>
  <div id="retro-prod-pessoas"></div>
+ <div id="retro-geral-fields">
  <div class="modal-field"><label>Recebidos</label><input type="number" id="retro-rec" min="0" inputmode="numeric"></div>
  <div class="modal-field"><label>Produzidos</label><input type="number" id="retro-prod" min="0" inputmode="numeric"></div>
  <div class="modal-field"><label>Enviados</label><input type="number" id="retro-env" min="0" inputmode="numeric"></div>
  <div class="modal-field"><label>Descarte</label><input type="number" id="retro-desc" min="0" inputmode="numeric"></div>
+ </div>
  <div class="modal-btns">
  <button class="modal-btn-ghost" onclick="closeRetroModal()">Cancelar</button>
  <button class="modal-btn-primary" onclick="lancarRetroativo()"><i class="ti ti-check" style="font-size:14px"></i> Lançar</button>
@@ -1795,12 +1801,6 @@ async function lancar(){
   const desc=parseInt(document.getElementById('mv-desc')?.value)||0;
   if(!rec&&!prod&&!env&&!desc){showToast('Informe pelo menos um valor.','warn');return;}
   const todayD=today();
-  const diaProd=state.producaoPessoas[todayD]&&state.producaoPessoas[todayD][selTurnoProd];
-  if(!diaProd||!diaProd.savedAt){
-    showToast('Preencha e salve a produção individual do turno antes de lançar.','warn');
-    const sec=document.getElementById('prod-pessoas-section');if(sec)sec.scrollIntoView({behavior:'smooth',block:'center'});
-    return;
-  }
   const who=currentUser?currentUser.user:'Desconhecido';
   if(!state.movimentos[todayD])state.movimentos[todayD]=[];
   state.movimentos[todayD].push({ts:new Date().toISOString(),who,rec,prod,env,desc,turno:selTurnoProd});
@@ -1902,8 +1902,17 @@ function abrirLancamentoRetroativo(){
   const tSel=document.getElementById('retro-turno');
   tSel.innerHTML=turnosAtivos().map(t=>'<option value="'+t.key+'">'+t.label+' — '+t.horario+'</option>').join('');
   ['retro-rec','retro-prod','retro-env','retro-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
+  document.getElementById('retro-incl-geral').checked=true;
+  document.getElementById('retro-incl-individual').checked=true;
   document.getElementById('retro-modal').style.display='flex';
-  renderRetroProdPessoas();
+  toggleRetroSecoes();
+}
+function toggleRetroSecoes(){
+  const geral=document.getElementById('retro-incl-geral').checked;
+  const individual=document.getElementById('retro-incl-individual').checked;
+  document.getElementById('retro-geral-fields').style.display=geral?'block':'none';
+  document.getElementById('retro-prod-pessoas').style.display=individual?'block':'none';
+  if(individual)renderRetroProdPessoas();
 }
 function closeRetroModal(){document.getElementById('retro-modal').style.display='none';}
 function _retroSel(){return{date:document.getElementById('retro-date').value,turno:document.getElementById('retro-turno').value};}
@@ -1955,28 +1964,36 @@ function setRetroMotivoPessoa(nome,val){
 async function lancarRetroativo(){
   const data=document.getElementById('retro-date').value;
   const turno=document.getElementById('retro-turno').value;
+  const inclGeral=document.getElementById('retro-incl-geral').checked;
+  const inclIndividual=document.getElementById('retro-incl-individual').checked;
   if(!data){showToast('Escolha uma data.','warn');return;}
   if(!turno){showToast('Escolha um turno.','warn');return;}
-  const rec=parseInt(document.getElementById('retro-rec').value)||0;
-  const prod=parseInt(document.getElementById('retro-prod').value)||0;
-  const env=parseInt(document.getElementById('retro-env').value)||0;
-  const desc=parseInt(document.getElementById('retro-desc').value)||0;
-  if(!rec&&!prod&&!env&&!desc){showToast('Informe pelo menos um valor.','warn');return;}
-  const info=calcMetaIndividual();
-  const colabsTurno=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===turno);
-  const diaProd=_prodBuf(data,turno);
-  for(const c of colabsTurno){
-    const reg=diaProd.pessoas[c.nome];
-    const p=reg?(reg.prod||0):0;
-    if(p<info.metaPorPessoa&&(!reg||!reg.motivo)){
-      showToast('Informe o motivo de '+c.nome+' não bater a meta individual desse turno.','warn');
-      return;
+  if(!inclGeral&&!inclIndividual){showToast('Marque ao menos uma opção: Lançamento geral ou Produção individual.','warn');return;}
+  const rec=inclGeral?(parseInt(document.getElementById('retro-rec').value)||0):0;
+  const prod=inclGeral?(parseInt(document.getElementById('retro-prod').value)||0):0;
+  const env=inclGeral?(parseInt(document.getElementById('retro-env').value)||0):0;
+  const desc=inclGeral?(parseInt(document.getElementById('retro-desc').value)||0):0;
+  if(inclGeral&&!rec&&!prod&&!env&&!desc){showToast('Informe pelo menos um valor no lançamento geral.','warn');return;}
+  let diaProd=null;
+  if(inclIndividual){
+    const info=calcMetaIndividual();
+    const colabsTurno=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===turno);
+    diaProd=_prodBuf(data,turno);
+    for(const c of colabsTurno){
+      const reg=diaProd.pessoas[c.nome];
+      const p=reg?(reg.prod||0):0;
+      if(p<info.metaPorPessoa&&(!reg||!reg.motivo)){
+        showToast('Informe o motivo de '+c.nome+' não bater a meta individual desse turno.','warn');
+        return;
+      }
     }
+    if(colabsTurno.length)diaProd.savedAt=new Date().toISOString();
   }
-  if(colabsTurno.length)diaProd.savedAt=new Date().toISOString();
-  const who=currentUser?currentUser.user:'Desconhecido';
-  if(!state.movimentos[data])state.movimentos[data]=[];
-  state.movimentos[data].push({ts:new Date().toISOString(),who,rec,prod,env,desc,turno,lancadoRetroativo:true});
+  if(inclGeral){
+    const who=currentUser?currentUser.user:'Desconhecido';
+    if(!state.movimentos[data])state.movimentos[data]=[];
+    state.movimentos[data].push({ts:new Date().toISOString(),who,rec,prod,env,desc,turno,lancadoRetroativo:true});
+  }
   closeRetroModal();
   saveCache();await pushToCloud();
   renderOperacao();

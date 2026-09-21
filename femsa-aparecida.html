@@ -704,10 +704,10 @@ async function fbFetch(method='GET', body=null){
 function _mantemLocalNoMerge(localSavedAt,cloudExiste,cloudSavedAt){
   // Regra única usada em toda mesclagem por data+turno:
   // - rascunho local ainda não salvo -> sempre protege (nunca perde o que está sendo digitado)
-  // - nuvem não tem esse turno (foi zerado/resetado por um admin) -> respeita o reset, descarta o local
-  // - os dois já salvos -> o savedAt mais recente vence
+  // - os dois já salvos -> o savedAt mais recente vence (nuvem sem esse registro = savedAt '' = local sempre vence,
+  //   o que cobre tanto "lançamento novo, ainda não sincronizado" quanto "foi resetado" — a favor do lançamento novo,
+  //   que é o caso do dia a dia; um reset explícito é reaplicado normalmente se o usuário clicar de novo)
   if(!localSavedAt)return true;
-  if(!cloudExiste)return false;
   return localSavedAt>=cloudSavedAt;
 }
 function mergeDatedTurnos(localObj,cloudObj){

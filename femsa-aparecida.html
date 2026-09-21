@@ -399,7 +399,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
  <div id="retro-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeRetroModal()">
  <div class="modal-box">
  <div class="modal-title"><i class="ti ti-calendar-plus" style="color:var(--cyan)"></i>Lançamento retroativo</div>
- <div class="modal-field"><label>Data</label><input type="date" id="retro-date"></div>
+ <div class="modal-field"><label>Data</label><input type="date" id="retro-date" onchange="renderRetroProdPessoas()"></div>
+ <div class="modal-field"><label>Turno</label><select id="retro-turno" onchange="renderRetroProdPessoas()"></select></div>
+ <div id="retro-prod-pessoas"></div>
  <div class="modal-field"><label>Recebidos</label><input type="number" id="retro-rec" min="0" inputmode="numeric"></div>
  <div class="modal-field"><label>Produzidos</label><input type="number" id="retro-prod" min="0" inputmode="numeric"></div>
  <div class="modal-field"><label>Enviados</label><input type="number" id="retro-env" min="0" inputmode="numeric"></div>
@@ -445,6 +447,39 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
       <button class="modal-btn-primary" id="modal-save-btn" onclick="saveColabModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
       <button class="modal-btn-ghost" onclick="closeColabModal()">Cancelar</button>
       <button class="modal-btn-danger" id="modal-delete-btn" style="display:none" onclick="deleteColabModal()"><i class="ti ti-trash" style="font-size:14px"></i></button>
+    </div>
+  </div>
+</div>
+
+<div id="afast-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeAfastModal()">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-file-certificate" style="color:var(--cyan)"></i>Novo Atestado / Afastamento</div>
+    <div class="modal-field">
+      <label>Colaborador</label>
+      <select id="afast-nome"></select>
+    </div>
+    <div class="modal-field">
+      <label>Tipo</label>
+      <select id="afast-tipo">
+        <option>Atestado Médico</option>
+        <option>Afastamento</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>Data início</label>
+      <input type="date" id="afast-inicio">
+    </div>
+    <div class="modal-field">
+      <label>Data fim</label>
+      <input type="date" id="afast-fim">
+    </div>
+    <div class="modal-field">
+      <label>Motivo / Observação</label>
+      <input type="text" id="afast-motivo" placeholder="Opcional" autocomplete="off">
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn-primary" onclick="salvarAfastamento()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
+      <button class="modal-btn-ghost" onclick="closeAfastModal()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -518,7 +553,7 @@ const USERS=[
   {user:'Gabriel',   senha:'L@gin982',   role:'superadmin'},
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
-let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:''};
+let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[]};
 const ATIVIDADES=['Recuperação de Pallets','Produção de Insumos','Operação de Empilhadeira','Inspeção da Qualidade'];
 function produzPallets(c){return !c.atividade||c.atividade==='Recuperação de Pallets';}
 let currentUser=null,currentRole=null,unitName='Aparecida';
@@ -695,6 +730,12 @@ function mergeState(cloud){
   if(cloud.presencas)state.presencas=mergeDatedTurnos(state.presencas,cloud.presencas);
   if(cloud.producaoPessoas)state.producaoPessoas=mergeDatedTurnos(state.producaoPessoas,cloud.producaoPessoas);
   if(cloud.auditoria)state.auditoria=cloud.auditoria;
+  if(cloud.afastamentos){
+    const localIds=new Set((state.afastamentos||[]).map(a=>a.id));
+    const merged=[...(state.afastamentos||[])];
+    cloud.afastamentos.forEach(ca=>{if(!localIds.has(ca.id))merged.push(ca);});
+    state.afastamentos=merged;
+  }
   if(cloud.bufferAjuste!==undefined)state.bufferAjuste=cloud.bufferAjuste;
   if(cloud.bufferAjusteTs!==undefined)state.bufferAjusteTs=cloud.bufferAjusteTs;
   if(cloud.configTs!==undefined){
@@ -842,7 +883,7 @@ setInterval(verificarNotificacoes, 60000);
 function usuarioEstaEditando(){
   const ae=document.activeElement;
   if(ae&&/^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName))return true;
-  return['editmov-modal','retro-modal','colab-modal','edit-pres-modal','ferias-modal'].some(id=>{
+  return['editmov-modal','retro-modal','colab-modal','edit-pres-modal','ferias-modal','afast-modal'].some(id=>{
     const el=document.getElementById(id);return el&&el.style.display==='flex';
   });
 }
@@ -880,7 +921,7 @@ async function pushToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
     // Read current cloud state for smart merge
-    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||''};
+    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||''};
     try{
       const r=await fetch(FB_URL);
       if(r.ok){
@@ -927,6 +968,10 @@ async function pushToCloud(){
           const localAuditTs=new Set((state.auditoria||[]).map(a=>a.ts));
           const mergedAudit=[...(state.auditoria||[])];
           cloudAudit.forEach(ca=>{ if(!localAuditTs.has(ca.ts)) mergedAudit.push(ca); });
+          const cloudAfast=cloud.afastamentos||[];
+          const localAfastIds=new Set((state.afastamentos||[]).map(a=>a.id));
+          const mergedAfast=[...(state.afastamentos||[])];
+          cloudAfast.forEach(ca=>{ if(!localAfastIds.has(ca.id)) mergedAfast.push(ca); });
           const cloudAjusteTs=cloud.bufferAjusteTs||'';
           const localAjusteTs=state.bufferAjusteTs||'';
           const bufferAjuste=localAjusteTs>=cloudAjusteTs?(state.bufferAjuste||0):(cloud.bufferAjuste||0);
@@ -939,7 +984,7 @@ async function pushToCloud(){
           const bufferSaldoInicial=usaConfigLocal?(state.bufferSaldoInicial||0):(cloud.bufferSaldoInicial||0);
           const turnoExtra=usaConfigLocal?(state.turnoExtra||{ativo:false,horario:'',inicioMin:null}):(cloud.turnoExtra||{ativo:false,horario:'',inicioMin:null});
           const configTs=usaConfigLocal?localConfigTs:cloudConfigTs;
-          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,turnoExtra,configTs};
+          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,afastamentos:mergedAfast,bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,turnoExtra,configTs};
         }
       }
     }catch(e){}
@@ -950,6 +995,7 @@ async function pushToCloud(){
     state.presencas=merged.presencas;
     state.producaoPessoas=merged.producaoPessoas||{};
     state.auditoria=merged.auditoria;
+    state.afastamentos=merged.afastamentos||[];
     state.bufferAjuste=merged.bufferAjuste||0;
     state.bufferAjusteTs=merged.bufferAjusteTs||'';
     state.metaMensal=merged.metaMensal;
@@ -1126,7 +1172,7 @@ function launchApp(){
 
 function boot(){
   unitName=localStorage.getItem(LS_UNIT)||'Aparecida';
-  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;}}catch(e){}
+  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;}}catch(e){}
   if(!state.colaboradores||!state.colaboradores.length)state.colaboradores=DEFAULT_COLABS;
   try{
     const raw=sessionStorage.getItem('femsa_session')||localStorage.getItem('femsa_session');
@@ -1219,6 +1265,15 @@ function buildMetaMensalCards(){
     '<div class="kpi"><div class="kpi-lbl">Ritmo diário necessário</div><div class="kpi-val red">'+ritmoDiarioNec.toLocaleString('pt-BR')+'</div><div class="kpi-sub">vs. meta diária atual de '+metaDoDia.toLocaleString('pt-BR')+' · '+ritmoPorPessoa+'/pessoa/dia</div></div>'+
     '</div>';
 }
+function buildAfastamentosHojeAlertCard(){
+  const ativos=afastamentosAtivosHoje();
+  if(!ativos.length)return'';
+  const item=(a)=>'<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><i class="ti ti-file-certificate" style="font-size:14px;color:var(--warn);flex-shrink:0"></i><span style="font-size:13px;color:var(--text)"><strong>'+a.nome+'</strong> · '+a.tipo+' até '+dateBR(a.dataFim)+'</span></div>';
+  return'<div class="card" style="border-color:var(--warn-bd);background:var(--warn-bg);margin-bottom:16px">'+
+    '<div class="card-title" style="color:var(--warn)"><i class="ti ti-alert-triangle"></i>'+ativos.length+' colaborador(es) de atestado/afastamento hoje</div>'+
+    ativos.map(item).join('')+
+    '</div>';
+}
 function buildProducaoPorTurnoCard(){
   const todayD=today();
   const movs=state.movimentos[todayD]||[];
@@ -1309,6 +1364,7 @@ function renderDia(){
   const movLog=movs.length?'<div class="card"><div class="card-title"><i class="ti ti-history"></i>Lançamentos '+lastTag+'</div>'+movs.slice().reverse().map(m=>{const pts=[];if(m.rec)pts.push('Rec:<b>'+m.rec+'</b>');if(m.prod)pts.push('Prod:<b>'+m.prod+'</b>');if(m.env)pts.push('Env:<b>'+m.env+'</b>');if(m.desc)pts.push('Desc:<b>'+m.desc+'</b>');return'<div class="log-entry"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · <strong>'+m.who+'</strong></div><div class="log-vals">'+pts.join(' · ')+'</div></div>';}).join('')+'</div>':'';
   cont.innerHTML=
     buildMetaMensalCards()+
+    buildAfastamentosHojeAlertCard()+
     buildProducaoPorTurnoCard()+
     buildProducaoIndividualHojeCard()+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;color:var(--text2)">'+dateFull(selDate)+'</div>'+lastTag+'</div>'+
@@ -1755,11 +1811,11 @@ async function lancar(){
 // === PRODUÇÃO POR COLABORADOR (meta individual + motivo obrigatório) ===
 const MOTIVOS_NAO_META=['Baixa eficiência','Falta de material (Paletes)','Falta de material (Insumos)','Chegou atrasado','Faltou ao trabalho','Atestado médico','Inspeção de Qualidade','Outro'];
 let selTurnoProd=null;
-function _prodBuf(){
-  const todayD=today();
-  if(!state.producaoPessoas[todayD])state.producaoPessoas[todayD]={};
-  if(!state.producaoPessoas[todayD][selTurnoProd])state.producaoPessoas[todayD][selTurnoProd]={pessoas:{}};
-  return state.producaoPessoas[todayD][selTurnoProd];
+function _prodBuf(date,turno){
+  const d=date||today(),t=turno||selTurnoProd;
+  if(!state.producaoPessoas[d])state.producaoPessoas[d]={};
+  if(!state.producaoPessoas[d][t])state.producaoPessoas[d][t]={pessoas:{}};
+  return state.producaoPessoas[d][t];
 }
 function renderProdPessoas(){
   const wrap=document.getElementById('prod-turno-btns-wrap');if(!wrap)return;
@@ -1843,26 +1899,89 @@ function unlockProdPessoas(){
 // === EDICAO E LANCAMENTO RETROATIVO DE MOVIMENTOS (PALLETS) ===
 function abrirLancamentoRetroativo(){
   const dt=document.getElementById('retro-date');dt.value=today();dt.max=today();
-    ['retro-rec','retro-prod','retro-env','retro-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
-      document.getElementById('retro-modal').style.display='flex';
-      }
-      function closeRetroModal(){document.getElementById('retro-modal').style.display='none';}
-      async function lancarRetroativo(){
-        const data=document.getElementById('retro-date').value;
-          if(!data){showToast('Escolha uma data.','warn');return;}
-            const rec=parseInt(document.getElementById('retro-rec').value)||0;
-              const prod=parseInt(document.getElementById('retro-prod').value)||0;
-                const env=parseInt(document.getElementById('retro-env').value)||0;
-                  const desc=parseInt(document.getElementById('retro-desc').value)||0;
-                    if(!rec&&!prod&&!env&&!desc){showToast('Informe pelo menos um valor.','warn');return;}
-                      const who=currentUser?currentUser.user:'Desconhecido';
-                        if(!state.movimentos[data])state.movimentos[data]=[];
-                          state.movimentos[data].push({ts:new Date().toISOString(),who,rec,prod,env,desc,lancadoRetroativo:true});
-                            closeRetroModal();
-                              saveCache();await pushToCloud();
-                                renderOperacao();
-                                  showToast('Lançamento retroativo registrado em '+data.split('-').reverse().join('/')+'!','ok');
-                                  }
+  const tSel=document.getElementById('retro-turno');
+  tSel.innerHTML=turnosAtivos().map(t=>'<option value="'+t.key+'">'+t.label+' — '+t.horario+'</option>').join('');
+  ['retro-rec','retro-prod','retro-env','retro-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
+  document.getElementById('retro-modal').style.display='flex';
+  renderRetroProdPessoas();
+}
+function closeRetroModal(){document.getElementById('retro-modal').style.display='none';}
+function _retroSel(){return{date:document.getElementById('retro-date').value,turno:document.getElementById('retro-turno').value};}
+function renderRetroProdPessoas(){
+  const wrap=document.getElementById('retro-prod-pessoas');if(!wrap)return;
+  const{date,turno}=_retroSel();
+  if(!date||!turno){wrap.innerHTML='';return;}
+  const info=calcMetaIndividual();
+  const colabs=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===turno);
+  const dia=state.producaoPessoas[date]&&state.producaoPessoas[date][turno];
+  const pessoas=(dia&&dia.pessoas)||{};
+  if(!colabs.length){wrap.innerHTML='<div style="font-size:12px;color:var(--text2);padding:6px 0 4px">Nenhum colaborador de Recuperação de Pallets nesse turno.</div>';return;}
+  wrap.innerHTML='<div style="font-size:11px;color:var(--text2);margin:6px 0 8px">Produção individual desse turno · meta '+info.metaPorPessoa+' pallets/pessoa</div>'+
+    colabs.map(c=>{
+      const reg=pessoas[c.nome]||{prod:0,motivo:''};
+      const abaixo=reg.prod<info.metaPorPessoa;
+      const nomeJs=c.nome.replace(/'/g,"\\'");
+      return'<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'+
+        '<div style="font-size:13px;font-weight:600;color:var(--text)">'+c.nome+'</div>'+
+        '<div class="num-wrap" style="width:150px"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" value="'+reg.prod+'" oninput="setRetroProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderRetroProdPessoas()"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
+        '</div>'+
+        (abaixo?'<select style="width:100%;margin-top:6px;padding:7px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px" onchange="setRetroMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
+          MOTIVOS_NAO_META.map(m=>'<option value="'+m+'" '+(reg.motivo===m?'selected':'')+'>'+m+'</option>').join('')+
+        '</select>':'')+
+      '</div>';
+    }).join('');
+}
+function setRetroProdPessoa(nome,val,rerender){
+  const{date,turno}=_retroSel();
+  const dia=_prodBuf(date,turno);
+  if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
+  dia.pessoas[nome].prod=Math.max(0,parseInt(val)||0);
+  if(rerender!==false)renderRetroProdPessoas();
+}
+function adjRetroProdPessoa(nome,d){
+  const{date,turno}=_retroSel();
+  const dia=_prodBuf(date,turno);
+  if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
+  dia.pessoas[nome].prod=Math.max(0,(dia.pessoas[nome].prod||0)+d);
+  renderRetroProdPessoas();
+}
+function setRetroMotivoPessoa(nome,val){
+  const{date,turno}=_retroSel();
+  const dia=_prodBuf(date,turno);
+  if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
+  dia.pessoas[nome].motivo=val;
+}
+async function lancarRetroativo(){
+  const data=document.getElementById('retro-date').value;
+  const turno=document.getElementById('retro-turno').value;
+  if(!data){showToast('Escolha uma data.','warn');return;}
+  if(!turno){showToast('Escolha um turno.','warn');return;}
+  const rec=parseInt(document.getElementById('retro-rec').value)||0;
+  const prod=parseInt(document.getElementById('retro-prod').value)||0;
+  const env=parseInt(document.getElementById('retro-env').value)||0;
+  const desc=parseInt(document.getElementById('retro-desc').value)||0;
+  if(!rec&&!prod&&!env&&!desc){showToast('Informe pelo menos um valor.','warn');return;}
+  const info=calcMetaIndividual();
+  const colabsTurno=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===turno);
+  const diaProd=_prodBuf(data,turno);
+  for(const c of colabsTurno){
+    const reg=diaProd.pessoas[c.nome];
+    const p=reg?(reg.prod||0):0;
+    if(p<info.metaPorPessoa&&(!reg||!reg.motivo)){
+      showToast('Informe o motivo de '+c.nome+' não bater a meta individual desse turno.','warn');
+      return;
+    }
+  }
+  if(colabsTurno.length)diaProd.savedAt=new Date().toISOString();
+  const who=currentUser?currentUser.user:'Desconhecido';
+  if(!state.movimentos[data])state.movimentos[data]=[];
+  state.movimentos[data].push({ts:new Date().toISOString(),who,rec,prod,env,desc,turno,lancadoRetroativo:true});
+  closeRetroModal();
+  saveCache();await pushToCloud();
+  renderOperacao();
+  showToast('Lançamento retroativo registrado em '+data.split('-').reverse().join('/')+'!','ok');
+}
                                   
                                   let _editMovDate=null,_editMovIdx=null;
                                   function abrirEditMov(date,idx){
@@ -1901,11 +2020,32 @@ function abrirLancamentoRetroativo(){
 </script>
 <script>
 // ABSENTEÍSMO
+function buildAfastamentosCard(){
+  const isAdmin=podeEditarPresenca();
+  const ativos=afastamentosAtivosHoje();
+  const todos=(state.afastamentos||[]).slice().sort((a,b)=>b.dataInicio.localeCompare(a.dataInicio));
+  const linha=(a,destaque)=>'<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">'+
+    '<div style="width:8px;height:8px;border-radius:50%;background:'+(a.tipo==='Atestado Médico'?'var(--warn)':'var(--purple,#a78bfa)')+';flex-shrink:0"></div>'+
+    '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">'+a.nome+'</div>'+
+    '<div style="font-size:11px;color:var(--text2)">'+a.tipo+' · '+dateBR(a.dataInicio)+' a '+dateBR(a.dataFim)+(a.motivo?' · '+a.motivo:'')+'</div></div>'+
+    (destaque?'<span class="badge" style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bd);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0">ATIVO HOJE</span>':'')+
+    (isAdmin?'<button onclick="removerAfastamento(\''+a.id+'\')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text2);font-size:11px;cursor:pointer;flex-shrink:0"><i class="ti ti-trash" style="font-size:12px"></i></button>':'')+
+    '</div>';
+  return'<div class="card" style="margin-bottom:12px">'+
+    '<div class="card-title"><i class="ti ti-file-certificate"></i>Atestados e Afastamentos'+(isAdmin?'<button onclick="abrirAfastModal()" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-plus" style="font-size:13px"></i> Novo</button>':'')+'</div>'+
+    (todos.length?
+      (ativos.length?'<div style="font-size:11px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Ativos hoje ('+ativos.length+')</div>'+ativos.map(a=>linha(a,true)).join(''):'')+
+      '<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-top:'+(ativos.length?'14px':'0')+';margin-bottom:4px">Histórico ('+todos.length+')</div>'+
+      todos.map(a=>linha(a,false)).join('')
+    :'<div class="empty" style="padding:16px 0"><i class="ti ti-file-certificate"></i><h3>Nenhum atestado ou afastamento lançado</h3></div>')+
+    '</div>';
+}
 function renderAbsenteismo(){
   var cont=document.getElementById('abs-content');if(!cont)return;
   try{
+  var afastHtml=buildAfastamentosCard();
   var dates=Object.keys(state.presencas).sort();
-  if(!dates.length){cont.innerHTML='<div class="empty"><i class="ti ti-user-off"></i><h3>Nenhum dado de presença</h3><p>Registre presenças para ver o histórico.</p></div>';return;}
+  if(!dates.length){cont.innerHTML=afastHtml+'<div class="empty"><i class="ti ti-user-off"></i><h3>Nenhum dado de presença</h3><p>Registre presenças para ver o histórico.</p></div>';return;}
   var absMap={},diasMap={};
   dates.forEach(function(date){
     var pd=state.presencas[date]||{};
@@ -1949,6 +2089,7 @@ function renderAbsenteismo(){
     rowsHTML+='<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:10px;color:var(--text);font-weight:600">'+r.nome+barHTML+'</td><td style="text-align:center;padding:10px 8px;color:'+(r.faltas>0?'var(--red)':'var(--text2)')+(r.faltas>0?';font-weight:700':'')+'">'+(r.faltas)+'</td><td style="text-align:center;padding:10px 8px;color:var(--green)">'+r.presencas+'</td><td style="text-align:center;padding:10px 8px;color:'+(r.pct>=15?'var(--red)':r.pct>=8?'var(--warn)':'var(--text2)')+';font-weight:700">'+r.pct+'%</td><td style="padding:10px 8px"><span style="'+bc+';border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700">'+bt+'</span></td></tr>';
   });
   cont.innerHTML=
+    afastHtml+
     '<div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:16px">'+
     '<div class="kpi"><div class="kpi-lbl">Total faltas</div><div class="kpi-val">'+totalFaltas+'</div><div class="kpi-sub">'+dates.length+' dia(s)</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Média absenteísmo</div><div class="kpi-val" style="color:'+(media>=10?'var(--red)':media>=5?'var(--warn)':'var(--text)')+'">'+media+'%</div></div>'+
@@ -2016,6 +2157,57 @@ function openColabModal(idx){
 }
 function closeColabModal(){
   document.getElementById('colab-modal').style.display = 'none';
+}
+function abrirAfastModal(){
+  if(!podeEditarPresenca()){showToast('Apenas administradores podem lançar atestados/afastamentos.','err');return;}
+  const sel=document.getElementById('afast-nome');
+  sel.innerHTML=colaboradoresAtivos().map(c=>'<option value="'+c.nome.replace(/"/g,'&quot;')+'">'+c.nome+' ('+turnoInfo(c.turno).label+')</option>').join('');
+  document.getElementById('afast-tipo').value='Atestado Médico';
+  document.getElementById('afast-inicio').value=today();
+  document.getElementById('afast-fim').value=today();
+  document.getElementById('afast-motivo').value='';
+  document.getElementById('afast-modal').style.display='flex';
+}
+function closeAfastModal(){
+  document.getElementById('afast-modal').style.display='none';
+}
+async function salvarAfastamento(){
+  const nome=document.getElementById('afast-nome').value;
+  const tipo=document.getElementById('afast-tipo').value;
+  const dataInicio=document.getElementById('afast-inicio').value;
+  const dataFim=document.getElementById('afast-fim').value;
+  const motivo=document.getElementById('afast-motivo').value.trim();
+  if(!nome){showToast('Selecione o colaborador.','warn');return;}
+  if(!dataInicio||!dataFim){showToast('Informe as duas datas.','warn');return;}
+  if(dataFim<dataInicio){showToast('Data fim deve ser igual ou depois da data início.','warn');return;}
+  const c=state.colaboradores.find(x=>x.nome===nome);
+  const registro={
+    id:Date.now()+'_'+Math.random().toString(36).slice(2,8),
+    nome,turno:c?c.turno:'',cargo:c?c.cargo:'',tipo,dataInicio,dataFim,motivo,
+    criadoPor:currentUser?currentUser.user:'Desconhecido',
+    criadoEm:new Date().toISOString()
+  };
+  if(!state.afastamentos)state.afastamentos=[];
+  state.afastamentos.push(registro);
+  logAuditoria(tipo+' lançado para '+nome+' ('+dateBR(dataInicio)+' a '+dateBR(dataFim)+')');
+  closeAfastModal();
+  saveCache();await pushToCloud();
+  showToast(tipo+' salvo!','ok');
+  renderAll();
+}
+async function removerAfastamento(id){
+  if(!podeEditarPresenca())return;
+  if(!confirm('Remover este registro? Irreversível.'))return;
+  const reg=(state.afastamentos||[]).find(a=>a.id===id);
+  state.afastamentos=(state.afastamentos||[]).filter(a=>a.id!==id);
+  if(reg)logAuditoria('Removeu '+reg.tipo+' de '+reg.nome+' ('+dateBR(reg.dataInicio)+' a '+dateBR(reg.dataFim)+')');
+  saveCache();await pushToCloud();
+  showToast('Registro removido.','ok');
+  renderAll();
+}
+function afastamentosAtivosHoje(){
+  const hoje=today();
+  return (state.afastamentos||[]).filter(a=>a.dataInicio<=hoje&&a.dataFim>=hoje);
 }
 async function saveColabModal(){
   const nome = document.getElementById('modal-nome').value.trim();
@@ -2269,7 +2461,7 @@ async function pushForceToCloud(){
   // que a nuvem realmente zerou antes de reportar sucesso.
   resetLock=true;
   setSyncDot('syncing','Salvando...');
-  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||''};
+  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||''};
   let ok=false;
   for(let tentativa=0;tentativa<3&&!ok;tentativa++){
     try{

@@ -581,7 +581,7 @@ function logAuditoria(acao){
   if(!state.auditoria)state.auditoria=[];
   state.auditoria.push({ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',acao});
 }
-let selDate=null,selTurnoAtivo=TURNOS[0].key,dashView='dia';
+let selDate=null,selTurnoAtivo='GERAL_M',dashView='dia';
 let charts={},countdownTimer=null,syncCountdown=0,tvTimer=null;
 
 function today(){
@@ -1189,7 +1189,7 @@ setInterval(()=>{
   if(nowDate !== _lastKnownDate){
     _lastKnownDate=nowDate;
     selDate=nowDate; // reset dashboard to new day
-    selTurnoAtivo=TURNOS[0].key; // reset presença ao primeiro turno
+    selTurnoAtivo='GERAL_M'; // reset presença à visão geral da manhã
     renderAll();
     // If presença screen is visible, re-render it too
     const presEl=document.getElementById('sc-presenca');
@@ -1268,13 +1268,17 @@ function buildProducaoPorTurnoCard(){
     if(m.turno)porTurno[m.turno]=(porTurno[m.turno]||0)+(m.prod||0);
     else semTurno+=(m.prod||0);
   });
-  const max=Math.max(1,...TURNOS.map(t=>porTurno[t.key]||0),semTurno);
+  const grupos=Object.keys(TURNO_GRUPOS).map(k=>{
+    const g=TURNO_GRUPOS[k];
+    return{nome:g.nome,val:g.turnos.reduce((s,tk)=>s+(porTurno[tk]||0),0)};
+  });
+  const max=Math.max(1,...grupos.map(g=>g.val),semTurno);
   const linha=(label,val,cor)=>'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">'+
     '<div style="width:170px;flex-shrink:0;font-size:13px;font-weight:600;color:var(--text)">'+label+'</div>'+
     '<div style="flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.max(2,Math.round(val/max*100))+'%;background:'+cor+'"></div></div>'+
     '<div style="width:60px;text-align:right;font-weight:700;font-size:13px;color:'+cor+'">'+val.toLocaleString('pt-BR')+'</div></div>';
   return'<div class="card"><div class="card-title"><i class="ti ti-chart-bar"></i>Produção por Turno (hoje)</div>'+
-    TURNOS.map(t=>linha(t.cargo+' · '+t.label,porTurno[t.key]||0,'var(--cyan)')).join('')+
+    grupos.map(g=>linha(g.nome,g.val,'var(--cyan)')).join('')+
     (semTurno>0?linha('Sem turno (retroativo)',semTurno,'var(--text2)'):'')+
     '</div>';
 }
@@ -1557,16 +1561,11 @@ function renderPresenca(){
   const todayD=today();
   const wrap=document.getElementById('turno-btns-wrap');
   if(wrap){
-    let html=TURNOS.map(t=>{
-      const done=state.presencas[todayD]&&state.presencas[todayD][t.key]&&state.presencas[todayD][t.key].savedAt;
-      const cls='tbtn'+(t.key===selTurnoAtivo?' active':'')+(done?' done':'');
-      return'<button class="'+cls+'" id="tbtn-'+t.key+'" onclick="selTurno(\''+t.key+'\')"><div class="turno-lbl">'+t.cargo+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">'+t.label+' · '+t.hor+'</div></button>';
-    }).join('');
-    html+=Object.keys(TURNO_GRUPOS).map(k=>{
+    let html=Object.keys(TURNO_GRUPOS).map(k=>{
       const g=TURNO_GRUPOS[k];
       const done=g.turnos.every(tk=>state.presencas[todayD]&&state.presencas[todayD][tk]&&state.presencas[todayD][tk].savedAt);
       const cls='tbtn'+(k===selTurnoAtivo?' active':'')+(done?' done':'');
-      return'<button class="'+cls+'" id="tbtn-'+k+'" onclick="selTurno(\''+k+'\')" style="border-style:dashed"><div class="turno-lbl"><i class="ti ti-layout-grid" style="font-size:11px;margin-right:3px"></i>'+g.nome+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Operador + Auxiliar</div></button>';
+      return'<button class="'+cls+'" id="tbtn-'+k+'" onclick="selTurno(\''+k+'\')"><div class="turno-lbl"><i class="ti ti-layout-grid" style="font-size:11px;margin-right:3px"></i>'+g.nome+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Operador + Auxiliar</div></button>';
     }).join('');
     wrap.innerHTML=html;
   }

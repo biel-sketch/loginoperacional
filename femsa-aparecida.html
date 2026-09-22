@@ -117,6 +117,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .pc-p{background:var(--green-bg);border-color:var(--green-bd)}.pc-p .pc-n,.pc-p .pc-s,.pc-p .pc-c{color:var(--green)}
 .pc-a{background:var(--red-bg);border-color:var(--red-bd)}.pc-a .pc-n,.pc-a .pc-s,.pc-a .pc-c{color:var(--red)}
 .pc-f{background:var(--purple-bg);border-color:var(--purple-bd)}.pc-f .pc-n,.pc-f .pc-s,.pc-f .pc-c{color:var(--purple)}
+.pc-atestado{background:var(--warn-bg);border-color:var(--warn-bd);cursor:not-allowed}.pc-atestado .pc-n,.pc-atestado .pc-s,.pc-atestado .pc-c{color:var(--warn)}
 .pc-ferias-btn{position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:5px;background:rgba(0,0,0,.3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text2);cursor:pointer;font-size:10px}
 .pc-ferias-btn:hover{color:var(--purple);border-color:var(--purple-bd);background:var(--purple-bg)}
 .colab-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
@@ -1593,6 +1594,9 @@ function renderPresenca(){
   renderPresGrid();
 }
 function selTurno(t){selTurnoAtivo=t;renderPresenca();}
+function afastamentoAtivoParaData(nome,data){
+  return (state.afastamentos||[]).find(a=>a.nome===nome&&a.dataInicio<=data&&a.dataFim>=data)||null;
+}
 function renderPresGrid(){
   const cont=document.getElementById('pres-content');if(!cont)return;
   const todayD=today();
@@ -1602,6 +1606,10 @@ function renderPresGrid(){
   const colabs=colaboradoresAtivos().filter(c=>c.turno===selTurnoAtivo);
   if(!colabs.length){cont.innerHTML='<div class="empty"><i class="ti ti-users"></i><h3>Nenhum colaborador no '+turnoInfo(selTurnoAtivo).label+'</h3><p>Adicione colaboradores na tela Equipe.</p></div>';return;}
   const cells=colabs.map(c=>{
+    const afast=afastamentoAtivoParaData(c.nome,todayD);
+    if(afast){
+      return'<div class="pc pc-atestado" onclick="event.stopPropagation();showToast(\''+c.nome.split(' ')[0].replace(/'/g,"\\'")+' está de '+afast.tipo.replace(/'/g,"\\'")+' até '+dateBR(afast.dataFim)+' — não é possível lançar presença.\',\'warn\')"><div class="pc-n">'+c.nome.split(' ').slice(0,2).join(' ')+'</div>'+(c.cargo?'<div class="pc-c">'+c.cargo+'</div>':'')+'<div class="pc-s"><i class="ti ti-file-certificate" style="font-size:11px;margin-right:3px"></i>'+afast.tipo+'</div></div>';
+    }
     const st=presSaved[c.nome]||'';
     const cls=st==='P'?' pc-p':st==='A'?' pc-a':st==='F'?' pc-f':'';
     const lbl=st==='P'?'Presente':st==='A'?'Ausente':st==='F'?'Férias':'—';
@@ -1619,6 +1627,8 @@ function renderPresGrid(){
 }
 function togglePres(nome){
   const todayD=today();
+  const afast=afastamentoAtivoParaData(nome,todayD);
+  if(afast){showToast(nome.split(' ')[0]+' está de '+afast.tipo+' até '+dateBR(afast.dataFim)+' — não é possível lançar presença.','warn');return;}
   if(!state.presencas[todayD])state.presencas[todayD]={};
   if(!state.presencas[todayD][selTurnoAtivo])state.presencas[todayD][selTurnoAtivo]={presenca:{}};
   const cur=state.presencas[todayD][selTurnoAtivo].presenca[nome]||'';

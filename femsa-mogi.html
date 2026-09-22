@@ -608,7 +608,7 @@ function calcBufferGlobal(){
   // Estoque acumulado + correção manual (ver corrigirBuffer())
   return calcBufferBruto()+(state.bufferAjuste||0);
 }
-function produzPallets(c){return true;} // em Mogi, os dois cargos contam pra produção/meta
+function produzPallets(c){return c.cargo==='Auxiliar de Expedição';}
 function diasUteisNoMes(ano,mes){
   const d=new Date(ano,mes,1);let count=0;
   while(d.getMonth()===mes){if(d.getDay()!==0)count++;d.setDate(d.getDate()+1);}
@@ -1811,9 +1811,10 @@ function _prodBuf(date,turno){
 }
 function renderProdPessoas(){
   const wrap=document.getElementById('prod-turno-btns-wrap');if(!wrap)return;
-  if(!selTurnoProd||!TURNOS.some(t=>t.key===selTurnoProd))selTurnoProd=TURNOS[0].key;
+  const turnosProd=TURNOS.filter(t=>t.cargo==='Auxiliar de Expedição');
+  if(!selTurnoProd||!turnosProd.some(t=>t.key===selTurnoProd))selTurnoProd=turnosProd[0].key;
   const todayD=today();
-  wrap.innerHTML=TURNOS.map(t=>{
+  wrap.innerHTML=turnosProd.map(t=>{
     const done=state.producaoPessoas[todayD]&&state.producaoPessoas[todayD][t.key]&&state.producaoPessoas[todayD][t.key].savedAt;
     const cls='btn btn-ghost btn-sm'+(t.key===selTurnoProd?' active':'');
     return'<button class="'+cls+'" style="'+(t.key===selTurnoProd?'border-color:var(--cyan-bd);background:var(--cyan-bg);color:var(--cyan)':'')+'" onclick="selTurnoProd_(\''+t.key+'\')">'+t.cargo+' · '+t.label+(done?' <i class="ti ti-check" style="font-size:11px"></i>':'')+'</button>';

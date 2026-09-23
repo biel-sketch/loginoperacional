@@ -1604,7 +1604,8 @@ function renderPresGrid(){
     const cls=st==='P'?' pc-p':st==='A'?' pc-a':st==='F'?' pc-f':'';
     const lbl=st==='P'?'Presente':st==='A'?'Ausente':st==='F'?'Férias':'—';
     const feriasBtn=podeEditarPresenca()?'<div class="pc-ferias-btn" onclick="event.stopPropagation();abrirFeriasModal(\''+c.turno+'\',\''+c.nome.replace(/'/g,"\\'")+'\',today())" title="Marcar férias"><i class="ti ti-plane-departure"></i></div>':'';
-    return'<div class="pc'+cls+'" onclick="togglePres(\''+c.nome+'\',\''+c.turno+'\')">'+feriasBtn+'<div class="pc-n">'+c.nome.split(' ').slice(0,2).join(' ')+'</div>'+(c.cargo?'<div class="pc-c">'+c.cargo+'</div>':'')+'<div class="pc-s">'+lbl+'</div></div>';
+    const nomeJs=c.nome.replace(/'/g,"\\'");
+    return'<div class="pc'+cls+'" onclick="togglePres(\''+nomeJs+'\',\''+c.turno+'\')">'+feriasBtn+'<div class="pc-n">'+c.nome.split(' ').slice(0,2).join(' ')+'</div>'+(c.cargo?'<div class="pc-c">'+c.cargo+'</div>':'')+'<div class="pc-s">'+lbl+'</div></div>';
   }).join('');
   cont.innerHTML=
     '<div class="pres-grid" style="margin-bottom:16px">'+cells+'</div>'+

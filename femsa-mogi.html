@@ -1622,7 +1622,8 @@ function togglePres(nome,turno){
   const afast=afastamentoAtivoParaData(nome,todayD);
   if(afast){showToast(nome.split(' ')[0]+' está de '+afast.tipo+' até '+dateBR(afast.dataFim)+' — não é possível lançar presença.','warn');return;}
   if(!state.presencas[todayD])state.presencas[todayD]={};
-  if(!state.presencas[todayD][t])state.presencas[todayD][t]={presenca:{}};
+  if(!state.presencas[todayD][t])state.presencas[todayD][t]={};
+  if(!state.presencas[todayD][t].presenca)state.presencas[todayD][t].presenca={};
   if(state.presencas[todayD][t].savedAt)delete state.presencas[todayD][t].savedAt; // clicar já destrava esse turno, se precisar
   const cur=state.presencas[todayD][t].presenca[nome]||'';
   state.presencas[todayD][t].presenca[nome]=cur===''?'P':cur==='P'?'A':'';
@@ -1633,7 +1634,8 @@ async function salvarPresenca(){
   const todayD=today();
   if(!state.presencas[todayD])state.presencas[todayD]={};
   turnosEfetivos(selTurnoAtivo).forEach(t=>{
-    if(!state.presencas[todayD][t])state.presencas[todayD][t]={presenca:{}};
+    if(!state.presencas[todayD][t])state.presencas[todayD][t]={};
+    if(!state.presencas[todayD][t].presenca)state.presencas[todayD][t].presenca={};
     state.presencas[todayD][t].savedAt=new Date().toISOString();
   });
   saveCache();await pushToCloud();verificarAusencia();showToast('Presença salva — '+nomeSelecao(selTurnoAtivo)+'!','ok');renderPresenca();

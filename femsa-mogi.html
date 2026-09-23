@@ -1600,12 +1600,11 @@ function renderPresGrid(){
     }
     const pd=presDayAll[c.turno];
     const presSaved=(pd&&pd.presenca)||{};
-    const cardSalvo=pd&&pd.savedAt;
     const st=presSaved[c.nome]||'';
     const cls=st==='P'?' pc-p':st==='A'?' pc-a':st==='F'?' pc-f':'';
     const lbl=st==='P'?'Presente':st==='A'?'Ausente':st==='F'?'Férias':'—';
-    const feriasBtn=(!cardSalvo&&podeEditarPresenca())?'<div class="pc-ferias-btn" onclick="event.stopPropagation();abrirFeriasModal(\''+c.turno+'\',\''+c.nome.replace(/'/g,"\\'")+'\',today())" title="Marcar férias"><i class="ti ti-plane-departure"></i></div>':'';
-    return'<div class="pc'+cls+'" onclick="'+(cardSalvo?'unlockPres(\''+c.turno+'\')':'togglePres(\''+c.nome+'\',\''+c.turno+'\')')+'">'+feriasBtn+'<div class="pc-n">'+c.nome.split(' ').slice(0,2).join(' ')+'</div>'+(c.cargo?'<div class="pc-c">'+c.cargo+'</div>':'')+'<div class="pc-s">'+lbl+'</div></div>';
+    const feriasBtn=podeEditarPresenca()?'<div class="pc-ferias-btn" onclick="event.stopPropagation();abrirFeriasModal(\''+c.turno+'\',\''+c.nome.replace(/'/g,"\\'")+'\',today())" title="Marcar férias"><i class="ti ti-plane-departure"></i></div>':'';
+    return'<div class="pc'+cls+'" onclick="togglePres(\''+c.nome+'\',\''+c.turno+'\')">'+feriasBtn+'<div class="pc-n">'+c.nome.split(' ').slice(0,2).join(' ')+'</div>'+(c.cargo?'<div class="pc-c">'+c.cargo+'</div>':'')+'<div class="pc-s">'+lbl+'</div></div>';
   }).join('');
   cont.innerHTML=
     '<div class="pres-grid" style="margin-bottom:16px">'+cells+'</div>'+
@@ -1623,6 +1622,7 @@ function togglePres(nome,turno){
   if(afast){showToast(nome.split(' ')[0]+' está de '+afast.tipo+' até '+dateBR(afast.dataFim)+' — não é possível lançar presença.','warn');return;}
   if(!state.presencas[todayD])state.presencas[todayD]={};
   if(!state.presencas[todayD][t])state.presencas[todayD][t]={presenca:{}};
+  if(state.presencas[todayD][t].savedAt)delete state.presencas[todayD][t].savedAt; // clicar já destrava esse turno, se precisar
   const cur=state.presencas[todayD][t].presenca[nome]||'';
   state.presencas[todayD][t].presenca[nome]=cur===''?'P':cur==='P'?'A':'';
   if(cur==='F'&&state.presencas[todayD][t].feriasInfo)delete state.presencas[todayD][t].feriasInfo[nome];

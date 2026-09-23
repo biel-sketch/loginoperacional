@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>FEMSA Mogi — Painel Operacional</title>
+<title>FEMSA Aparecida — Painel Operacional</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -99,7 +99,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .num-wrap{display:flex;align-items:center;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:rgba(255,255,255,.04)}
 .num-btn{width:46px;height:50px;border:none;background:transparent;font-size:20px;cursor:pointer;color:var(--cyan);flex-shrink:0;transition:background .12s}
 .num-btn:active{background:var(--cyan-bg)}
-.num-wrap input{flex:1;border:none;background:transparent;color:var(--text);font-size:22px;font-weight:700;text-align:center;padding:0;font-family:inherit}
+.num-wrap input{flex:1;min-width:0;width:0;border:none;background:transparent;color:var(--text);font-size:22px;font-weight:700;text-align:center;padding:0;font-family:inherit}
 .num-wrap input:focus{outline:none}
 .pf-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:flex;align-items:center;gap:6px}
 .tt-badge{font-size:10px;padding:2px 7px;background:var(--bg4);border-radius:10px;color:var(--text3);border:1px solid var(--border);font-weight:600}
@@ -232,7 +232,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
   <div class="login-box"><div class="login-card">
     <div style="text-align:center;margin-bottom:20px">
       <img id="login-logo-img" src="" alt="Logo" style="height:72px;object-fit:contain;margin:0 auto 10px;display:block">
-      <div style="font-size:20px;font-weight:700;color:var(--text)">FEMSA <span id="login-unit-name">Mogi</span></div>
+      <div style="font-size:20px;font-weight:700;color:var(--text)">FEMSA <span id="login-unit-name">Aparecida</span></div>
       <div style="font-size:13px;color:var(--text2);margin-top:4px;margin-bottom:20px">Entre com seu usuário e senha</div>
     </div>
     <div class="field"><label>Usuário</label><input type="text" id="login-user" placeholder="Seu nome..." autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pw').focus()"></div>
@@ -250,7 +250,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-logo">
         <img id="sidebar-logo-img" src="" alt="Logo">
-        <div class="sidebar-unit" id="sidebar-unit-name">Mogi</div>
+        <div class="sidebar-unit" id="sidebar-unit-name">Aparecida</div>
       </div>
       <nav class="sidebar-nav" id="sidebar-nav">
         <button class="snav-item" id="snav-dashboard"   onclick="goTo('dashboard')"><i class="ti ti-chart-bar"></i>Dashboard</button>
@@ -347,7 +347,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
           </div>
           <div class="card" id="prod-pessoas-section" style="border-color:var(--cyan-bd)">
             <div class="card-title"><i class="ti ti-users" style="color:var(--cyan)"></i> Produção por Colaborador</div>
-            <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Lance a produção de cada colaborador deste turno. Pode lançar isso, o lançamento geral acima, ou os dois — são independentes. É só pra acompanhamento individual — <strong>não soma</strong> no total de Produzidos nem na meta mensal.</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Lance a produção de cada colaborador de Recuperação de Pallets deste turno. Pode lançar isso, o lançamento geral abaixo, ou os dois — são independentes. É só pra acompanhamento individual — <strong>não soma</strong> no total de Produzidos nem na meta mensal.</div>
             <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="prod-turno-btns-wrap"></div>
             <div id="prod-pessoas-info" style="font-size:12px;color:var(--text2);margin-bottom:10px"></div>
             <div id="prod-pessoas-list"></div>
@@ -429,15 +429,27 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
       <input type="text" id="modal-nome" placeholder="Nome do colaborador..." autocomplete="off">
     </div>
     <div class="modal-field">
-      <label>Cargo / Função</label>
-      <select id="modal-cargo" onchange="atualizarTurnosDoModal()">
-        <option value="Operador de Empilhadeira">Operador de Empilhadeira</option>
-        <option value="Auxiliar de Expedição">Auxiliar de Expedição</option>
+      <label>Turno</label>
+      <select id="modal-turno">
+        <option value="A">Turno A — 06h00 às 14h20</option>
+        <option value="B">Turno B — 14h00 às 22h20</option>
+        <option value="C">Turno C — 22h00 às 06h20</option>
+        <option value="D" id="modal-turno-d-opt" style="display:none">Turno Extraordinário</option>
       </select>
     </div>
     <div class="modal-field">
-      <label>Turno</label>
-      <select id="modal-turno"></select>
+      <label>Cargo / Função</label>
+      <input type="text" id="modal-cargo" placeholder="Ex: Operador, Auxiliar..." autocomplete="off">
+    </div>
+    <div class="modal-field">
+      <label>Atividade</label>
+      <select id="modal-atividade">
+        <option>Recuperação de Pallets</option>
+        <option>Produção de Insumos</option>
+        <option>Operação de Empilhadeira</option>
+        <option>Inspeção da Qualidade</option>
+      </select>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">Só "Recuperação de Pallets" entra na meta e no ranking de produtividade.</div>
     </div>
     <div class="modal-btns">
       <button class="modal-btn-primary" id="modal-save-btn" onclick="saveColabModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
@@ -535,45 +547,24 @@ const LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1
 
 
 <script>
-const META_DIARIA=2000,SYNC_INTERVAL=180000;
-const FB_URL='https://painel-operacional-96032-default-rtdb.firebaseio.com/mogi.json';
-const LS_CACHE='mogi_cache',LS_UNIT='mogi_unit';
+const META_DIARIA=2400,SYNC_INTERVAL=180000;
+const FB_URL='https://painel-operacional-96032-default-rtdb.firebaseio.com/aparecida.json';
+const LS_CACHE='femsa_cache',LS_UNIT='femsa_unit';
 const USERS=[
   {user:'Gustavo',   senha:'LoginBH26',  role:'gestor'},
   {user:'Marcelo',    senha:'L@ginBH',   role:'gestor'},
-  {user:'Ricardo',   senha:'Login@982',  role:'gestor'},
   {user:'Carol',     senha:'Login@982',  role:'admin'},
   {user:'Guilherme', senha:'Login@982',  role:'superadmin'},
   {user:'Debora',    senha:'Login@982',  role:'admin'},
   {user:'Simone',    senha:'Login@982',  role:'admin'},
-  {user:'Wagner',    senha:'Login@982',  role:'admin'},
   {user:'João',      senha:'Login@982',  role:'superadmin'},
   {user:'Gabriel',   senha:'L@gin982',   role:'superadmin'},
 ];
-// Turnos de Mogi: horários diferentes por cargo (2 turnos por cargo)
-const TURNOS=[
-  {key:'OPM',cargo:'Operador de Empilhadeira',label:'Turno Manhã',hor:'06h00–14h20'},
-  {key:'OPT',cargo:'Operador de Empilhadeira',label:'Turno Tarde',hor:'14h00–22h20'},
-  {key:'OPC',cargo:'Operador de Empilhadeira',label:'Turno Comercial',hor:'07h00–17h00'},
-  {key:'AXM',cargo:'Auxiliar de Expedição',label:'Turno Manhã',hor:'07h00–15h20'},
-  {key:'AXT',cargo:'Auxiliar de Expedição',label:'Turno Tarde',hor:'10h00–18h20'},
-  {key:'AXC',cargo:'Auxiliar de Expedição',label:'Turno Comercial',hor:'07h00–17h00'},
-];
-function turnoInfo(t){return TURNOS.find(x=>x.key===t);}
-function turnoHor(t){const x=turnoInfo(t);return x?x.hor:'';}
-function turnoNomeCompleto(t){const x=turnoInfo(t);return x?x.cargo+' · '+x.label:t;}
-function turnosDoCargo(cargo){return TURNOS.filter(x=>x.cargo===cargo);}
-// Visão geral: agrupa os 2 turnos de mesmo período (manhã/tarde) entre os cargos
-const TURNO_GRUPOS={
-  GERAL_M:{nome:'Visão geral · Manhã',turnos:['OPM','AXM']},
-  GERAL_T:{nome:'Visão geral · Tarde',turnos:['OPT','AXT']},
-  GERAL_C:{nome:'Visão geral · Comercial',turnos:['OPC','AXC']},
-};
-function turnosEfetivos(sel){return TURNO_GRUPOS[sel]?TURNO_GRUPOS[sel].turnos:[sel];}
-function nomeSelecao(sel){return TURNO_GRUPOS[sel]?TURNO_GRUPOS[sel].nome:turnoNomeCompleto(sel);}
-const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'OPM',cargo:'Operador de Empilhadeira',wpp:''},{nome:'Colaborador 2',turno:'AXM',cargo:'Auxiliar de Expedição',wpp:''}];
-let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
-let currentUser=null,currentRole=null,unitName='Mogi';
+const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
+let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
+const ATIVIDADES=['Recuperação de Pallets','Produção de Insumos','Operação de Empilhadeira','Inspeção da Qualidade'];
+function produzPallets(c){return !c.atividade||c.atividade==='Recuperação de Pallets';}
+let currentUser=null,currentRole=null,unitName='Aparecida';
 // Firebase - no api key or bin id vars needed
 let isSyncing=false,lastSync=null,syncTimer=null,resetLock=false;
 function colaboradoresAtivos(){ return state.colaboradores.filter(c=>c.ativo!==false); }
@@ -584,7 +575,7 @@ function logAuditoria(acao){
   if(!state.auditoria)state.auditoria=[];
   state.auditoria.push({ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',acao});
 }
-let selDate=null,selTurnoAtivo='GERAL_M',dashView='dia';
+let selDate=null,selTurnoAtivo='A',dashView='dia';
 let charts={},countdownTimer=null,syncCountdown=0,tvTimer=null;
 
 function today(){
@@ -602,7 +593,7 @@ function dateBR(d){if(!d)return'';return d.split('-').reverse().join('/');}
 function podeEditarPresenca(){return currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor';}
 function allDates(){const s=new Set([...Object.keys(state.movimentos),...Object.keys(state.presencas)]);return Array.from(s).sort();}
 function calcBufferBruto(){
-  // Estoque acumulado: saldo inicial + soma de produzidos - soma de enviados de TODOS os dias
+  // Estoque acumulado: saldo inicial + soma de produzidos - soma de enviados de TODOS os dias (sem correção manual)
   let totP=0,totE=0;
   Object.values(state.movimentos).forEach(ms=>{ms.forEach(m=>{totP+=(m.prod||0);totE+=(m.env||0);});});
   return (state.bufferSaldoInicial||0)+totP-totE;
@@ -611,7 +602,19 @@ function calcBufferGlobal(){
   // Estoque acumulado + correção manual (ver corrigirBuffer())
   return calcBufferBruto()+(state.bufferAjuste||0);
 }
-function produzPallets(c){return c.cargo==='Auxiliar de Expedição';}
+// === TURNOS (incl. Turno Extraordinário opcional) ===
+const TURNOS_FIXOS=[
+  {key:'A',label:'Turno A',horario:'06h00–14h20'},
+  {key:'B',label:'Turno B',horario:'14h00–22h20'},
+  {key:'C',label:'Turno C',horario:'22h00–06h20'},
+];
+function turnosAtivos(){
+  const lista=TURNOS_FIXOS.slice();
+  if(state.turnoExtra&&state.turnoExtra.ativo)lista.push({key:'D',label:'Turno Extraordinário',horario:state.turnoExtra.horario||'(horário a definir)',extra:true});
+  return lista;
+}
+function turnoInfo(key){return turnosAtivos().find(t=>t.key===key)||(key==='D'?{key:'D',label:'Turno Extraordinário',horario:(state.turnoExtra&&state.turnoExtra.horario)||''}:{key,label:'Turno '+key,horario:''});}
+// === META MENSAL E META INDIVIDUAL POR COLABORADOR ===
 function diasUteisNoMes(ano,mes){
   const d=new Date(ano,mes,1);let count=0;
   while(d.getMonth()===mes){if(d.getDay()!==0)count++;d.setDate(d.getDate()+1);}
@@ -631,7 +634,7 @@ function calcMetaIndividual(){
   const metaMensal=getMetaMensal();
   const metaDiariaGeral=diasUteisMes>0?metaMensal/diasUteisMes:0;
   const metaPorPessoa=state.metaIndividualFixa||120;
-  return{metaPorPessoa,diasUteisMes,qtd:produtores.length,metaDiariaGeral,metaMensal,nTurnosAtivos:TURNOS.length};
+  return{metaPorPessoa,diasUteisMes,qtd:produtores.length,metaDiariaGeral,metaMensal,nTurnosAtivos:turnosAtivos().length};
 }
 async function corrigirBuffer(valorDesejado){
   if(!podeEditarPresenca()){showToast('Sem permissão para corrigir o buffer.','err');return;}
@@ -677,6 +680,19 @@ async function salvarConfigMeta(){
   showToast('Configuração de meta salva!','ok');
   renderAll();
 }
+async function salvarTurnoExtra(){
+  if(!podeEditarPresenca())return;
+  const ativoEl=document.getElementById('cfg-turno-extra-ativo');
+  const horEl=document.getElementById('cfg-turno-extra-horario');
+  const ativo=!!(ativoEl&&ativoEl.checked);
+  const horario=horEl?horEl.value.trim():'';
+  state.turnoExtra={ativo,horario,inicioMin:null};
+  state.configTs=new Date().toISOString();
+  logAuditoria('Turno Extraordinário '+(ativo?'ativado ('+horario+')':'desativado'));
+  saveCache();await pushToCloud();
+  showToast('Turno Extraordinário '+(ativo?'ativado!':'desativado.'),'ok');
+  renderAll();
+}
 function showToast(msg,type='ok',dur=3000){const t=document.getElementById('app-toast');if(!t)return;t.textContent=msg;t.className='toast show '+type;setTimeout(()=>{t.className='toast';},dur);}
 
 async function fbFetch(method='GET', body=null){
@@ -697,6 +713,10 @@ function _mantemLocalNoMerge(localSavedAt,cloudSavedAt,resetTs){
   return localSavedAt>=cloudSavedAt;
 }
 function mergeDatedTurnos(localObj,cloudObj,resetTs){
+  // Mescla objetos no formato {data:{turno:{savedAt,...}}} sem nunca descartar
+  // um rascunho local ainda não salvo (savedAt vazio) — evita que a sincronização
+  // de fundo apague o que está sendo digitado antes de confirmar. Um reset explícito
+  // (resetTs) descarta qualquer dado local mais antigo que ele, mesmo já salvo.
   const out=JSON.parse(JSON.stringify(cloudObj||{}));
   Object.entries(localObj||{}).forEach(([d,turnos])=>{
     Object.entries(turnos||{}).forEach(([t,v])=>{
@@ -733,10 +753,11 @@ function mergeState(cloud){
     state.metaMensal=cloud.metaMensal;
     state.bufferSaldoInicial=cloud.bufferSaldoInicial||0;
     state.metaIndividualFixa=cloud.metaIndividualFixa!==undefined?cloud.metaIndividualFixa:120;
+    state.turnoExtra=cloud.turnoExtra||{ativo:false,horario:'',inicioMin:null};
     state.configTs=cloud.configTs;
   }
 }
-function saveCache(){try{localStorage.setItem(LS_CACHE,JSON.stringify(state));localStorage.setItem('mogi_cache_ts',Date.now());}catch(e){}}
+function saveCache(){try{localStorage.setItem(LS_CACHE,JSON.stringify(state));localStorage.setItem('femsa_cache_ts',Date.now());}catch(e){}}
 
 // === SISTEMA DE NOTIFICAÇÕES WHATSAPP ===
 
@@ -758,14 +779,14 @@ function notifKey(tipo, hora){
 
 function jaDisparou(tipo, hora){
   const key = notifKey(tipo, hora);
-  const stored = localStorage.getItem('mogi_notif_'+key);
+  const stored = localStorage.getItem('femsa_notif_'+key);
   return _notifFired[key] || stored === '1';
 }
 
 function marcarDisparado(tipo, hora){
   const key = notifKey(tipo, hora);
   _notifFired[key] = true;
-  try{ localStorage.setItem('mogi_notif_'+key, '1'); }catch(e){}
+  try{ localStorage.setItem('femsa_notif_'+key, '1'); }catch(e){}
 }
 
 async function enviarWhatsApp(linhas){
@@ -786,7 +807,7 @@ function verificarAusencia(){
   const quadro = colaboradoresAtivos().length;
   if(!quadro) return;
   let presentes=0, ausentes=0, ausentesNomes=[];
-  TURNOS.map(x=>x.key).forEach(t=>{
+  ['A','B','C'].forEach(t=>{
     const p=presDay[t]; if(!p) return;
     Object.entries(p.presenca||{}).forEach(([nome,v])=>{
       if(v==='P') presentes++;
@@ -801,7 +822,7 @@ function verificarAusencia(){
       _notifFired[key] = true;
       const hora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
       enviarWhatsApp([
-        'FEMSA Mogi - Ausencia alta',
+        'FEMSA Aparecida - Ausencia alta',
         'Quadro: '+quadro+' | Presentes: '+presentes+' | Ausentes: '+ausentes+' ('+Math.round(pct*100)+'%)',
         ausentesNomes.length ? 'Ausentes: '+ausentesNomes.join(', ') : '',
         todayD.split('-').reverse().join('/')+' as '+hora
@@ -817,7 +838,7 @@ async function enviarResumoPresenca(hora){
   const presDay = state.presencas[todayD] || {};
   const quadro = colaboradoresAtivos().length;
   let presentes=0, ausentes=0, ausentesNomes=[];
-  TURNOS.map(x=>x.key).forEach(t=>{
+  ['A','B','C'].forEach(t=>{
     const p=presDay[t]; if(!p) return;
     Object.entries(p.presenca||{}).forEach(([nome,v])=>{
       if(v==='P') presentes++;
@@ -825,9 +846,9 @@ async function enviarResumoPresenca(hora){
       else{ ausentes++; ausentesNomes.push(nome.split(' ')[0]); }
     });
   });
-  const turnoLabel = hora+'h';
+  const turnoLabel = hora===7?'07h (entrada A)':hora===9?'09h (A em operacao)':hora===15?'15h (entrada B)':'17h (B em operacao)';
   await enviarWhatsApp([
-    'FEMSA Mogi - Presenca '+turnoLabel,
+    'FEMSA Aparecida - Presenca '+turnoLabel,
     'Quadro: '+quadro+' | Presentes: '+presentes+' | Ausentes: '+ausentes,
     ausentesNomes.length ? 'Ausentes: '+ausentesNomes.join(', ') : 'Todos presentes!',
     todayD.split('-').reverse().join('/')
@@ -849,7 +870,7 @@ async function enviarResumoProducao(hora){
   const pct = Math.min(100, Math.round(tP/META_DIARIA*100));
   const statusMeta = tP>=META_DIARIA?'Meta atingida!':pct>=80?'Quase la!':'Em andamento';
   await enviarWhatsApp([
-    'FEMSA Mogi - Producao '+hora+'h',
+    'FEMSA Aparecida - Producao '+hora+'h',
     'Produzidos: '+tP+' | Enviados: '+tE,
     'Recebidos: '+tR+(tD?' | Descarte: '+tD:''),
     'Buffer (estoque): '+(buffer>=0?'+':'')+buffer,
@@ -901,6 +922,8 @@ async function syncFromCloud(){
     console.error('Sync:',e);
   }
   isSyncing=false;
+  // Se o usuário está digitando ou com um modal aberto, os dados já foram
+  // mesclados no state (nada se perde) — só adia o repaint pra não tirar o foco.
   if(!usuarioEstaEditando())renderAll();
 }
 
@@ -909,7 +932,7 @@ async function pushToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
     // Read current cloud state for smart merge
-    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||''};
+    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||''};
     try{
       const r=await fetch(FB_URL);
       if(r.ok){
@@ -970,8 +993,9 @@ async function pushToCloud(){
           const metaMensal=usaConfigLocal?state.metaMensal:cloud.metaMensal;
           const metaIndividualFixa=usaConfigLocal?(state.metaIndividualFixa||120):(cloud.metaIndividualFixa||120);
           const bufferSaldoInicial=usaConfigLocal?(state.bufferSaldoInicial||0):(cloud.bufferSaldoInicial||0);
+          const turnoExtra=usaConfigLocal?(state.turnoExtra||{ativo:false,horario:'',inicioMin:null}):(cloud.turnoExtra||{ativo:false,horario:'',inicioMin:null});
           const configTs=usaConfigLocal?localConfigTs:cloudConfigTs;
-          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,afastamentos:mergedAfast,bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,configTs,presencasResetTs:presResetTs,producaoResetTs:prodResetTs};
+          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,afastamentos:mergedAfast,bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,turnoExtra,configTs,presencasResetTs:presResetTs,producaoResetTs:prodResetTs};
         }
       }
     }catch(e){}
@@ -990,6 +1014,7 @@ async function pushToCloud(){
     state.metaMensal=merged.metaMensal;
     state.metaIndividualFixa=merged.metaIndividualFixa||120;
     state.bufferSaldoInicial=merged.bufferSaldoInicial||0;
+    state.turnoExtra=merged.turnoExtra||{ativo:false,horario:'',inicioMin:null};
     state.configTs=merged.configTs||'';
     clearPending();
     saveCache(); // salva cache e timestamp
@@ -1150,7 +1175,7 @@ function launchApp(){
   ['sidebar-logo-img','topbar-logo','login-logo-img'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LOGO_B64;});
   setSyncDot('syncing','Conectando...');
   // Força timestamp fresco para o hub saber que o painel esta aberto
-  try{localStorage.setItem('mogi_cache_ts', Date.now());}catch(e){}
+  try{localStorage.setItem('femsa_cache_ts', Date.now());}catch(e){}
   saveCache();
   renderAll();
   syncFromCloud().then(()=>{scheduleNextSync();}).catch(scheduleNextSync);
@@ -1159,8 +1184,8 @@ function launchApp(){
 }
 
 function boot(){
-  unitName=localStorage.getItem(LS_UNIT)||'Mogi';
-  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;}}catch(e){}
+  unitName=localStorage.getItem(LS_UNIT)||'Aparecida';
+  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;}}catch(e){}
   if(!state.colaboradores||!state.colaboradores.length)state.colaboradores=DEFAULT_COLABS;
   try{
     const raw=sessionStorage.getItem('femsa_session')||localStorage.getItem('femsa_session');
@@ -1179,7 +1204,7 @@ function boot(){
 }
 // Restaura apikey de notificação salva
 try{
-  const savedKey = localStorage.getItem('mogi_notif_apikey_0');
+  const savedKey = localStorage.getItem('femsa_notif_apikey_0');
   if(savedKey && NOTIF_RECIPIENTS[0]) NOTIF_RECIPIENTS[0].apikey = savedKey;
 }catch(e){}
 window.addEventListener('DOMContentLoaded',boot);
@@ -1192,7 +1217,7 @@ setInterval(()=>{
   if(nowDate !== _lastKnownDate){
     _lastKnownDate=nowDate;
     selDate=nowDate; // reset dashboard to new day
-    selTurnoAtivo='GERAL_M'; // reset presença à visão geral da manhã
+    selTurnoAtivo='A'; // reset presença to Turno A
     renderAll();
     // If presença screen is visible, re-render it too
     const presEl=document.getElementById('sc-presenca');
@@ -1271,17 +1296,14 @@ function buildProducaoPorTurnoCard(){
     if(m.turno)porTurno[m.turno]=(porTurno[m.turno]||0)+(m.prod||0);
     else semTurno+=(m.prod||0);
   });
-  const grupos=Object.keys(TURNO_GRUPOS).map(k=>{
-    const g=TURNO_GRUPOS[k];
-    return{nome:g.nome,val:g.turnos.reduce((s,tk)=>s+(porTurno[tk]||0),0)};
-  });
-  const max=Math.max(1,...grupos.map(g=>g.val),semTurno);
+  const turnos=turnosAtivos();
+  const max=Math.max(1,...turnos.map(t=>porTurno[t.key]||0),semTurno);
   const linha=(label,val,cor)=>'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">'+
-    '<div style="width:170px;flex-shrink:0;font-size:13px;font-weight:600;color:var(--text)">'+label+'</div>'+
+    '<div style="width:140px;flex-shrink:0;font-size:13px;font-weight:600;color:var(--text)">'+label+'</div>'+
     '<div style="flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.max(2,Math.round(val/max*100))+'%;background:'+cor+'"></div></div>'+
     '<div style="width:60px;text-align:right;font-weight:700;font-size:13px;color:'+cor+'">'+val.toLocaleString('pt-BR')+'</div></div>';
   return'<div class="card"><div class="card-title"><i class="ti ti-chart-bar"></i>Produção por Turno (hoje)</div>'+
-    grupos.map(g=>linha(g.nome,g.val,'var(--cyan)')).join('')+
+    turnos.map(t=>linha(t.label,porTurno[t.key]||0,'var(--cyan)')).join('')+
     (semTurno>0?linha('Sem turno (retroativo)',semTurno,'var(--text2)'):'')+
     '</div>';
 }
@@ -1297,7 +1319,7 @@ function buildProducaoIndividualHojeCard(){
     if(!porTurno[c.turno])porTurno[c.turno]=[];
     porTurno[c.turno].push({nome:c.nome,prod});
   });
-  const turnosComGente=TURNOS.filter(t=>porTurno[t.key]&&porTurno[t.key].length);
+  const turnosComGente=turnosAtivos().filter(t=>porTurno[t.key]&&porTurno[t.key].length);
   if(!turnosComGente.length)return'';
   const linhaHtml=(l,max)=>{
     const cor=l.prod>=info.metaPorPessoa?'var(--green)':'var(--red)';
@@ -1313,7 +1335,7 @@ function buildProducaoIndividualHojeCard(){
     const totalTurno=lista.reduce((s,l)=>s+l.prod,0);
     return'<div style="margin-bottom:16px">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
-      '<div style="font-size:12px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.05em">'+t.cargo+' · '+t.label+'</div>'+
+      '<div style="font-size:12px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.05em">'+t.label+'</div>'+
       '<div style="font-size:11px;color:var(--text2)">'+(salvo?'<span style="color:var(--green)">salvo</span>':'<span style="color:var(--warn)">ainda não salvo</span>')+' · total '+totalTurno.toLocaleString('pt-BR')+'</div>'+
       '</div>'+
       lista.map(l=>linhaHtml(l,max)).join('')+
@@ -1339,15 +1361,15 @@ function renderDia(){
   const pct=Math.min(100,Math.round(tP/META_DIARIA*100));
   const lastTag=movs.length?'<span style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px"><i class="ti ti-clock" style="font-size:11px"></i>'+timeFmt(movs[movs.length-1].ts)+' · '+movs[movs.length-1].who+'</span>':'';
   let presP=0,presA=0;
-  TURNOS.map(x=>x.key).forEach(t=>{const p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(v=>{if(v==='P')presP++;else presA++;});});
-  const turnoRows=TURNOS.map(x=>x.key).map(t=>{
+  ['A','B','C'].forEach(t=>{const p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(v=>{if(v==='P')presP++;else presA++;});});
+  const turnoRows=['A','B','C'].map(t=>{
     const p=presDay[t];
-    if(!p||!p.savedAt)return'<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)"><i class="ti ti-clock" style="color:var(--text3);font-size:13px"></i><span style="font-size:13px;color:var(--text2)">'+turnoNomeCompleto(t)+' — aguardando apontamento</span></div>';
+    if(!p||!p.savedAt)return'<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)"><i class="ti ti-clock" style="color:var(--text3);font-size:13px"></i><span style="font-size:13px;color:var(--text2)">Turno '+t+' — aguardando apontamento</span></div>';
     const np=Object.values(p.presenca||{}).filter(v=>v==='P').length;
     const na=Object.values(p.presenca||{}).filter(v=>v==='A').length;
-    return'<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:13px;font-weight:600;color:var(--text)">'+turnoNomeCompleto(t)+'</span><div style="display:flex;gap:6px"><span class="badge b-ok">'+np+' pres.</span>'+(na?'<span class="badge b-err">'+na+' aus.</span>':'')+'</div></div>';
+    return'<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:13px;font-weight:600;color:var(--text)">Turno '+t+'</span><div style="display:flex;gap:6px"><span class="badge b-ok">'+np+' pres.</span>'+(na?'<span class="badge b-err">'+na+' aus.</span>':'')+'</div></div>';
   }).join('');
-  const presCards=TURNOS.map(x=>x.key).map(t=>{
+  const presCards=['A','B','C'].map(t=>{
     const p=presDay[t];if(!p||!p.savedAt)return'';
     const colabsT=colaboradoresAtivos().filter(c=>c.turno===t);
     const cells=colabsT.map(c=>{
@@ -1357,7 +1379,7 @@ function renderDia(){
       if(!st)return'';
       return'<div class="pc '+(st==='P'?'pc-p':st==='A'?'pc-a':st==='F'?'pc-f':'')+'"><div class="pc-n">'+c.nome.split(' ')[0]+'</div><div class="pc-s">'+(st==='P'?'Presente':st==='A'?'Ausente':st==='F'?'Férias':'')+'</div></div>';
     }).join('');
-    return'<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">'+turnoNomeCompleto(t)+' · '+turnoHor(t)+'</div><div class="pres-grid">'+cells+'</div></div>';
+    return'<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Turno '+t+' · '+(t==='A'?'06h00–14h20':t==='B'?'14h00–22h20':'22h00–06h20')+'</div><div class="pres-grid">'+cells+'</div></div>';
   }).join('');
   const movLog=movs.length?'<div class="card"><div class="card-title"><i class="ti ti-history"></i>Lançamentos '+lastTag+'</div>'+movs.slice().reverse().map(m=>{const pts=[];if(m.rec)pts.push('Rec:<b>'+m.rec+'</b>');if(m.prod)pts.push('Prod:<b>'+m.prod+'</b>');if(m.env)pts.push('Env:<b>'+m.env+'</b>');if(m.desc)pts.push('Desc:<b>'+m.desc+'</b>');return'<div class="log-entry"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · <strong>'+m.who+'</strong></div><div class="log-vals">'+pts.join(' · ')+'</div></div>';}).join('')+'</div>':'';
   cont.innerHTML=
@@ -1440,7 +1462,7 @@ function rankingProducaoPeriodo(de,ate){
   });
   return Object.entries(totals).map(([nome,total])=>{
     const c=state.colaboradores.find(x=>x.nome===nome);
-    return{nome,total,turno:c?c.turno:'',turnoLbl:c?turnoNomeCompleto(c.turno):''};
+    return{nome,total,turno:c?c.turno:'',turnoLbl:c?turnoInfo(c.turno).label:''};
   });
 }
 function buildRankingCard(de,ate){
@@ -1462,12 +1484,12 @@ function buildRankingCard(de,ate){
       '<div><div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Menor produtividade</div>'+bottom.map((r,i)=>linha(r,i,maxBottom,'var(--red)')).join('')+'</div>'+
       '</div></div>';
   };
-  const turnosComGente=TURNOS.filter(t=>arr.some(r=>r.turno===t.key));
+  const turnosComGente=turnosAtivos().filter(t=>arr.some(r=>r.turno===t.key));
   return'<div class="card"><div class="card-title"><i class="ti ti-trophy"></i>Top 5 — Ranking do Período</div>'+
     '<div style="font-size:11px;color:var(--text2);margin-bottom:16px">'+dateBR(de)+' a '+dateBR(ate)+'</div>'+
     (arr.length?
       blocoTop5(arr,'Geral (todos os turnos)')+
-      turnosComGente.map(t=>blocoTop5(arr.filter(r=>r.turno===t.key),t.cargo+' · '+t.label)).join('')
+      turnosComGente.map(t=>blocoTop5(arr.filter(r=>r.turno===t.key),t.label)).join('')
     :'<div class="empty" style="padding:16px 0"><i class="ti ti-trophy"></i><h3>Sem lançamentos de Produção por Colaborador nesse período</h3></div>')+
     '</div>';
 }
@@ -1513,7 +1535,7 @@ function renderMes(){
   const descArr=dates.map(d=>state.movimentos[d].reduce((s,m)=>s+(m.desc||0),0));
   const envArr=dates.map(d=>state.movimentos[d].reduce((s,m)=>s+(m.env||0),0));
   const bufArr=prodArr.map((p,i)=>p-envArr[i]);
-  const absArr=dates.map(d=>{let a=0;const pr=state.presencas[d]||{};TURNOS.map(x=>x.key).forEach(t=>{if(pr[t])Object.values(pr[t].presenca||{}).forEach(v=>{if(v==='A')a++;});});return a;});
+  const absArr=dates.map(d=>{let a=0;const pr=state.presencas[d]||{};['A','B','C'].forEach(t=>{if(pr[t])Object.values(pr[t].presenca||{}).forEach(v=>{if(v==='A')a++;});});return a;});
   const co={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1923',borderColor:'rgba(255,255,255,.1)',borderWidth:1,titleColor:'#fff',bodyColor:'#7a92a8'}},scales:{x:{grid:{display:false},ticks:{color:'#4a6070',font:{size:10},maxRotation:45}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a6070',font:{size:10}},border:{display:false}}}};
   Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});charts={};
   cont.innerHTML=
@@ -1571,13 +1593,11 @@ function renderPresenca(){
   const todayD=today();
   const wrap=document.getElementById('turno-btns-wrap');
   if(wrap){
-    let html=Object.keys(TURNO_GRUPOS).map(k=>{
-      const g=TURNO_GRUPOS[k];
-      const done=g.turnos.every(tk=>state.presencas[todayD]&&state.presencas[todayD][tk]&&state.presencas[todayD][tk].savedAt);
-      const cls='tbtn'+(k===selTurnoAtivo?' active':'')+(done?' done':'');
-      return'<button class="'+cls+'" id="tbtn-'+k+'" onclick="selTurno(\''+k+'\')"><div class="turno-lbl"><i class="ti ti-layout-grid" style="font-size:11px;margin-right:3px"></i>'+g.nome+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">Operador + Auxiliar</div></button>';
+    wrap.innerHTML=turnosAtivos().map(t=>{
+      const done=state.presencas[todayD]&&state.presencas[todayD][t.key]&&state.presencas[todayD][t.key].savedAt;
+      const cls='tbtn'+(t.key===selTurnoAtivo?' active':'')+(done?' done':'')+(t.extra?' tbtn-extra':'');
+      return'<button class="'+cls+'" id="tbtn-'+t.key+'" onclick="selTurno(\''+t.key+'\')"'+(t.extra?' style="border-style:dashed"':'')+'><div class="turno-lbl">'+t.label+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">'+t.horario+'</div></button>';
     }).join('');
-    wrap.innerHTML=html;
   }
   renderPresGrid();
 }
@@ -1588,61 +1608,52 @@ function afastamentoAtivoParaData(nome,data){
 function renderPresGrid(){
   const cont=document.getElementById('pres-content');if(!cont)return;
   const todayD=today();
-  const efetivos=turnosEfetivos(selTurnoAtivo);
-  const presDayAll=state.presencas[todayD]||{};
-  const todosSalvos=efetivos.every(tk=>presDayAll[tk]&&presDayAll[tk].savedAt);
-  const colabs=colaboradoresAtivos().filter(c=>efetivos.includes(c.turno));
-  if(!colabs.length){cont.innerHTML='<div class="empty"><i class="ti ti-users"></i><h3>Nenhum colaborador no '+nomeSelecao(selTurnoAtivo)+'</h3><p>Adicione colaboradores na tela Equipe.</p></div>';return;}
+  const presDay=state.presencas[todayD]&&state.presencas[todayD][selTurnoAtivo];
+  const saved=presDay&&presDay.savedAt;
+  const presSaved=presDay&&presDay.presenca||{};
+  const colabs=colaboradoresAtivos().filter(c=>c.turno===selTurnoAtivo);
+  if(!colabs.length){cont.innerHTML='<div class="empty"><i class="ti ti-users"></i><h3>Nenhum colaborador no '+turnoInfo(selTurnoAtivo).label+'</h3><p>Adicione colaboradores na tela Equipe.</p></div>';return;}
   const cells=colabs.map(c=>{
     const afast=afastamentoAtivoParaData(c.nome,todayD);
     if(afast){
       return'<div class="pc pc-atestado" onclick="event.stopPropagation();showToast(\''+c.nome.split(' ')[0].replace(/'/g,"\\'")+' está de '+afast.tipo.replace(/'/g,"\\'")+' até '+dateBR(afast.dataFim)+' — não é possível lançar presença.\',\'warn\')"><div class="pc-n">'+c.nome.split(' ').slice(0,2).join(' ')+'</div>'+(c.cargo?'<div class="pc-c">'+c.cargo+'</div>':'')+'<div class="pc-s"><i class="ti ti-file-certificate" style="font-size:11px;margin-right:3px"></i>'+afast.tipo+'</div></div>';
     }
-    const pd=presDayAll[c.turno];
-    const presSaved=(pd&&pd.presenca)||{};
-    const cardSalvo=pd&&pd.savedAt;
     const st=presSaved[c.nome]||'';
     const cls=st==='P'?' pc-p':st==='A'?' pc-a':st==='F'?' pc-f':'';
     const lbl=st==='P'?'Presente':st==='A'?'Ausente':st==='F'?'Férias':'—';
-    const feriasBtn=(!cardSalvo&&podeEditarPresenca())?'<div class="pc-ferias-btn" onclick="event.stopPropagation();abrirFeriasModal(\''+c.turno+'\',\''+c.nome.replace(/'/g,"\\'")+'\',today())" title="Marcar férias"><i class="ti ti-plane-departure"></i></div>':'';
-    return'<div class="pc'+cls+'" onclick="'+(cardSalvo?'unlockPres(\''+c.turno+'\')':'togglePres(\''+c.nome+'\',\''+c.turno+'\')')+'">'+feriasBtn+'<div class="pc-n">'+c.nome.split(' ').slice(0,2).join(' ')+'</div>'+(c.cargo?'<div class="pc-c">'+c.cargo+'</div>':'')+'<div class="pc-s">'+lbl+'</div></div>';
+    const feriasBtn=(!saved&&podeEditarPresenca())?'<div class="pc-ferias-btn" onclick="event.stopPropagation();abrirFeriasModal(selTurnoAtivo,\''+c.nome.replace(/'/g,"\\'")+'\',today())" title="Marcar férias"><i class="ti ti-plane-departure"></i></div>':'';
+    return'<div class="pc'+cls+'" onclick="'+(saved?'unlockPres()':'togglePres(\''+c.nome+'\')')+'">'+feriasBtn+'<div class="pc-n">'+c.nome.split(' ').slice(0,2).join(' ')+'</div>'+(c.cargo?'<div class="pc-c">'+c.cargo+'</div>':'')+'<div class="pc-s">'+lbl+'</div></div>';
   }).join('');
   cont.innerHTML=
     '<div class="pres-grid" style="margin-bottom:16px">'+cells+'</div>'+
-    (todosSalvos?
-      '<div style="padding:10px 14px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:9px;font-size:12px;color:var(--green);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px"><i class="ti ti-check" style="font-size:14px"></i>Apontamento salvo</div>'+
-      '<button class="btn btn-ghost btn-sm" onclick="unlockPres()"><i class="ti ti-lock-open" style="font-size:13px"></i> Editar tudo</button>'
+    (saved?
+      '<div style="padding:10px 14px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:9px;font-size:12px;color:var(--green);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px"><i class="ti ti-check" style="font-size:14px"></i>Apontamento salvo — '+new Date(presDay.savedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'</div>'+
+      '<button class="btn btn-ghost btn-sm" onclick="unlockPres()"><i class="ti ti-lock-open" style="font-size:13px"></i> Editar</button>'
       :
-      '<button class="btn btn-primary" onclick="salvarPresenca()"><i class="ti ti-check" style="font-size:16px"></i> Confirmar presença — '+nomeSelecao(selTurnoAtivo)+'</button>'
+      '<button class="btn btn-primary" onclick="salvarPresenca()"><i class="ti ti-check" style="font-size:16px"></i> Confirmar presença do '+turnoInfo(selTurnoAtivo).label+'</button>'
     );
 }
-function togglePres(nome,turno){
-  const t=turno||selTurnoAtivo;
+function togglePres(nome){
   const todayD=today();
   const afast=afastamentoAtivoParaData(nome,todayD);
   if(afast){showToast(nome.split(' ')[0]+' está de '+afast.tipo+' até '+dateBR(afast.dataFim)+' — não é possível lançar presença.','warn');return;}
   if(!state.presencas[todayD])state.presencas[todayD]={};
-  if(!state.presencas[todayD][t])state.presencas[todayD][t]={presenca:{}};
-  const cur=state.presencas[todayD][t].presenca[nome]||'';
-  state.presencas[todayD][t].presenca[nome]=cur===''?'P':cur==='P'?'A':'';
-  if(cur==='F'&&state.presencas[todayD][t].feriasInfo)delete state.presencas[todayD][t].feriasInfo[nome];
+  if(!state.presencas[todayD][selTurnoAtivo])state.presencas[todayD][selTurnoAtivo]={presenca:{}};
+  const cur=state.presencas[todayD][selTurnoAtivo].presenca[nome]||'';
+  state.presencas[todayD][selTurnoAtivo].presenca[nome]=cur===''?'P':cur==='P'?'A':'';
+  if(cur==='F'&&state.presencas[todayD][selTurnoAtivo].feriasInfo)delete state.presencas[todayD][selTurnoAtivo].feriasInfo[nome];
   renderPresGrid();
 }
 async function salvarPresenca(){
   const todayD=today();
   if(!state.presencas[todayD])state.presencas[todayD]={};
-  turnosEfetivos(selTurnoAtivo).forEach(t=>{
-    if(!state.presencas[todayD][t])state.presencas[todayD][t]={presenca:{}};
-    state.presencas[todayD][t].savedAt=new Date().toISOString();
-  });
-  saveCache();await pushToCloud();verificarAusencia();showToast('Presença salva — '+nomeSelecao(selTurnoAtivo)+'!','ok');renderPresenca();
+  if(!state.presencas[todayD][selTurnoAtivo])state.presencas[todayD][selTurnoAtivo]={presenca:{}};
+  state.presencas[todayD][selTurnoAtivo].savedAt=new Date().toISOString();
+  saveCache();await pushToCloud();verificarAusencia();showToast('Presença do '+turnoInfo(selTurnoAtivo).label+' salva!','ok');renderPresenca();
 }
-function unlockPres(turno){
+function unlockPres(){
   const todayD=today();
-  const turnos=turno?[turno]:turnosEfetivos(selTurnoAtivo);
-  turnos.forEach(t=>{
-    if(state.presencas[todayD]&&state.presencas[todayD][t])delete state.presencas[todayD][t].savedAt;
-  });
+  if(state.presencas[todayD]&&state.presencas[todayD][selTurnoAtivo])delete state.presencas[todayD][selTurnoAtivo].savedAt;
   renderPresenca();
 }
 
@@ -1655,7 +1666,7 @@ function abrirEditPresenca(date,turno,nome){
   const st=pt&&pt.presenca?pt.presenca[nome]||'':'';
   const statusLbl=st==='A'?'Ausente':st==='F'?'Férias':st==='P'?'Presente':'Sem registro';
   document.getElementById('edit-pres-nome').textContent=nome;
-  document.getElementById('edit-pres-info').textContent=turnoNomeCompleto(turno)+' · '+dateBR(date)+' · Atual: '+statusLbl;
+  document.getElementById('edit-pres-info').textContent='Turno '+turno+' · '+dateBR(date)+' · Atual: '+statusLbl;
   document.getElementById('edit-pres-modal').style.display='flex';
 }
 function closeEditPresencaModal(){
@@ -1746,7 +1757,7 @@ function getFeriasAtivas(){
   const map={},t=today();
   Object.keys(state.presencas).forEach(date=>{
     const pd=state.presencas[date];
-    TURNOS.map(x=>x.key).forEach(turno=>{
+    ['A','B','C'].forEach(turno=>{
       const pt=pd[turno];if(!pt||!pt.feriasInfo)return;
       Object.entries(pt.feriasInfo).forEach(([nome,info])=>{
         const key=nome+'|'+info.inicio;
@@ -1763,7 +1774,7 @@ async function cancelarFerias(nome,inicio){
   Object.keys(state.presencas).forEach(date=>{
     if(date<t)return;
     const pd=state.presencas[date];
-    TURNOS.map(x=>x.key).forEach(turno=>{
+    ['A','B','C'].forEach(turno=>{
       const pt=pd[turno];if(!pt||!pt.presenca||!pt.presenca[nome])return;
       const info=pt.feriasInfo&&pt.feriasInfo[nome];
       if(pt.presenca[nome]==='F'&&info&&info.inicio===inicio){
@@ -1812,8 +1823,8 @@ async function lancar(){
   const env=parseInt(document.getElementById('mv-env')?.value)||0;
   const desc=parseInt(document.getElementById('mv-desc')?.value)||0;
   if(!rec&&!prod&&!env&&!desc){showToast('Informe pelo menos um valor.','warn');return;}
-  const who=currentUser?currentUser.user:'Desconhecido';
   const todayD=today();
+  const who=currentUser?currentUser.user:'Desconhecido';
   if(!state.movimentos[todayD])state.movimentos[todayD]=[];
   state.movimentos[todayD].push({ts:new Date().toISOString(),who,rec,prod,env,desc,turno:selTurnoProd});
   ['mv-rec','mv-prod','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
@@ -1831,22 +1842,21 @@ function _prodBuf(date,turno){
 }
 function renderProdPessoas(){
   const wrap=document.getElementById('prod-turno-btns-wrap');if(!wrap)return;
-  const turnosProd=TURNOS.filter(t=>t.cargo==='Auxiliar de Expedição');
-  if(!selTurnoProd||!turnosProd.some(t=>t.key===selTurnoProd))selTurnoProd=turnosProd[0].key;
+  if(!selTurnoProd||!turnosAtivos().some(t=>t.key===selTurnoProd))selTurnoProd=turnosAtivos()[0].key;
   const todayD=today();
-  wrap.innerHTML=turnosProd.map(t=>{
+  wrap.innerHTML=turnosAtivos().map(t=>{
     const done=state.producaoPessoas[todayD]&&state.producaoPessoas[todayD][t.key]&&state.producaoPessoas[todayD][t.key].savedAt;
     const cls='btn btn-ghost btn-sm'+(t.key===selTurnoProd?' active':'');
-    return'<button class="'+cls+'" style="'+(t.key===selTurnoProd?'border-color:var(--cyan-bd);background:var(--cyan-bg);color:var(--cyan)':'')+'" onclick="selTurnoProd_(\''+t.key+'\')">'+t.cargo+' · '+t.label+(done?' <i class="ti ti-check" style="font-size:11px"></i>':'')+'</button>';
+    return'<button class="'+cls+'" style="'+(t.key===selTurnoProd?'border-color:var(--cyan-bd);background:var(--cyan-bg);color:var(--cyan)':'')+'" onclick="selTurnoProd_(\''+t.key+'\')">'+t.label+(done?' <i class="ti ti-check" style="font-size:11px"></i>':'')+'</button>';
   }).join('');
   const info=calcMetaIndividual();
   const dia=state.producaoPessoas[todayD]&&state.producaoPessoas[todayD][selTurnoProd];
   const saved=dia&&dia.savedAt;
   const infoEl=document.getElementById('prod-pessoas-info');
-  if(infoEl)infoEl.innerHTML='Meta individual hoje: <strong style="color:var(--cyan)">'+info.metaPorPessoa+'</strong> pallets/pessoa'+(saved?' <span style="color:var(--green);font-weight:700">· salvo</span>':'');
+  if(infoEl)infoEl.innerHTML='Meta individual hoje: <strong style="color:var(--cyan)">'+info.metaPorPessoa+'</strong> pallets/pessoa ('+info.qtd+' pessoa(s) · meta mensal '+info.metaMensal.toLocaleString('pt-BR')+')'+(saved?' <span style="color:var(--green);font-weight:700">· salvo</span>':'');
   const colabs=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===selTurnoProd);
   const listEl=document.getElementById('prod-pessoas-list');if(!listEl)return;
-  if(!colabs.length){listEl.innerHTML='<div class="empty" style="padding:16px 0"><i class="ti ti-users"></i><h3>Nenhum colaborador nesse turno</h3></div>';return;}
+  if(!colabs.length){listEl.innerHTML='<div class="empty" style="padding:16px 0"><i class="ti ti-users"></i><h3>Nenhum colaborador de Recuperação de Pallets nesse turno</h3></div>';return;}
   const pessoas=(dia&&dia.pessoas)||{};
   listEl.innerHTML=colabs.map(c=>{
     const reg=pessoas[c.nome]||{prod:0,motivo:'',motivoDesc:''};
@@ -1913,7 +1923,7 @@ function unlockProdPessoas(){
 function abrirLancamentoRetroativo(){
   const dt=document.getElementById('retro-date');dt.value=today();dt.max=today();
   const tSel=document.getElementById('retro-turno');
-  tSel.innerHTML=TURNOS.map(t=>'<option value="'+t.key+'">'+t.cargo+' · '+t.label+' — '+t.hor+'</option>').join('');
+  tSel.innerHTML=turnosAtivos().map(t=>'<option value="'+t.key+'">'+t.label+' — '+t.horario+'</option>').join('');
   ['retro-rec','retro-prod','retro-env','retro-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
   document.getElementById('retro-incl-geral').checked=true;
   document.getElementById('retro-incl-individual').checked=true;
@@ -1937,7 +1947,7 @@ function renderRetroProdPessoas(){
   const colabs=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===turno);
   const dia=state.producaoPessoas[date]&&state.producaoPessoas[date][turno];
   const pessoas=(dia&&dia.pessoas)||{};
-  if(!colabs.length){wrap.innerHTML='<div style="font-size:12px;color:var(--text2);padding:6px 0 4px">Nenhum colaborador nesse turno.</div>';return;}
+  if(!colabs.length){wrap.innerHTML='<div style="font-size:12px;color:var(--text2);padding:6px 0 4px">Nenhum colaborador de Recuperação de Pallets nesse turno.</div>';return;}
   wrap.innerHTML='<div style="font-size:11px;color:var(--text2);margin:6px 0 8px">Produção individual desse turno · meta '+info.metaPorPessoa+' pallets/pessoa</div>'+
     colabs.map(c=>{
       const reg=pessoas[c.nome]||{prod:0,motivo:''};
@@ -1987,10 +1997,11 @@ async function lancarRetroativo(){
   const env=inclGeral?(parseInt(document.getElementById('retro-env').value)||0):0;
   const desc=inclGeral?(parseInt(document.getElementById('retro-desc').value)||0):0;
   if(inclGeral&&!rec&&!prod&&!env&&!desc){showToast('Informe pelo menos um valor no lançamento geral.','warn');return;}
+  let diaProd=null;
   if(inclIndividual){
     const info=calcMetaIndividual();
     const colabsTurno=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===turno);
-    const diaProd=_prodBuf(data,turno);
+    diaProd=_prodBuf(data,turno);
     for(const c of colabsTurno){
       const reg=diaProd.pessoas[c.nome];
       const p=reg?(reg.prod||0):0;
@@ -2078,7 +2089,7 @@ function renderAbsenteismo(){
   var absMap={},diasMap={};
   dates.forEach(function(date){
     var pd=state.presencas[date]||{};
-    TURNOS.map(x=>x.key).forEach(function(t){
+    ['A','B','C'].forEach(function(t){
       if(!pd[t])return;
       Object.entries(pd[t].presenca||{}).forEach(function(e2){
         var nome=e2[0],st=e2[1];
@@ -2098,14 +2109,14 @@ function renderAbsenteismo(){
   var media=ranking.length?Math.round(ranking.reduce(function(s,r){return s+r.pct;},0)/ranking.length):0;
   var criticos=ranking.filter(function(r){return r.pct>=15;}).length;
   var atencao=ranking.filter(function(r){return r.pct>=8&&r.pct<15;}).length;
-  var turnoMap={};TURNOS.map(x=>x.key).forEach(function(t){turnoMap[t]=0;});
+  var turnoMap={A:0,B:0,C:0};
   dates.forEach(function(date){
     var pd=state.presencas[date]||{};
-    TURNOS.map(x=>x.key).forEach(function(t){if(pd[t])Object.values(pd[t].presenca||{}).forEach(function(s){if(s==='A')turnoMap[t]++;});});
+    ['A','B','C'].forEach(function(t){if(pd[t])Object.values(pd[t].presenca||{}).forEach(function(s){if(s==='A')turnoMap[t]++;});});
   });
   var turnoHTML='';
-  TURNOS.map(x=>x.key).forEach(function(t){
-    turnoHTML+='<div style="background:var(--bg3);border-radius:9px;padding:12px;text-align:center;border:1px solid var(--border)"><div style="font-size:10px;color:var(--cyan);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">'+turnoNomeCompleto(t)+'</div><div style="font-size:22px;font-weight:700;color:var(--text)">'+turnoMap[t]+'</div><div style="font-size:11px;color:var(--text2);margin-top:2px">faltas</div></div>';
+  ['A','B','C'].forEach(function(t){
+    turnoHTML+='<div style="background:var(--bg3);border-radius:9px;padding:12px;text-align:center;border:1px solid var(--border)"><div style="font-size:10px;color:var(--cyan);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Turno '+t+'</div><div style="font-size:22px;font-weight:700;color:var(--text)">'+turnoMap[t]+'</div><div style="font-size:11px;color:var(--text2);margin-top:2px">faltas</div></div>';
   });
   var rowsHTML='';
   ranking.forEach(function(r){
@@ -2146,7 +2157,7 @@ function renderEquipe(){
   var colabs=colaboradoresAtivos();
   var html='<div class="card"><div class="card-title"><i class="ti ti-id-badge"></i>Colaboradores ('+colabs.length+')'+(isAdmin?'<button onclick="addColab()" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-plus" style="font-size:13px"></i> Adicionar</button>':'')+'</div>';
   if(!colabs.length){html+='<div class="empty" style="padding:24px 0"><i class="ti ti-users"></i><h3>Nenhum colaborador</h3></div>';}
-  else{colabs.forEach(function(c){var i=state.colaboradores.indexOf(c);html+='<div class="colab-item"><div class="colab-av">'+c.nome.slice(0,2).toUpperCase()+'</div><div style="flex:1;min-width:0"><div class="colab-name">'+c.nome+'</div><div class="colab-role">'+turnoNomeCompleto(c.turno)+'</div></div>'+(isAdmin?'<button onclick="editColab('+i+')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text2);font-size:11px;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')+'</div>';});}
+  else{colabs.forEach(function(c){var i=state.colaboradores.indexOf(c);html+='<div class="colab-item"><div class="colab-av">'+c.nome.slice(0,2).toUpperCase()+'</div><div style="flex:1;min-width:0"><div class="colab-name">'+c.nome+'</div><div class="colab-role">'+turnoInfo(c.turno).label+(c.cargo?' · '+c.cargo:'')+(c.atividade&&c.atividade!=='Recuperação de Pallets'?' · '+c.atividade:'')+'</div></div>'+(isAdmin?'<button onclick="editColab('+i+')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text2);font-size:11px;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')+'</div>';});}
   html+='</div>';
   if(canDelete){
     var excluidos=state.colaboradores.filter(function(c){return c.ativo===false;});
@@ -2155,7 +2166,7 @@ function renderEquipe(){
       excluidos.forEach(function(c){
         var gi=state.colaboradores.indexOf(c);
         html+='<div class="colab-item" style="opacity:.6"><div class="colab-av" style="background:var(--red-bg);color:var(--red)">'+c.nome.slice(0,2).toUpperCase()+'</div>';
-        html+='<div style="flex:1;min-width:0"><div class="colab-name">'+c.nome+'</div><div class="colab-role">'+turnoNomeCompleto(c.turno)+(c.excluidoEm?' · Excluído em '+new Date(c.excluidoEm).toLocaleDateString('pt-BR')+(c.excluidoPor?' por '+c.excluidoPor:''):'')+'</div></div>';
+        html+='<div style="flex:1;min-width:0"><div class="colab-name">'+c.nome+'</div><div class="colab-role">Turno '+c.turno+(c.excluidoEm?' · Excluído em '+new Date(c.excluidoEm).toLocaleDateString('pt-BR')+(c.excluidoPor?' por '+c.excluidoPor:''):'')+'</div></div>';
         html+='<button onclick="restaurarColab('+gi+')" style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:7px;padding:5px 10px;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-restore"></i> Restaurar</button>';
         html+='</div>';
       });
@@ -2174,20 +2185,15 @@ function openColabModal(idx){
   document.getElementById('modal-title-text').textContent = isEdit ? 'Editar colaborador' : 'Novo colaborador';
   document.getElementById('modal-icon').className = 'ti ti-id-badge';
   document.getElementById('modal-nome').value = isEdit ? c.nome : '';
-  const cargoAtual = isEdit && (c.cargo==='Auxiliar de Expedição') ? 'Auxiliar de Expedição' : 'Operador de Empilhadeira';
-  document.getElementById('modal-cargo').value = cargoAtual;
-  atualizarTurnosDoModal(isEdit ? c.turno : null);
+  const dOpt=document.getElementById('modal-turno-d-opt');
+  if(dOpt)dOpt.style.display=(state.turnoExtra&&state.turnoExtra.ativo)?'block':'none';
+  document.getElementById('modal-turno').value = isEdit ? c.turno : 'A';
+  document.getElementById('modal-cargo').value = isEdit ? (c.cargo||'') : 'Operador';
+  document.getElementById('modal-atividade').value = isEdit ? (c.atividade||'Recuperação de Pallets') : 'Recuperação de Pallets';
   document.getElementById('modal-delete-btn').style.display = (isEdit&&currentRole==='superadmin') ? 'block' : 'none';
   document.getElementById('modal-save-btn').className = 'modal-btn-primary';
   document.getElementById('colab-modal').style.display = 'flex';
   setTimeout(()=>document.getElementById('modal-nome').focus(), 50);
-}
-function atualizarTurnosDoModal(turnoSelecionado){
-  const cargo = document.getElementById('modal-cargo').value;
-  const sel = document.getElementById('modal-turno');
-  const opcoes = turnosDoCargo(cargo);
-  sel.innerHTML = opcoes.map(t=>'<option value="'+t.key+'">'+t.label+' — '+t.hor+'</option>').join('');
-  if(turnoSelecionado && opcoes.some(t=>t.key===turnoSelecionado)) sel.value = turnoSelecionado;
 }
 function closeColabModal(){
   document.getElementById('colab-modal').style.display = 'none';
@@ -2195,7 +2201,7 @@ function closeColabModal(){
 function abrirAfastModal(){
   if(!podeEditarPresenca()){showToast('Apenas administradores podem lançar atestados/afastamentos.','err');return;}
   const sel=document.getElementById('afast-nome');
-  sel.innerHTML=colaboradoresAtivos().map(c=>'<option value="'+c.nome.replace(/"/g,'&quot;')+'">'+c.nome+' ('+turnoNomeCompleto(c.turno)+')</option>').join('');
+  sel.innerHTML=colaboradoresAtivos().map(c=>'<option value="'+c.nome.replace(/"/g,'&quot;')+'">'+c.nome+' ('+turnoInfo(c.turno).label+')</option>').join('');
   document.getElementById('afast-tipo').value='Atestado Médico';
   document.getElementById('afast-inicio').value=today();
   document.getElementById('afast-fim').value=today();
@@ -2246,15 +2252,16 @@ function afastamentosAtivosHoje(){
 async function saveColabModal(){
   const nome = document.getElementById('modal-nome').value.trim();
   const turno = document.getElementById('modal-turno').value;
-  const cargo = document.getElementById('modal-cargo').value;
+  const cargo = document.getElementById('modal-cargo').value.trim() || 'Operador';
+  const atividade = document.getElementById('modal-atividade').value || 'Recuperação de Pallets';
   if(!nome){ document.getElementById('modal-nome').style.borderColor='var(--red)'; return; }
   document.getElementById('modal-nome').style.borderColor='';
   if(_modalEditIdx >= 0){
     const c = state.colaboradores[_modalEditIdx];
-    state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo});
+    state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo,atividade});
     showToast('Colaborador atualizado!','ok');
   } else {
-    state.colaboradores.push({nome,turno,cargo,wpp:''});
+    state.colaboradores.push({nome,turno,cargo,atividade,wpp:''});
     showToast('Colaborador adicionado!','ok');
   }
   closeColabModal();
@@ -2308,7 +2315,7 @@ function renderConfig(){
         var emAndamento=f.inicio<=tHoje;
         html+='<div class="colab-item"><div class="colab-av" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple-bd)">'+f.nome.slice(0,2).toUpperCase()+'</div>';
         html+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text)">'+f.nome+'</div>';
-        html+='<div style="font-size:11px;color:var(--text2);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap"><span>'+turnoNomeCompleto(f.turno)+'</span><span>'+dateBR(f.inicio)+' → '+dateBR(f.fim)+' ('+f.dias+' dias)</span>'+(emAndamento?'<span style="color:var(--purple);font-weight:700">Em andamento</span>':'<span style="color:var(--cyan);font-weight:700">Agendada</span>')+'</div></div>';
+        html+='<div style="font-size:11px;color:var(--text2);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap"><span>Turno '+f.turno+'</span><span>'+dateBR(f.inicio)+' → '+dateBR(f.fim)+' ('+f.dias+' dias)</span>'+(emAndamento?'<span style="color:var(--purple);font-weight:700">Em andamento</span>':'<span style="color:var(--cyan);font-weight:700">Agendada</span>')+'</div></div>';
         html+='<div style="display:flex;align-items:center;gap:8px">';
         html+='<span style="font-size:11px;font-weight:700;color:var(--purple);background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:7px;padding:5px 10px;white-space:nowrap"><i class="ti ti-arrow-back"></i> Retorna '+dateBR(f.retorno)+'</span>';
         html+='<button onclick="cancelarFerias(\''+f.nome.replace(/'/g,"\\'")+'\',\''+f.inicio+'\')" style="background:none;border:1px solid var(--red-bd);border-radius:7px;padding:5px 9px;color:var(--red);font-size:11px;cursor:pointer" title="Cancelar férias restantes"><i class="ti ti-x"></i></button>';
@@ -2329,18 +2336,6 @@ function renderConfig(){
     html+='<div style="display:flex;gap:8px"><button class="btn btn-sm" style="background:var(--warn);color:#000" onclick="arquivar()">Confirmar</button>';
     html+='<button class="btn btn-ghost btn-sm" onclick="hideArchive()">Cancelar</button></div></div></div>';
     if(podeEditarPresenca()){
-      var metaMensalAtual=getMetaMensal();
-      var infoMeta=calcMetaIndividual();
-      html+='<div class="card" style="border-color:var(--cyan-bd)">';
-      html+='<div class="card-title"><i class="ti ti-target-arrow" style="color:var(--cyan)"></i> Meta Mensal & Meta Individual</div>';
-      html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta mensal (pallets)</div><div class="cfg-sub">Usada só nos indicadores gerais (meta do dia, % da meta mensal, projeção)</div></div><input type="number" id="cfg-meta-mensal" value="'+metaMensalAtual+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
-      html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta individual (pallets/pessoa/dia)</div><div class="cfg-sub">Valor fixo usado no lançamento de Produção por Colaborador</div></div><input type="number" id="cfg-meta-individual" value="'+(state.metaIndividualFixa||120)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
-      html+='<div class="cfg-row"><div><div class="cfg-lbl">Saldo inicial do buffer</div><div class="cfg-sub">Somado ao cálculo produzidos − enviados</div></div><input type="number" id="cfg-buffer-saldo" value="'+(state.bufferSaldoInicial||0)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
-      html+='<button class="btn btn-primary btn-sm" style="margin-top:6px;margin-bottom:14px" onclick="salvarConfigMeta()"><i class="ti ti-check"></i> Salvar</button>';
-      html+='<div style="font-size:11px;color:var(--text2)">Meta diária individual atual: <strong style="color:var(--cyan)">'+infoMeta.metaPorPessoa+'</strong> pallets/pessoa · '+infoMeta.diasUteisMes+' dias úteis no mês</div>';
-      html+='</div>';
-    }
-    if(podeEditarPresenca()){
       var bufAtual=calcBufferGlobal();
       html+='<div class="card" style="border-color:var(--cyan-bd)">';
       html+='<div class="card-title"><i class="ti ti-layers-difference" style="color:var(--cyan)"></i> Corrigir Buffer (Estoque)</div>';
@@ -2349,6 +2344,22 @@ function renderConfig(){
       html+='<input type="number" id="buffer-corr-input" placeholder="Novo valor correto" style="flex:1;padding:10px 13px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px">';
       html+='<button class="btn btn-primary btn-sm" onclick="salvarNovoBuffer()"><i class="ti ti-check"></i> Salvar</button>';
       html+='<button class="btn btn-ghost btn-sm" style="border-color:var(--red-bd);color:var(--red)" onclick="zerarBuffer()"><i class="ti ti-backspace"></i> Zerar</button>';
+      html+='</div></div>';
+    }
+    if(podeEditarPresenca()){
+      var metaMensalAtual=getMetaMensal();
+      var infoMeta=calcMetaIndividual();
+      html+='<div class="card" style="border-color:var(--cyan-bd)">';
+      html+='<div class="card-title"><i class="ti ti-target-arrow" style="color:var(--cyan)"></i> Meta Mensal & Turno Extraordinário</div>';
+      html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta mensal (pallets)</div><div class="cfg-sub">Usada só nos indicadores gerais (meta do dia, % da meta mensal, projeção)</div></div><input type="number" id="cfg-meta-mensal" value="'+metaMensalAtual+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
+      html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta individual (pallets/pessoa/dia)</div><div class="cfg-sub">Valor fixo usado no lançamento de Produção por Colaborador</div></div><input type="number" id="cfg-meta-individual" value="'+(state.metaIndividualFixa||120)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
+      html+='<div class="cfg-row"><div><div class="cfg-lbl">Saldo inicial do buffer</div><div class="cfg-sub">Somado ao cálculo produzidos − enviados</div></div><input type="number" id="cfg-buffer-saldo" value="'+(state.bufferSaldoInicial||0)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
+      html+='<button class="btn btn-primary btn-sm" style="margin-top:6px;margin-bottom:14px" onclick="salvarConfigMeta()"><i class="ti ti-check"></i> Salvar</button>';
+      html+='<div style="font-size:11px;color:var(--text2);margin-bottom:14px">Meta diária individual atual: <strong style="color:var(--cyan)">'+infoMeta.metaPorPessoa+'</strong> pallets/pessoa · '+infoMeta.qtd+' pessoa(s) produzindo · '+infoMeta.diasUteisMes+' dias úteis no mês</div>';
+      html+='<div style="border-top:1px solid var(--border);padding-top:14px">';
+      html+='<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer;margin-bottom:10px"><input type="checkbox" id="cfg-turno-extra-ativo" '+((state.turnoExtra&&state.turnoExtra.ativo)?'checked':'')+' style="width:16px;height:16px"> Ativar Turno Extraordinário (3º turno opcional)</label>';
+      html+='<input type="text" id="cfg-turno-extra-horario" placeholder="Ex: 06h00–14h20" value="'+((state.turnoExtra&&state.turnoExtra.horario)||'')+'" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;margin-bottom:10px">';
+      html+='<button class="btn btn-primary btn-sm" onclick="salvarTurnoExtra()"><i class="ti ti-check"></i> Salvar turno extraordinário</button>';
       html+='</div></div>';
     }
     html+='<div class="card" style="border-color:var(--red-bd)">';
@@ -2490,7 +2501,7 @@ async function pushForceToCloud(){
   // que a nuvem realmente zerou antes de reportar sucesso.
   resetLock=true;
   setSyncDot('syncing','Salvando...');
-  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||''};
+  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||''};
   let ok=false;
   for(let tentativa=0;tentativa<3&&!ok;tentativa++){
     try{
@@ -2526,7 +2537,7 @@ function unlockApiSection(){
 }
 function saveConfig(){
   var k=document.getElementById('cfg-key-in').value.trim();
-  var u=document.getElementById('cfg-unit-in').value.trim()||'Mogi';
+  var u=document.getElementById('cfg-unit-in').value.trim()||'Aparecida';
   // Firebase - no API key config needed
   unitName=u;localStorage.setItem(LS_UNIT,u);
   showToast('Configuração salva!','ok');
@@ -2541,7 +2552,7 @@ async function testarNotificacao(){
   if(result) result.textContent = 'Enviando...';
   if(result) result.style.color = 'var(--warn)';
   const erros = await enviarWhatsApp([
-    'FEMSA Mogi - Teste de notificacao',
+    'FEMSA Aparecida - Teste de notificacao',
     'Se voce recebeu esta mensagem, as notificacoes estao funcionando!',
     new Date().toLocaleString('pt-BR')
   ]);
@@ -2560,7 +2571,7 @@ function salvarApiKeyNotif(){
   const key = (document.getElementById('notif-apikey')||{value:''}).value.trim();
   if(!key){ showToast('Cole a chave antes de salvar','warn'); return; }
   NOTIF_RECIPIENTS[0].apikey = key;
-  try{ localStorage.setItem('mogi_notif_apikey_0', key); }catch(e){}
+  try{ localStorage.setItem('femsa_notif_apikey_0', key); }catch(e){}
   showToast('Chave salva! Notificações ativas ✅','ok');
   renderConfig();
 }
@@ -2602,7 +2613,7 @@ function exportarAbsenteismo(){
   var dates=Object.keys(state.presencas).sort(),absMap={},diasMap={};
   dates.forEach(function(date){
     var pd=state.presencas[date]||{};
-    TURNOS.map(x=>x.key).forEach(function(t){
+    ['A','B','C'].forEach(function(t){
       if(!pd[t])return;
       Object.entries(pd[t].presenca||{}).forEach(function(e2){
         var nome=e2[0],st=e2[1];
@@ -2635,19 +2646,19 @@ function exportarPDF(){
     var b=p-e;totP+=p;totR+=r;totE+=e;totD+=dd;
     return'<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:8px 10px">'+d+'</td><td style="padding:8px 10px;text-align:right;color:'+(p>=META_DIARIA?'#059669':'#dc2626')+';font-weight:600">'+p+'</td><td style="padding:8px 10px;text-align:right">'+r+'</td><td style="padding:8px 10px;text-align:right">'+e+'</td><td style="padding:8px 10px;text-align:right;color:#dc2626">'+dd+'</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:'+(b>=0?'#1d4ed8':'#dc2626')+'">'+(b>=0?'+':'')+b+'</td><td style="padding:8px 10px;text-align:center">'+(p>=META_DIARIA?'✓':'✗')+'</td></tr>';
   }).join('');
-  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FEMSA</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111}h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#6b7280;font-size:13px;margin-bottom:24px}.kpi-row{display:flex;gap:16px;margin-bottom:24px}.kpi{flex:1;background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb}.kpi-l{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}.kpi-v{font-size:24px;font-weight:700}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:8px 10px;background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#374151}@media print{body{padding:16px}}</style></head><body><h1>FEMSA Mogi — Relatório Operacional</h1><div class="sub">Gerado em '+new Date().toLocaleString('pt-BR')+' · Meta: '+META_DIARIA+' pallets/dia</div><div class="kpi-row"><div class="kpi"><div class="kpi-l">Produzido</div><div class="kpi-v">'+totP+'</div></div><div class="kpi"><div class="kpi-l">Recebido</div><div class="kpi-v">'+totR+'</div></div><div class="kpi"><div class="kpi-l">Enviado</div><div class="kpi-v">'+totE+'</div></div><div class="kpi"><div class="kpi-l">Descarte</div><div class="kpi-v" style="color:#dc2626">'+totD+'</div></div><div class="kpi"><div class="kpi-l">Buffer</div><div class="kpi-v" style="color:'+(totP-totE>=0?'#1d4ed8':'#dc2626')+'">'+(totP-totE>=0?'+':'')+(totP-totE)+'</div></div></div><table><thead><tr><th>Data</th><th style="text-align:right">Produzidos</th><th style="text-align:right">Recebidos</th><th style="text-align:right">Enviados</th><th style="text-align:right">Descarte</th><th style="text-align:right">Buffer</th><th style="text-align:center">Meta</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
+  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FEMSA</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111}h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#6b7280;font-size:13px;margin-bottom:24px}.kpi-row{display:flex;gap:16px;margin-bottom:24px}.kpi{flex:1;background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb}.kpi-l{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}.kpi-v{font-size:24px;font-weight:700}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:8px 10px;background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#374151}@media print{body{padding:16px}}</style></head><body><h1>FEMSA Aparecida — Relatório Operacional</h1><div class="sub">Gerado em '+new Date().toLocaleString('pt-BR')+' · Meta: '+META_DIARIA+' pallets/dia</div><div class="kpi-row"><div class="kpi"><div class="kpi-l">Produzido</div><div class="kpi-v">'+totP+'</div></div><div class="kpi"><div class="kpi-l">Recebido</div><div class="kpi-v">'+totR+'</div></div><div class="kpi"><div class="kpi-l">Enviado</div><div class="kpi-v">'+totE+'</div></div><div class="kpi"><div class="kpi-l">Descarte</div><div class="kpi-v" style="color:#dc2626">'+totD+'</div></div><div class="kpi"><div class="kpi-l">Buffer</div><div class="kpi-v" style="color:'+(totP-totE>=0?'#1d4ed8':'#dc2626')+'">'+(totP-totE>=0?'+':'')+(totP-totE)+'</div></div></div><table><thead><tr><th>Data</th><th style="text-align:right">Produzidos</th><th style="text-align:right">Recebidos</th><th style="text-align:right">Enviados</th><th style="text-align:right">Descarte</th><th style="text-align:right">Buffer</th><th style="text-align:center">Meta</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
   var w=window.open('','_blank');w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);
 }
 
 // TV MODE
 function buildTurnoRows(presDay){
-  var html='';
-  TURNOS.map(x=>x.key).forEach(function(t){
+  var html='',hor={A:'06h00–14h20',B:'14h00–22h20',C:'22h00–06h20'};
+  ['A','B','C'].forEach(function(t){
     var pt=presDay[t];
-    if(!pt){html+='<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--text2)">'+turnoNomeCompleto(t)+' — aguardando</div>';return;}
+    if(!pt){html+='<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--text2)">Turno '+t+' — aguardando</div>';return;}
     var np=Object.values(pt.presenca||{}).filter(function(v){return v==='P';}).length;
     var na=Object.values(pt.presenca||{}).filter(function(v){return v==='A';}).length;
-    html+='<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:600;color:var(--text)">'+turnoNomeCompleto(t)+' · '+turnoHor(t)+'</span><div style="display:flex;gap:8px"><span style="color:var(--green);font-weight:700;font-size:13px">'+np+' pres.</span>'+(na>0?'<span style="color:var(--red);font-weight:700;font-size:13px">'+na+' aus.</span>':'')+'</div></div>';
+    html+='<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:600;color:var(--text)">Turno '+t+' · '+hor[t]+'</span><div style="display:flex;gap:8px"><span style="color:var(--green);font-weight:700;font-size:13px">'+np+' pres.</span>'+(na>0?'<span style="color:var(--red);font-weight:700;font-size:13px">'+na+' aus.</span>':'')+'</div></div>';
   });
   return html;
 }
@@ -2659,13 +2670,13 @@ function renderTV(){
   var tD=movs.reduce(function(s,m){return s+(m.desc||0);},0);
   var tBufDiaTV=tP-tE,tBuf=calcBufferGlobal(),pct=Math.min(100,Math.round(tP/META_DIARIA*100));
   var presP=0,presA=0,presQ=0;
-  TURNOS.map(x=>x.key).forEach(function(t){var p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(function(s){presQ++;if(s==='P')presP++;else presA++;});});
+  ['A','B','C'].forEach(function(t){var p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(function(s){presQ++;if(s==='P')presP++;else presA++;});});
   var dt=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   var hr=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   var bufColor=tBuf>=0?'var(--cyan)':'var(--red)';
   var barBg=tP>=META_DIARIA?'var(--green)':pct>=80?'var(--warn)':'#2a7fd4';
   document.getElementById('tv-content').innerHTML=
-    '<div class="tv-header"><img src="'+LOGO_B64+'" alt="Logo"><div><h1>FEMSA Mogi — Dashboard Operacional</h1><div class="tv-date">'+dt+' &nbsp;·&nbsp; '+hr+'</div></div></div>'+
+    '<div class="tv-header"><img src="'+LOGO_B64+'" alt="Logo"><div><h1>FEMSA Aparecida — Dashboard Operacional</h1><div class="tv-date">'+dt+' &nbsp;·&nbsp; '+hr+'</div></div></div>'+
     '<div class="tv-kpi-row">'+
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Produzidos</div><div class="tv-kpi-val" style="color:'+(tP>=META_DIARIA?'var(--green)':'var(--text)')+'">'+tP+'</div><div class="tv-kpi-sub">Meta: '+META_DIARIA+' · '+pct+'%</div><div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barBg+';border-radius:3px"></div></div></div>'+
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Recebidos</div><div class="tv-kpi-val">'+tR+'</div></div>'+
@@ -2763,6 +2774,7 @@ function renderPresHist(){
     return;
   }
 
+  const hor = {A:'06h00–14h20', B:'14h00–22h20', C:'22h00–06h20'};
   const canEdit=podeEditarPresenca();
 
   dates.forEach(date => {
@@ -2771,10 +2783,10 @@ function renderPresHist(){
     let hasFalta = false, hasReg = false;
     let turnosHtml = '';
 
-    TURNOS.map(x=>x.key).forEach(t => {
+    ['A','B','C'].forEach(t => {
       const pt = presDay[t];
       if(!pt || !pt.savedAt || !Object.keys(pt.presenca||{}).length){
-        turnosHtml += '<div class="hist-turno-row"><span class="hist-turno-lbl">'+turnoNomeCompleto(t)+'</span><span class="hist-sem-reg">Não registrado</span></div>';
+        turnosHtml += '<div class="hist-turno-row"><span class="hist-turno-lbl">Turno '+t+'</span><span class="hist-sem-reg">Não registrado</span></div>';
         return;
       }
       hasReg = true;
@@ -2802,7 +2814,7 @@ function renderPresHist(){
       if(ausentes) hasFalta = true;
 
       turnosHtml += '<div class="hist-turno-row">';
-      turnosHtml += '<span class="hist-turno-lbl">'+turnoNomeCompleto(t)+'</span>';
+      turnosHtml += '<span class="hist-turno-lbl">Turno '+t+'</span>';
       turnosHtml += '<div class="hist-chips-wrap">'+chips;
       let summary=[];
       if(presentes)summary.push('<span class="hist-ok"><i class="ti ti-check" style="font-size:11px"></i> '+presentes+' pres.</span>');

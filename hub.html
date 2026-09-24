@@ -428,3 +428,76 @@ html,body{
       <div class="op-desc">Em breve.</div>
       <div class="op-tag"><i class="ti ti-clock"></i> Em breve</div>
     </div>
+
+<script>
+// === Busca de dados ao vivo pra Aparecida e Mogi (via Firebase) ===
+const HUB_UNITS=[
+  {prefix:'ap',dotId:'dot-aparecida',lblId:'lbl-aparecida',fbUrl:'https://painel-operacional-96032-default-rtdb.firebaseio.com/aparecida.json',turnos:['A','B','C','D']},
+  {prefix:'mg',dotId:'dot-mogi',lblId:'lbl-mogi',fbUrl:'https://painel-operacional-96032-default-rtdb.firebaseio.com/mogi.json',turnos:['OPM','OPT','OPC','AXM','AXT','AXC']},
+];
+function hubToday(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function hubSetTxt(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
+function hubTimeAgo(ts){
+  if(!ts)return null;
+  const diffMs=Date.now()-new Date(ts).getTime();
+  const min=Math.floor(diffMs/60000);
+  if(min<1)return'agora mesmo';
+  if(min<60)return'há '+min+' min';
+  const h=Math.floor(min/60);
+  if(h<24)return'há '+h+'h';
+  return'há '+Math.floor(h/24)+'d';
+}
+async function hubCarregarUnidade(u){
+  try{
+    const r=await fetch(u.fbUrl,{cache:'no-store'});
+    if(!r.ok)throw new Error(r.status);
+    const data=await r.json()||{};
+    const colaboradores=(data.colaboradores||[]).filter(c=>c.ativo!==false);
+    const quadro=colaboradores.length;
+    const todayD=hubToday();
+    const presDay=(data.presencas&&data.presencas[todayD])||{};
+    let presentes=0,ausentes=0;
+    u.turnos.forEach(t=>{
+      const p=presDay[t];if(!p)return;
+      Object.values(p.presenca||{}).forEach(v=>{
+        if(v==='P')presentes++;
+        else if(v!=='F')ausentes++;
+      });
+    });
+    let totP=0,totE=0;
+    Object.values(data.movimentos||{}).forEach(ms=>{(ms||[]).forEach(m=>{totP+=(m.prod||0);totE+=(m.env||0);});});
+    const buffer=(data.bufferSaldoInicial||0)+totP-totE+(data.bufferAjuste||0);
+    hubSetTxt(u.prefix+'-quadro',quadro);
+    hubSetTxt(u.prefix+'-presentes',presentes);
+    hubSetTxt(u.prefix+'-ausentes',ausentes);
+    hubSetTxt(u.prefix+'-buffer',(buffer>=0?'+':'')+buffer);
+    const pct=quadro>0?ausentes/quadro:0;
+    const alertEl=document.getElementById(u.prefix+'-absence-alert');
+    if(alertEl){
+      if(pct>=0.2&&ausentes>0){
+        alertEl.style.display='flex';
+        hubSetTxt(u.prefix+'-absence-msg',ausentes+' ausente(s) — '+Math.round(pct*100)+'%');
+      }else alertEl.style.display='none';
+    }
+    let latest=null;
+    Object.values(data.movimentos||{}).forEach(ms=>{(ms||[]).forEach(m=>{if(m.ts&&(!latest||m.ts>latest))latest=m.ts;});});
+    Object.values(data.presencas||{}).forEach(pd=>{Object.values(pd||{}).forEach(pt=>{if(pt&&pt.savedAt&&(!latest||pt.savedAt>latest))latest=pt.savedAt;});});
+    const ago=hubTimeAgo(latest);
+    hubSetTxt(u.prefix+'-freshness-lbl',ago?('Atualizado '+ago):'Sem lançamentos ainda');
+    const dot=document.getElementById(u.dotId),lbl=document.getElementById(u.lblId);
+    if(dot)dot.className='status-dot online';
+    if(lbl)lbl.textContent='Online';
+  }catch(e){
+    console.error('Hub fetch '+u.prefix,e);
+    const dot=document.getElementById(u.dotId),lbl=document.getElementById(u.lblId);
+    if(dot)dot.className='status-dot loading';
+    if(lbl)lbl.textContent='Sem conexão';
+  }
+}
+function hubCarregarTudo(){HUB_UNITS.forEach(hubCarregarUnidade);}
+document.addEventListener('DOMContentLoaded',hubCarregarTudo);
+setInterval(hubCarregarTudo,60000);
+</script>

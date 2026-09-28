@@ -1263,8 +1263,8 @@ function buildAfastamentosHojeAlertCard(){
     '</div>';
 }
 function buildProducaoPorTurnoCard(){
-  const todayD=today();
-  const movs=state.movimentos[todayD]||[];
+  const diaD=selDate||today();
+  const movs=state.movimentos[diaD]||[];
   const porTurno={};
   let semTurno=0;
   movs.forEach(m=>{
@@ -1280,19 +1280,20 @@ function buildProducaoPorTurnoCard(){
     '<div style="width:170px;flex-shrink:0;font-size:13px;font-weight:600;color:var(--text)">'+label+'</div>'+
     '<div style="flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.max(2,Math.round(val/max*100))+'%;background:'+cor+'"></div></div>'+
     '<div style="width:60px;text-align:right;font-weight:700;font-size:13px;color:'+cor+'">'+val.toLocaleString('pt-BR')+'</div></div>';
-  return'<div class="card"><div class="card-title"><i class="ti ti-chart-bar"></i>Produção por Turno (hoje)</div>'+
+  const rotulo=diaD===today()?'hoje':dateFmt(diaD);
+  return'<div class="card"><div class="card-title"><i class="ti ti-chart-bar"></i>Produção por Turno ('+rotulo+')</div>'+
     grupos.map(g=>linha(g.nome,g.val,'var(--cyan)')).join('')+
     (semTurno>0?linha('Sem turno (retroativo)',semTurno,'var(--text2)'):'')+
     '</div>';
 }
 function buildProducaoIndividualHojeCard(){
-  const todayD=today();
+  const diaD=selDate||today();
   const info=calcMetaIndividual();
   const producers=colaboradoresAtivos().filter(produzPallets);
   if(!producers.length)return'';
   const porTurno={};
   producers.forEach(c=>{
-    const reg=state.producaoPessoas[todayD]&&state.producaoPessoas[todayD][c.turno]&&state.producaoPessoas[todayD][c.turno].pessoas&&state.producaoPessoas[todayD][c.turno].pessoas[c.nome];
+    const reg=state.producaoPessoas[diaD]&&state.producaoPessoas[diaD][c.turno]&&state.producaoPessoas[diaD][c.turno].pessoas&&state.producaoPessoas[diaD][c.turno].pessoas[c.nome];
     const prod=reg?(reg.prod||0):0;
     if(!porTurno[c.turno])porTurno[c.turno]=[];
     porTurno[c.turno].push({nome:c.nome,prod});
@@ -1309,7 +1310,7 @@ function buildProducaoIndividualHojeCard(){
   const grupoHtml=(t)=>{
     const lista=porTurno[t.key].slice().sort((a,b)=>b.prod-a.prod);
     const max=Math.max(1,...lista.map(l=>l.prod));
-    const salvo=state.producaoPessoas[todayD]&&state.producaoPessoas[todayD][t.key]&&state.producaoPessoas[todayD][t.key].savedAt;
+    const salvo=state.producaoPessoas[diaD]&&state.producaoPessoas[diaD][t.key]&&state.producaoPessoas[diaD][t.key].savedAt;
     const totalTurno=lista.reduce((s,l)=>s+l.prod,0);
     return'<div style="margin-bottom:16px">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
@@ -1319,7 +1320,8 @@ function buildProducaoIndividualHojeCard(){
       lista.map(l=>linhaHtml(l,max)).join('')+
       '</div>';
   };
-  return'<div class="card"><div class="card-title"><i class="ti ti-users"></i>Produção Individual por Turno (hoje)</div>'+
+  const rotulo=diaD===today()?'hoje':dateFmt(diaD);
+  return'<div class="card"><div class="card-title"><i class="ti ti-users"></i>Produção Individual por Turno ('+rotulo+')</div>'+
     '<div style="font-size:11px;color:var(--text2);margin-bottom:14px">Meta individual: '+info.metaPorPessoa+' pallets/pessoa · não soma no total geral</div>'+
     turnosComGente.map(grupoHtml).join('')+
     '</div>';
@@ -1859,7 +1861,7 @@ function renderProdPessoas(){
     return'<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
       '<div style="font-size:13px;font-weight:600;color:var(--text)">'+c.nome+'</div>'+
-      '<div class="num-wrap" style="width:170px"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" '+(saved?'disabled':'')+' value="'+reg.prod+'" oninput="setProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderProdPessoas()"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
+      '<div class="num-wrap" style="width:170px"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" '+(saved?'disabled':'')+' value="'+(reg.prod||'')+'" placeholder="0" oninput="setProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderProdPessoas()"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
       '</div>'+
       (abaixo&&!saved?'<select id="motivo-'+safeId+'" style="width:100%;margin-top:8px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px" onchange="setMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
         MOTIVOS_NAO_META.map(m=>'<option value="'+m+'" '+(reg.motivo===m?'selected':'')+'>'+m+'</option>').join('')+
@@ -1949,7 +1951,7 @@ function renderRetroProdPessoas(){
       return'<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'+
         '<div style="font-size:13px;font-weight:600;color:var(--text)">'+c.nome+'</div>'+
-        '<div class="num-wrap" style="width:150px"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" value="'+reg.prod+'" oninput="setRetroProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderRetroProdPessoas()"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
+        '<div class="num-wrap" style="width:150px"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" value="'+(reg.prod||'')+'" placeholder="0" oninput="setRetroProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderRetroProdPessoas()"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
         '</div>'+
         (abaixo?'<select style="width:100%;margin-top:6px;padding:7px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px" onchange="setRetroMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
           MOTIVOS_NAO_META.map(m=>'<option value="'+m+'" '+(reg.motivo===m?'selected':'')+'>'+m+'</option>').join('')+

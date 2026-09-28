@@ -2327,6 +2327,7 @@ function renderConfig(){
     html+='<button class="btn btn-ghost btn-sm" onclick="exportarPDF()"><i class="ti ti-file-type-pdf"></i> Relatório PDF</button>';
     html+='<button class="btn btn-ghost btn-sm" onclick="exportarAbsenteismo()"><i class="ti ti-user-off"></i> Absenteísmo CSV</button>';
     html+='<button class="btn btn-ghost btn-sm" onclick="exportarJSON()"><i class="ti ti-database"></i> Backup JSON</button>';
+    html+='<button class="btn btn-ghost btn-sm" style="grid-column:1/-1" onclick="exportarProducaoIndividual()"><i class="ti ti-users"></i> Produção Individual CSV (por turno)</button>';
     html+='</div>';
     html+='<button class="btn btn-sm" style="width:100%;background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bd)" onclick="showArchive()"><i class="ti ti-archive"></i> Arquivar mês anterior</button>';
     html+='<div id="archive-confirm" style="display:none;margin-top:12px;padding:12px;background:var(--warn-bg);border:1px solid var(--warn-bd);border-radius:9px">';
@@ -2628,6 +2629,34 @@ function exportarAbsenteismo(){
   var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='absenteismo_'+today()+'.csv';a.click();URL.revokeObjectURL(a.href);
   showToast('Exportado!','ok');
+}
+function exportarProducaoIndividual(){
+  var dates=Object.keys(state.producaoPessoas||{}).sort();
+  if(!dates.length){showToast('Nenhum lançamento de produção individual ainda.','warn');return;}
+  var info=calcMetaIndividual();
+  var rows=[];
+  TURNOS.forEach(function(t){
+    dates.forEach(function(d){
+      var dia=state.producaoPessoas[d]&&state.producaoPessoas[d][t.key];
+      if(!dia||!dia.pessoas)return;
+      Object.entries(dia.pessoas).forEach(function(e2){
+        var nome=e2[0],reg=e2[1]||{};
+        var prod=reg.prod||0;
+        var atingiu=prod>=info.metaPorPessoa?'SIM':'NÃO';
+        var motivo=prod<info.metaPorPessoa?(reg.motivo||''):'';
+        var motivoDesc=(reg.motivo==='Outro'?(reg.motivoDesc||''):'');
+        rows.push([d,t.cargo,t.label,nome,prod,info.metaPorPessoa,atingiu,motivo,motivoDesc]);
+      });
+    });
+  });
+  if(!rows.length){showToast('Nenhum lançamento de produção individual ainda.','warn');return;}
+  var csv='Data,Cargo,Turno,Colaborador,Produção,Meta,Atingiu Meta,Motivo,Detalhe do Motivo\n';
+  rows.forEach(function(r){
+    csv+=r[0]+',"'+r[1]+'","'+r[2]+'","'+r[3]+'",'+r[4]+','+r[5]+','+r[6]+',"'+r[7]+'","'+r[8]+'"\n';
+  });
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='producao_individual_'+today()+'.csv';a.click();URL.revokeObjectURL(a.href);
+  showToast('CSV exportado!','ok');
 }
 function exportarPDF(){
   var dates=Object.keys(state.movimentos).sort(),totP=0,totR=0,totE=0,totD=0;

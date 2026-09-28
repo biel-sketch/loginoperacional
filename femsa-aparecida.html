@@ -703,26 +703,34 @@ async function fbFetch(method='GET', body=null){
   return r.json();
 }
 
-function _mantemLocalNoMerge(localSavedAt,cloudSavedAt,resetTs){
+function _mantemLocalNoMerge(localSavedAt,cloudSavedAt,resetTs,localTouchedAt){
   // Regra única usada em toda mesclagem por data+turno:
-  // - rascunho local ainda não salvo -> sempre protege (nunca perde o que está sendo digitado)
+  // - rascunho local ainda não salvo -> protege, MAS só se foi editado depois do
+  //   último reset explícito (senão é sobra de um rascunho antigo, nunca finalizado,
+  //   de uma aba/dispositivo esquecido aberto — não pode ressuscitar um reset)
   // - dado local salvo ANTES do último reset explícito -> descarta (respeita o reset)
   // - senão, o savedAt mais recente vence (nuvem sem esse registro = savedAt '' = lançamento novo vence)
-  if(!localSavedAt)return true;
+  if(!localSavedAt){
+    if(resetTs&&(!localTouchedAt||localTouchedAt<resetTs))return false;
+    return true;
+  }
   if(resetTs&&localSavedAt<resetTs)return false;
   return localSavedAt>=cloudSavedAt;
 }
 function mergeDatedTurnos(localObj,cloudObj,resetTs){
   // Mescla objetos no formato {data:{turno:{savedAt,...}}} sem nunca descartar
-  // um rascunho local ainda não salvo (savedAt vazio) — evita que a sincronização
-  // de fundo apague o que está sendo digitado antes de confirmar. Um reset explícito
-  // (resetTs) descarta qualquer dado local mais antigo que ele, mesmo já salvo.
+  // um rascunho local ainda não salvo (savedAt vazio) que esteja sendo editado agora —
+  // evita que a sincronização de fundo apague o que está sendo digitado antes de
+  // confirmar. Um reset explícito (resetTs) descarta qualquer dado local mais antigo
+  // que ele, mesmo já salvo, e também descarta rascunhos não salvos que não foram
+  // tocados depois do reset (sobra de aba/dispositivo esquecido aberto).
   const out=JSON.parse(JSON.stringify(cloudObj||{}));
   Object.entries(localObj||{}).forEach(([d,turnos])=>{
     Object.entries(turnos||{}).forEach(([t,v])=>{
       const localSavedAt=(v&&v.savedAt)||'';
+      const localTouchedAt=(v&&v.touchedAt)||'';
       const cloudSavedAt=(cloudObj&&cloudObj[d]&&cloudObj[d][t]&&cloudObj[d][t].savedAt)||'';
-      if(_mantemLocalNoMerge(localSavedAt,cloudSavedAt,resetTs)){
+      if(_mantemLocalNoMerge(localSavedAt,cloudSavedAt,resetTs,localTouchedAt)){
         if(!out[d])out[d]={};
         out[d][t]=v;
       }
@@ -951,8 +959,9 @@ async function pushToCloud(){
           Object.entries(state.presencas).forEach(([d,ts])=>{
             Object.entries(ts).forEach(([t,v])=>{
               const localSavedAt=v&&v.savedAt||'';
+              const localTouchedAt=v&&v.touchedAt||'';
               const cloudSavedAt=(cloud.presencas&&cloud.presencas[d]&&cloud.presencas[d][t]&&cloud.presencas[d][t].savedAt)||'';
-              if(_mantemLocalNoMerge(localSavedAt,cloudSavedAt,presResetTs)){
+              if(_mantemLocalNoMerge(localSavedAt,cloudSavedAt,presResetTs,localTouchedAt)){
                 if(!mp[d])mp[d]={};
                 mp[d][t]=v;
               }
@@ -962,8 +971,9 @@ async function pushToCloud(){
           Object.entries(state.producaoPessoas||{}).forEach(([d,ts])=>{
             Object.entries(ts).forEach(([t,v])=>{
               const localSavedAt=v&&v.savedAt||'';
+              const localTouchedAt=v&&v.touchedAt||'';
               const cloudSavedAt=(cloud.producaoPessoas&&cloud.producaoPessoas[d]&&cloud.producaoPessoas[d][t]&&cloud.producaoPessoas[d][t].savedAt)||'';
-              if(_mantemLocalNoMerge(localSavedAt,cloudSavedAt,prodResetTs)){
+              if(_mantemLocalNoMerge(localSavedAt,cloudSavedAt,prodResetTs,localTouchedAt)){
                 if(!mpp[d])mpp[d]={};
                 mpp[d][t]=v;
               }
@@ -1644,6 +1654,7 @@ function togglePres(nome){
   const cur=state.presencas[todayD][selTurnoAtivo].presenca[nome]||'';
   state.presencas[todayD][selTurnoAtivo].presenca[nome]=cur===''?'P':cur==='P'?'A':'';
   if(cur==='F'&&state.presencas[todayD][selTurnoAtivo].feriasInfo)delete state.presencas[todayD][selTurnoAtivo].feriasInfo[nome];
+  state.presencas[todayD][selTurnoAtivo].touchedAt=new Date().toISOString();
   renderPresGrid();
 }
 async function salvarPresenca(){
@@ -1887,18 +1898,21 @@ function setProdPessoa(nome,val,rerender){
   const dia=_prodBuf();
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
   dia.pessoas[nome].prod=Math.max(0,parseInt(val)||0);
+  dia.touchedAt=new Date().toISOString();
   if(rerender!==false)renderProdPessoas();
 }
 function adjProdPessoa(nome,d){
   const dia=_prodBuf();
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
   dia.pessoas[nome].prod=Math.max(0,(dia.pessoas[nome].prod||0)+d);
+  dia.touchedAt=new Date().toISOString();
   renderProdPessoas();
 }
 function setMotivoPessoa(nome,val){
   const dia=_prodBuf();
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
   dia.pessoas[nome].motivo=val;
+  dia.touchedAt=new Date().toISOString();
 }
 async function salvarProducaoPessoas(){
   const dia=_prodBuf();
@@ -1971,6 +1985,7 @@ function setRetroProdPessoa(nome,val,rerender){
   const dia=_prodBuf(date,turno);
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
   dia.pessoas[nome].prod=Math.max(0,parseInt(val)||0);
+  dia.touchedAt=new Date().toISOString();
   if(rerender!==false)renderRetroProdPessoas();
 }
 function adjRetroProdPessoa(nome,d){
@@ -1978,6 +1993,7 @@ function adjRetroProdPessoa(nome,d){
   const dia=_prodBuf(date,turno);
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
   dia.pessoas[nome].prod=Math.max(0,(dia.pessoas[nome].prod||0)+d);
+  dia.touchedAt=new Date().toISOString();
   renderRetroProdPessoas();
 }
 function setRetroMotivoPessoa(nome,val){
@@ -1985,6 +2001,7 @@ function setRetroMotivoPessoa(nome,val){
   const dia=_prodBuf(date,turno);
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
   dia.pessoas[nome].motivo=val;
+  dia.touchedAt=new Date().toISOString();
 }
 async function lancarRetroativo(){
   const data=document.getElementById('retro-date').value;

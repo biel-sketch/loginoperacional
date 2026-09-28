@@ -1450,9 +1450,7 @@ function setMesPreset(tipo){
   else if(tipo==='ano')de=d.getFullYear()+'-01-01';
   else{const dts=Object.keys(state.movimentos).sort();de=dts.length?dts[0]:today();}
   mesFiltroDe=de;mesFiltroAte=ate;
-  const inDe=document.getElementById('mes-filtro-de');if(inDe)inDe.value=de;
-  const inAte=document.getElementById('mes-filtro-ate');if(inAte)inAte.value=ate;
-  renderMesResumo();
+  renderMes();
 }
 function aplicarFiltroMes(){
   const de=document.getElementById('mes-filtro-de').value;
@@ -1460,7 +1458,7 @@ function aplicarFiltroMes(){
   if(!de||!ate){showToast('Selecione as duas datas.','warn');return;}
   if(de>ate){showToast('Data inicial deve ser antes da final.','warn');return;}
   mesFiltroDe=de;mesFiltroAte=ate;
-  renderMesResumo();
+  renderMes();
 }
 function rankingProducaoPeriodo(de,ate){
   const totals={};

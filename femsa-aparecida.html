@@ -2656,15 +2656,22 @@ function exportarAbsenteismo(){
   showToast('Exportado!','ok');
 }
 function exportarProducaoIndividual(){
-  var dates=Object.keys(state.producaoPessoas||{}).sort();
-  if(!dates.length){showToast('Nenhum lançamento de produção individual ainda.','warn');return;}
+  var diasSet={};
+  Object.keys(state.movimentos||{}).forEach(function(d){diasSet[d]=true;});
+  Object.keys(state.producaoPessoas||{}).forEach(function(d){diasSet[d]=true;});
+  var dates=Object.keys(diasSet).sort();
+  if(!dates.length){showToast('Nenhum dado de operação ainda.','warn');return;}
   var info=calcMetaIndividual();
   var rows=[];
   turnosAtivos().forEach(function(t){
     dates.forEach(function(d){
       var dia=state.producaoPessoas[d]&&state.producaoPessoas[d][t.key];
-      if(!dia||!dia.pessoas)return;
-      Object.entries(dia.pessoas).forEach(function(e2){
+      var pessoas=dia&&dia.pessoas?Object.entries(dia.pessoas):[];
+      if(!pessoas.length){
+        rows.push([d,t.label,'-','-','-','SEM PRODUÇÃO','Nenhum lançamento de produção individual nesse turno','']);
+        return;
+      }
+      pessoas.forEach(function(e2){
         var nome=e2[0],reg=e2[1]||{};
         var prod=reg.prod||0;
         var atingiu=prod>=info.metaPorPessoa?'SIM':'NÃO';
@@ -2674,7 +2681,7 @@ function exportarProducaoIndividual(){
       });
     });
   });
-  if(!rows.length){showToast('Nenhum lançamento de produção individual ainda.','warn');return;}
+  if(!rows.length){showToast('Nenhum dado de operação ainda.','warn');return;}
   var csv='Data,Turno,Colaborador,Produção,Meta,Atingiu Meta,Motivo,Detalhe do Motivo\n';
   rows.forEach(function(r){
     csv+=r[0]+',"'+r[1]+'","'+r[2]+'",'+r[3]+','+r[4]+','+r[5]+',"'+r[6]+'","'+r[7]+'"\n';

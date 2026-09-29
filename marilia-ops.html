@@ -398,8 +398,11 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     <div class="field"><label>Cargo</label>
       <select id="modal-cargo" onchange="_modalOnCargoChange()"></select>
     </div>
+    <div class="field"><label>Turno</label>
+      <select id="modal-turno" onchange="_modalUpdateHorario()"></select>
+    </div>
     <div class="field" id="modal-cargo-horario-wrap" style="display:none">
-      <label>Horário do cargo</label>
+      <label>Horário do turno</label>
       <div id="modal-cargo-horario" style="font-size:12px;color:var(--text2);padding:8px 0"></div>
     </div>
     <div class="field"><label>Início do ciclo (primeiro dia de trabalho)</label>
@@ -470,8 +473,10 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     <div class="modal-title"><i class="ti ti-id-badge"></i><span id="cargo-modal-title">Cargo</span></div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px" id="cargo-modal-posto-lbl"></div>
     <div class="field"><label>Nome do cargo</label><input type="text" id="cargo-modal-nome" placeholder="Nome do cargo..."></div>
-    <div class="field"><label>Horário de entrada</label><input type="time" id="cargo-modal-entrada"></div>
-    <div class="field"><label>Horário de saída</label><input type="time" id="cargo-modal-saida"></div>
+    <div class="field"><label>Quantidade de turnos</label>
+      <input type="number" id="cargo-modal-qtd-turnos" min="1" max="12" value="1" oninput="_cargoModalRenderTurnos()">
+    </div>
+    <div id="cargo-modal-turnos-list"></div>
     <div class="modal-btns">
       <button class="modal-btn-primary" onclick="salvarCargoModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
       <button class="modal-btn-ghost" onclick="closeCargoModal()">Cancelar</button>
@@ -522,10 +527,42 @@ function cargoNome(cargoId){
   const f=findCargo(cargoId);
   return f?f.cargo.nome:'';
 }
-function cargoHorarioFmt(cargoId){
+// Compatibilidade: cargos antigos (antes dos turnos múltiplos) tinham
+// horaEntrada/horaSaida direto no cargo. Normaliza para uma lista de turnos.
+function cargoTurnos(cargo){
+  if(!cargo)return[];
+  if(cargo.turnos&&cargo.turnos.length)return cargo.turnos;
+  if(cargo.horaEntrada)return[{id:'legacy',nome:'Turno único',horaEntrada:cargo.horaEntrada,horaSaida:cargo.horaSaida||''}];
+  return[];
+}
+function findTurno(cargoId,turnoId){
   const f=findCargo(cargoId);
-  if(!f||!f.cargo.horaEntrada)return'';
-  return f.cargo.horaEntrada+'–'+(f.cargo.horaSaida||'?');
+  if(!f)return null;
+  const turnos=cargoTurnos(f.cargo);
+  const turno=turnoId?turnos.find(t=>t.id===turnoId):(turnos.length===1?turnos[0]:null);
+  return turno?Object.assign({cliente:f.cliente,posto:f.posto,cargo:f.cargo,turno}):null;
+}
+function turnoNome(cargoId,turnoId){
+  const f=findTurno(cargoId,turnoId);
+  return f?f.turno.nome:'';
+}
+// Se turnoId for informado, mostra o horário desse turno específico;
+// caso contrário, resume todos os turnos cadastrados no cargo.
+function cargoHorarioFmt(cargoId,turnoId){
+  const f=findCargo(cargoId);
+  if(!f)return'';
+  const turnos=cargoTurnos(f.cargo);
+  if(!turnos.length)return'';
+  if(turnoId){
+    const t=turnos.find(x=>x.id===turnoId);
+    if(!t||!t.horaEntrada)return'';
+    return t.horaEntrada+'–'+(t.horaSaida||'?');
+  }
+  if(turnos.length===1){
+    const t=turnos[0];
+    return t.horaEntrada?(t.horaEntrada+'–'+(t.horaSaida||'?')):'';
+  }
+  return turnos.map(t=>t.horaEntrada?(t.nome+' '+t.horaEntrada+'–'+(t.horaSaida||'?')):t.nome).join(' · ');
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
 
@@ -1021,7 +1058,7 @@ function renderPresContent(){
         const status=pres?pres.status:'';
         const cardCls=status==='P'?'presente':status==='A'?'ausente':status==='E'?'extra':'trabalha';
         const nomeJs=c.nome.replace(/'/g,"\\'");
-        const horarioCargo=cargoHorarioFmt(c.cargoId);
+        const horarioCargo=cargoHorarioFmt(c.cargoId,c.turnoId);
         html+='<div class="colab-pres-card '+cardCls+'">';
         html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
         html+='<div><div class="colab-name">'+c.nome+'</div>';
@@ -1031,9 +1068,9 @@ function renderPresContent(){
         html+='<button class="pb'+(status==='A'?' active-a':'')+'" onclick="setStatus(\''+posto+'\',\''+nomeJs+'\',\'A\')"><i class="ti ti-x" style="font-size:12px"></i> Ausente</button>';
         html+='</div></div>';
         if(status==='P'||status==='E'){
-          const f=findCargo(c.cargoId);
-          const defEnt=(f&&f.cargo.horaEntrada)||'';
-          const defSai=(f&&f.cargo.horaSaida)||'';
+          const ft=findTurno(c.cargoId,c.turnoId);
+          const defEnt=(ft&&ft.turno.horaEntrada)||'';
+          const defSai=(ft&&ft.turno.horaSaida)||'';
           html+='<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">';
           html+='<div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em"><i class="ti ti-clock" style="font-size:11px"></i> Batida</div>';
           html+='<input type="time" value="'+(pres.horaEntrada||defEnt)+'" onchange="setBatida(\''+posto+'\',\''+nomeJs+'\',\'horaEntrada\',this.value)" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px">';
@@ -1058,7 +1095,7 @@ function renderPresContent(){
         const status=pres?pres.status:'';
         const cardCls=status==='E'?'extra':'folga';
         const nomeJs=c.nome.replace(/'/g,"\\'");
-        const horarioCargo=cargoHorarioFmt(c.cargoId);
+        const horarioCargo=cargoHorarioFmt(c.cargoId,c.turnoId);
         html+='<div class="colab-pres-card '+cardCls+'">';
         html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
         html+='<div><div class="colab-name">'+c.nome+' <span class="ciclo-badge folga">Folga 12x36</span></div>';
@@ -1093,9 +1130,10 @@ async function setStatus(posto,nome,status){
     delete state.presencas[todayD][posto][nome];
   }else{
     const anterior=state.presencas[todayD][posto][nome];
-    const f=findCargo((colaboradoresAtivos().find(c=>c.nome===nome)||{}).cargoId);
-    const horaEntrada=(anterior&&anterior.horaEntrada)||(f&&f.cargo.horaEntrada)||'';
-    const horaSaida=(anterior&&anterior.horaSaida)||(f&&f.cargo.horaSaida)||'';
+    const colabRef=colaboradoresAtivos().find(c=>c.nome===nome)||{};
+    const ft=findTurno(colabRef.cargoId,colabRef.turnoId);
+    const horaEntrada=(anterior&&anterior.horaEntrada)||(ft&&ft.turno.horaEntrada)||'';
+    const horaSaida=(anterior&&anterior.horaSaida)||(ft&&ft.turno.horaSaida)||'';
     state.presencas[todayD][posto][nome]={status,ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',horaEntrada,horaSaida};
   }
   saveCache();
@@ -1465,7 +1503,8 @@ function renderClientes(){
       }else{
         html+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-left:22px">';
         cargos.forEach(cg=>{
-          const hor=(cg.horaEntrada?cg.horaEntrada+'–'+(cg.horaSaida||'?'):'');
+          const turnos=cargoTurnos(cg);
+          const hor=turnos.length?turnos.map(t=>t.horaEntrada?(t.nome+' '+t.horaEntrada+'–'+(t.horaSaida||'?')):t.nome).join(' · '):'';
           html+='<span style="display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text)">'+cg.nome+(hor?' <span style="color:var(--text3)">· '+hor+'</span>':'');
           if(canEdit)html+=' <i class="ti ti-pencil" style="font-size:10px;color:var(--text3);cursor:pointer" onclick="abrirCargoModal(\''+cl.id+'\',\''+p.id+'\',\''+cg.id+'\')"></i> <i class="ti ti-x" style="font-size:10px;color:var(--red);cursor:pointer" onclick="excluirCargo(\''+cl.id+'\',\''+p.id+'\',\''+cg.id+'\')"></i>';
           html+='</span>';
@@ -1555,7 +1594,32 @@ async function excluirPosto(clienteId,postoId){
   saveCache();await pushForceToCloud();renderClientes();
 }
 
-let _cargoModalClienteId=null,_cargoModalPostoId=null,_cargoModalId=null;
+let _cargoModalClienteId=null,_cargoModalPostoId=null,_cargoModalId=null,_cargoModalTurnos=[];
+function _cargoModalRenderTurnos(){
+  const qtdRaw=parseInt(document.getElementById('cargo-modal-qtd-turnos').value,10);
+  const qtd=Math.max(1,Math.min(12,isNaN(qtdRaw)?1:qtdRaw));
+  // Preserva valores já digitados nas linhas existentes antes de redesenhar
+  const cont=document.getElementById('cargo-modal-turnos-list');
+  const atuais=Array.from(cont.querySelectorAll('.cargo-turno-row')).map(row=>({
+    nome:row.querySelector('.ct-nome').value,
+    horaEntrada:row.querySelector('.ct-entrada').value,
+    horaSaida:row.querySelector('.ct-saida').value
+  }));
+  const base=atuais.length?atuais:_cargoModalTurnos;
+  let html='';
+  for(let i=0;i<qtd;i++){
+    const t=base[i]||{};
+    const nomeVal=t.nome||('Turno '+(i+1));
+    html+='<div class="cargo-turno-row" style="background:var(--bg3);border-radius:9px;padding:10px;margin-bottom:8px">';
+    html+='<div style="font-size:10px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Turno '+(i+1)+'</div>';
+    html+='<div class="field" style="margin-bottom:6px"><label>Nome do turno</label><input type="text" class="ct-nome" value="'+nomeVal.replace(/"/g,'&quot;')+'"></div>';
+    html+='<div style="display:flex;gap:8px">';
+    html+='<div class="field" style="flex:1;margin-bottom:0"><label>Entrada</label><input type="time" class="ct-entrada" value="'+(t.horaEntrada||'')+'"></div>';
+    html+='<div class="field" style="flex:1;margin-bottom:0"><label>Saída</label><input type="time" class="ct-saida" value="'+(t.horaSaida||'')+'"></div>';
+    html+='</div></div>';
+  }
+  cont.innerHTML=html;
+}
 function abrirCargoModal(clienteId,postoId,cargoId){
   if(!podeEditarClientes()){showToast('Apenas administradores/gestores podem editar cargos.','err');return;}
   _cargoModalClienteId=clienteId;_cargoModalPostoId=postoId;_cargoModalId=cargoId;
@@ -1565,8 +1629,9 @@ function abrirCargoModal(clienteId,postoId,cargoId){
   document.getElementById('cargo-modal-title').textContent=cg?'Editar cargo':'Novo cargo';
   document.getElementById('cargo-modal-posto-lbl').textContent=(cl?cl.nome+' · ':'')+(p?p.nome:'');
   document.getElementById('cargo-modal-nome').value=cg?cg.nome:'';
-  document.getElementById('cargo-modal-entrada').value=cg?(cg.horaEntrada||''):'';
-  document.getElementById('cargo-modal-saida').value=cg?(cg.horaSaida||''):'';
+  _cargoModalTurnos=cg?cargoTurnos(cg):[];
+  document.getElementById('cargo-modal-qtd-turnos').value=_cargoModalTurnos.length||1;
+  _cargoModalRenderTurnos();
   document.getElementById('cargo-modal').style.display='flex';
   setTimeout(()=>document.getElementById('cargo-modal-nome').focus(),50);
 }
@@ -1575,17 +1640,25 @@ async function salvarCargoModal(){
   const nome=document.getElementById('cargo-modal-nome').value.trim();
   if(!nome){document.getElementById('cargo-modal-nome').style.borderColor='var(--red)';return;}
   document.getElementById('cargo-modal-nome').style.borderColor='';
-  const horaEntrada=document.getElementById('cargo-modal-entrada').value||'';
-  const horaSaida=document.getElementById('cargo-modal-saida').value||'';
   const cl=(state.clientes||[]).find(c=>c.id===_cargoModalClienteId);
   const p=cl&&(cl.postos||[]).find(x=>x.id===_cargoModalPostoId);
   if(!p)return;
   if(!p.cargos)p.cargos=[];
-  if(_cargoModalId){
-    const cg=p.cargos.find(x=>x.id===_cargoModalId);
-    if(cg){cg.nome=nome;cg.horaEntrada=horaEntrada;cg.horaSaida=horaSaida;}
+  const existente=_cargoModalId?p.cargos.find(x=>x.id===_cargoModalId):null;
+  const idsAntigos=existente?cargoTurnos(existente).map(t=>t.id):[];
+  const rows=Array.from(document.getElementById('cargo-modal-turnos-list').querySelectorAll('.cargo-turno-row'));
+  const turnos=rows.map((row,i)=>({
+    id:idsAntigos[i]&&idsAntigos[i]!=='legacy'?idsAntigos[i]:uid(),
+    nome:(row.querySelector('.ct-nome').value||('Turno '+(i+1))).trim(),
+    horaEntrada:row.querySelector('.ct-entrada').value||'',
+    horaSaida:row.querySelector('.ct-saida').value||''
+  }));
+  if(existente){
+    existente.nome=nome;
+    existente.turnos=turnos;
+    delete existente.horaEntrada;delete existente.horaSaida;
   }else{
-    p.cargos.push({id:uid(),nome,horaEntrada,horaSaida});
+    p.cargos.push({id:uid(),nome,turnos});
   }
   closeCargoModal();
   showToast('Cargo salvo!','ok');
@@ -1626,9 +1699,9 @@ function renderEquipe(){
       html+='<div class="colab-item"><div class="colab-av">'+c.nome.slice(0,2).toUpperCase()+'</div>';
       html+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text)">'+c.nome+'</div>';
       html+='<div style="font-size:11px;color:var(--text2);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">';
-      const horarioC=cargoHorarioFmt(c.cargoId);
+      const horarioC=cargoHorarioFmt(c.cargoId,c.turnoId);
       if(horarioC)html+='<span class="jornada-badge">'+horarioC+'</span>';
-      if(cargoNome(c.cargoId))html+='<span>'+cargoNome(c.cargoId)+'</span>';
+      if(cargoNome(c.cargoId))html+='<span>'+cargoNome(c.cargoId)+(turnoNome(c.cargoId,c.turnoId)?' · '+turnoNome(c.cargoId,c.turnoId):'')+'</span>';
       if(c.inicioCiclo)html+='<span style="color:'+(cicloInfo.trabalha?'var(--cyan)':'var(--text3)')+'">'+( cicloInfo.trabalha?'Trabalha hoje':'Folga hoje')+'</span>';
       html+='</div></div>';
       html+='<div style="display:flex;gap:6px;align-items:center">';
@@ -1720,27 +1793,40 @@ function _modalFillCargos(clienteId,postoId,selCargoId){
   const cargos=(posto&&posto.cargos)||[];
   sel.innerHTML=cargos.length?cargos.map(cg=>'<option value="'+cg.id+'">'+cg.nome+'</option>').join(''):'<option value="">Nenhum cargo cadastrado</option>';
   if(selCargoId&&cargos.some(cg=>cg.id===selCargoId))sel.value=selCargoId;
+}
+function _modalFillTurnos(cargoId,selTurnoId){
+  const sel=document.getElementById('modal-turno');
+  const f=findCargo(cargoId);
+  const turnos=f?cargoTurnos(f.cargo):[];
+  sel.innerHTML=turnos.length?turnos.map(t=>'<option value="'+t.id+'">'+t.nome+(t.horaEntrada?' ('+t.horaEntrada+'–'+(t.horaSaida||'?')+')':'')+'</option>').join(''):'<option value="">Nenhum turno cadastrado</option>';
+  if(selTurnoId&&turnos.some(t=>t.id===selTurnoId))sel.value=selTurnoId;
   _modalUpdateHorario();
 }
 function _modalUpdateHorario(){
   const cargoId=document.getElementById('modal-cargo').value;
+  const turnoId=document.getElementById('modal-turno').value;
   const wrap=document.getElementById('modal-cargo-horario-wrap');
   const lbl=document.getElementById('modal-cargo-horario');
-  const h=cargoId?cargoHorarioFmt(cargoId):'';
+  const h=(cargoId&&turnoId)?cargoHorarioFmt(cargoId,turnoId):'';
   if(h){wrap.style.display='block';lbl.textContent=h;}
   else{wrap.style.display='none';}
 }
 function _modalOnClienteChange(){
   const clienteId=document.getElementById('modal-cliente').value;
   _modalFillPostos(clienteId);
-  _modalFillCargos(clienteId,document.getElementById('modal-posto').value);
+  const postoId=document.getElementById('modal-posto').value;
+  _modalFillCargos(clienteId,postoId);
+  _modalFillTurnos(document.getElementById('modal-cargo').value);
 }
 function _modalOnPostoChange(){
   const clienteId=document.getElementById('modal-cliente').value;
   const postoId=document.getElementById('modal-posto').value;
   _modalFillCargos(clienteId,postoId);
+  _modalFillTurnos(document.getElementById('modal-cargo').value);
 }
-function _modalOnCargoChange(){ _modalUpdateHorario(); }
+function _modalOnCargoChange(){
+  _modalFillTurnos(document.getElementById('modal-cargo').value);
+}
 function openColabModal(idx){
   _modalIdx=idx;
   const isEdit=idx>=0;
@@ -1753,6 +1839,7 @@ function openColabModal(idx){
   _modalFillClientes(clienteId);
   _modalFillPostos(clienteId, isEdit?c.postoId:null);
   _modalFillCargos(clienteId, document.getElementById('modal-posto').value, isEdit?c.cargoId:null);
+  _modalFillTurnos(document.getElementById('modal-cargo').value, isEdit?c.turnoId:null);
   document.getElementById('modal-ciclo').value=isEdit?(c.inicioCiclo||''):'';
   document.getElementById('modal-del-btn').style.display=(isEdit&&currentRole==='superadmin')?'block':'none';
   document.getElementById('colab-modal').style.display='flex';
@@ -1765,13 +1852,16 @@ async function saveColabModal(){
   document.getElementById('modal-nome').style.borderColor='';
   const postoId=document.getElementById('modal-posto').value;
   const cargoId=document.getElementById('modal-cargo').value;
+  const turnoId=document.getElementById('modal-turno').value;
   if(!postoId||!cargoId){showToast('Cadastre Clientes/Postos/Cargos antes de adicionar colaboradores.','warn');return;}
+  if(!turnoId){showToast('Cadastre ao menos um turno para esse cargo antes de adicionar colaboradores.','warn');return;}
   const clienteId=document.getElementById('modal-cliente').value;
   const colab={
     nome,
     clienteId,
     postoId,
     cargoId,
+    turnoId,
     inicioCiclo:document.getElementById('modal-ciclo').value||''
   };
   if(_modalIdx>=0) state.colaboradores[_modalIdx]=Object.assign({},state.colaboradores[_modalIdx],colab);

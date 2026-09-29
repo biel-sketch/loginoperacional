@@ -266,6 +266,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
         <button class="snav-item" id="snav-presenca" onclick="goTo('presenca')"><i class="ti ti-users"></i>Presença</button>
         <button class="snav-item" id="snav-historico" onclick="goTo('historico')"><i class="ti ti-calendar"></i>Histórico</button>
         <button class="snav-item" id="snav-absenteismo" onclick="goTo('absenteismo')"><i class="ti ti-user-off"></i>Absenteísmo</button>
+        <button class="snav-item" id="snav-clientes" onclick="goTo('clientes')"><i class="ti ti-building"></i>Clientes</button>
         <button class="snav-item" id="snav-equipe" onclick="goTo('equipe')"><i class="ti ti-id-badge"></i>Equipe</button>
         <button class="snav-item" id="snav-config" onclick="goTo('config')"><i class="ti ti-settings"></i>Config</button>
       </nav>
@@ -335,6 +336,11 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
           <div id="abs-content"></div>
         </div>
 
+        <!-- CLIENTES -->
+        <div class="screen" id="sc-clientes">
+          <div id="clientes-content"></div>
+        </div>
+
         <!-- EQUIPE -->
         <div class="screen" id="sc-equipe">
           <div id="equipe-content"></div>
@@ -355,6 +361,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
   <button class="bn" id="bn-presenca" onclick="goTo('presenca')"><i class="ti ti-users"></i><span>Presença</span></button>
   <button class="bn" id="bn-historico" onclick="goTo('historico')"><i class="ti ti-calendar"></i><span>Histórico</span></button>
   <button class="bn" id="bn-absenteismo" onclick="goTo('absenteismo')"><i class="ti ti-user-off"></i><span>Ausências</span></button>
+  <button class="bn" id="bn-clientes" onclick="goTo('clientes')"><i class="ti ti-building"></i><span>Clientes</span></button>
   <button class="bn" id="bn-equipe" onclick="goTo('equipe')"><i class="ti ti-id-badge"></i><span>Equipe</span></button>
   <button class="bn" id="bn-config" onclick="goTo('config')"><i class="ti ti-settings"></i><span>Config</span></button>
 </div></nav>
@@ -382,48 +389,21 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
   <div class="modal-box">
     <div class="modal-title"><i class="ti ti-id-badge"></i><span id="modal-title-txt">Colaborador</span></div>
     <div class="field"><label>Nome completo</label><input type="text" id="modal-nome" placeholder="Nome..."></div>
-    <div class="field"><label>Posto de trabalho</label>
-      <select id="modal-posto">
-        <option value="Acim">Acim</option>
-        <option value="Americas">Américas</option>
-        <option value="ClinicPrev">ClinicPrev</option>
-        <option value="Dallas">Dallas</option>
-        <option value="Dori">Dori</option>
-        <option value="Emdurb">Emdurb</option>
-        <option value="Grespan">Grespan</option>
-        <option value="Jazam">Jazam</option>
-        <option value="Mirai Marilia">Mirai Marília</option>
-        <option value="Mirai Tupa">Mirai Tupã</option>
-        <option value="Moradas">Moradas</option>
-        <option value="Mustache">Mustache</option>
-        <option value="Pib">Pib</option>
-        <option value="Prever">Prever</option>
-        <option value="Ravena">Ravena</option>
-        <option value="TSERVICE">T-Service</option>
-        <option value="Tamoyo">Tamoyo</option>
-        <option value="Velocity">Velocity</option>
-      </select>
+    <div class="field"><label>Cliente</label>
+      <select id="modal-cliente" onchange="_modalOnClienteChange()"></select>
     </div>
-    <div class="field"><label>Jornada</label>
-      <select id="modal-jornada">
-        <option value="D06">Diurno 06h–18h</option>
-        <option value="D07">Diurno 07h–19h</option>
-        <option value="N18">Noturno 18h–06h</option>
-        <option value="N19">Noturno 19h–07h</option>
-      </select>
+    <div class="field"><label>Posto de trabalho</label>
+      <select id="modal-posto" onchange="_modalOnPostoChange()"></select>
+    </div>
+    <div class="field"><label>Cargo</label>
+      <select id="modal-cargo" onchange="_modalOnCargoChange()"></select>
+    </div>
+    <div class="field" id="modal-cargo-horario-wrap" style="display:none">
+      <label>Horário do cargo</label>
+      <div id="modal-cargo-horario" style="font-size:12px;color:var(--text2);padding:8px 0"></div>
     </div>
     <div class="field"><label>Início do ciclo (primeiro dia de trabalho)</label>
       <input type="date" id="modal-ciclo">
-    </div>
-    <div class="field"><label>Cargo</label>
-      <select id="modal-cargo">
-        <option value="Controlador de Acesso">Controlador de Acesso</option>
-        <option value="Auxiliar de Limpeza">Auxiliar de Limpeza</option>
-        <option value="Zelador">Zelador</option>
-        <option value="Auxiliar de Producao">Auxiliar de Produção</option>
-        <option value="Auxiliar de Expedicao">Auxiliar de Expedição</option>
-        <option value="Conferente">Conferente</option>
-      </select>
     </div>
     <div class="modal-btns">
       <button class="modal-btn-primary" onclick="saveColabModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
@@ -458,6 +438,46 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     </div>
   </div>
 </div>
+
+<!-- Modal Cliente -->
+<div id="cliente-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeClienteModal()">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-building"></i><span id="cliente-modal-title">Cliente</span></div>
+    <div class="field"><label>Nome do cliente</label><input type="text" id="cliente-modal-nome" placeholder="Nome do cliente..."></div>
+    <div class="modal-btns">
+      <button class="modal-btn-primary" onclick="salvarClienteModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
+      <button class="modal-btn-ghost" onclick="closeClienteModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Posto -->
+<div id="posto-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closePostoModal()">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-map-pin"></i><span id="posto-modal-title">Posto</span></div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px" id="posto-modal-cliente-lbl"></div>
+    <div class="field"><label>Nome do posto</label><input type="text" id="posto-modal-nome" placeholder="Nome do posto..."></div>
+    <div class="modal-btns">
+      <button class="modal-btn-primary" onclick="salvarPostoModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
+      <button class="modal-btn-ghost" onclick="closePostoModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cargo -->
+<div id="cargo-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeCargoModal()">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-id-badge"></i><span id="cargo-modal-title">Cargo</span></div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px" id="cargo-modal-posto-lbl"></div>
+    <div class="field"><label>Nome do cargo</label><input type="text" id="cargo-modal-nome" placeholder="Nome do cargo..."></div>
+    <div class="field"><label>Horário de entrada</label><input type="time" id="cargo-modal-entrada"></div>
+    <div class="field"><label>Horário de saída</label><input type="time" id="cargo-modal-saida"></div>
+    <div class="modal-btns">
+      <button class="modal-btn-primary" onclick="salvarCargoModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
+      <button class="modal-btn-ghost" onclick="closeCargoModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 
@@ -467,15 +487,47 @@ const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.fireba
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
-const POSTOS = ['Acim','Americas','ClinicPrev','Dallas','Dori','Emdurb','Grespan','Jazam','Mirai Marilia','Mirai Tupa','Moradas','Mustache','Pib','Prever','Ravena','TSERVICE','Tamoyo','Velocity'];
-const POSTOS_LABEL = {'Acim':'Acim','Americas':'Américas','ClinicPrev':'ClinicPrev','Dallas':'Dallas','Dori':'Dori','Emdurb':'Emdurb','Grespan':'Grespan','Jazam':'Jazam','Mirai Marilia':'Mirai Marília','Mirai Tupa':'Mirai Tupã','Moradas':'Moradas','Mustache':'Mustache','Pib':'Pib','Prever':'Prever','Ravena':'Ravena','TSERVICE':'T-Service','Tamoyo':'Tamoyo','Velocity':'Velocity'};
-const POSTO_ICONS = {'Acim':'ti-briefcase','Americas':'ti-building-community','ClinicPrev':'ti-heart-rate-monitor','Dallas':'ti-gas-station','Dori':'ti-leaf','Emdurb':'ti-traffic-lights','Grespan':'ti-chef-hat','Jazam':'ti-leaf','Mirai Marilia':'ti-car-garage','Mirai Tupa':'ti-car-garage','Moradas':'ti-building-community','Mustache':'ti-device-desktop','Pib':'ti-church','Prever':'ti-briefcase','Ravena':'ti-building-community','TSERVICE':'ti-car','Tamoyo':'ti-building-factory','Velocity':'ti-barbell'};
-const JORNADAS = {
-  'D06':'Diurno 06h-18h','D07':'Diurno 07h-19h',
-  'N18':'Noturno 18h-06h','N19':'Noturno 19h-07h'
-};
-
-const POSTO_ESPECIAL = {};
+// Clientes/Postos/Cargos agora são cadastrados pelo usuário na tela "Clientes"
+// (state.clientes = [{id,nome,ativo,postos:[{id,nome,cargos:[{id,nome,horaEntrada,horaSaida}]}]}]),
+// em vez de uma lista fixa de postos. As funções abaixo substituem os antigos
+// POSTOS/POSTOS_LABEL/POSTO_ICONS, lendo sempre do cadastro atual.
+function clientesAtivos(){ return (state.clientes||[]).filter(c=>c.ativo!==false); }
+function postosAtivos(){
+  const out=[];
+  clientesAtivos().forEach(cl=>{ (cl.postos||[]).forEach(p=>out.push(p.id)); });
+  return out;
+}
+function findPosto(postoId){
+  for(const cl of (state.clientes||[])){
+    const p=(cl.postos||[]).find(x=>x.id===postoId);
+    if(p)return{cliente:cl,posto:p};
+  }
+  return null;
+}
+function findCargo(cargoId){
+  for(const cl of (state.clientes||[])){
+    for(const p of (cl.postos||[])){
+      const c=(p.cargos||[]).find(x=>x.id===cargoId);
+      if(c)return{cliente:cl,posto:p,cargo:c};
+    }
+  }
+  return null;
+}
+function postoLabel(postoId){
+  const f=findPosto(postoId);
+  return f?(f.cliente.nome+' · '+f.posto.nome):'(posto removido)';
+}
+function postoIcon(postoId){ return 'ti-building-store'; }
+function cargoNome(cargoId){
+  const f=findCargo(cargoId);
+  return f?f.cargo.nome:'';
+}
+function cargoHorarioFmt(cargoId){
+  const f=findCargo(cargoId);
+  if(!f||!f.cargo.horaEntrada)return'';
+  return f.cargo.horaEntrada+'–'+(f.cargo.horaSaida||'?');
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
 
 const USERS = [
   {user:'Gustavo',   senha:'LoginBH26',  role:'gestor'},
@@ -495,7 +547,7 @@ const NOTIF_RECIPIENTS = [
 ];
 
 // === STATE ===
-let state = {colaboradores:[], presencas:{}};
+let state = {colaboradores:[], presencas:{}, clientes:[]};
 let currentUser=null, currentRole=null;
 let isSyncing=false, lastSync=null, syncTimer=null;
 function colaboradoresAtivos(){ return state.colaboradores.filter(c=>c.ativo!==false); }
@@ -545,13 +597,8 @@ function calcCiclo(colab, dateStr){
 }
 
 function deveTrabalharHoje(colab, dateStr){
-  // Regras especiais por posto
-  const especial = POSTO_ESPECIAL[colab.posto];
-  if(especial && especial.soFimSemana){
-    return isFimSemanaOuFeriado(dateStr);
-  }
-  const ciclo = calcCiclo(colab, dateStr);
   if(!colab.inicioCiclo) return true; // sem ciclo, sempre aparece
+  const ciclo = calcCiclo(colab, dateStr);
   return ciclo.trabalha;
 }
 
@@ -581,6 +628,7 @@ function loadCache(){
       const p=JSON.parse(c);
       if(p.colaboradores&&p.colaboradores.length) state.colaboradores=p.colaboradores;
       if(p.presencas) state.presencas=p.presencas;
+      if(p.clientes) state.clientes=p.clientes;
     }
   }catch(e){}
 }
@@ -590,6 +638,7 @@ function mergeState(cloud){
   if(!cloud)return;
   if(cloud.colaboradores&&cloud.colaboradores.length) state.colaboradores=cloud.colaboradores;
   if(cloud.presencas) state.presencas=cloud.presencas;
+  if(cloud.clientes) state.clientes=cloud.clientes;
 }
 
 async function syncFromCloud(){
@@ -622,7 +671,7 @@ async function syncFromCloud(){
 async function pushToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
-    let merged={colaboradores:state.colaboradores,presencas:state.presencas};
+    let merged={colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[]};
     try{
       const cloud=await fbGet();
       if(cloud){
@@ -642,12 +691,19 @@ async function pushToCloud(){
         const localNomes=new Set(state.colaboradores.map(c=>c.nome));
         const mergedColabs=[...state.colaboradores];
         cloudColabs.forEach(cc=>{ if(!localNomes.has(cc.nome)) mergedColabs.push(cc); });
-        merged={colaboradores:mergedColabs,presencas:mp};
+        // Merge clientes por id: mesma lógica — mantém edições locais e preserva
+        // clientes/postos/cargos cadastrados na nuvem por outro usuário
+        const cloudClientes=cloud.clientes||[];
+        const localIds=new Set((state.clientes||[]).map(c=>c.id));
+        const mergedClientes=[...(state.clientes||[])];
+        cloudClientes.forEach(cc=>{ if(!localIds.has(cc.id)) mergedClientes.push(cc); });
+        merged={colaboradores:mergedColabs,presencas:mp,clientes:mergedClientes};
       }
     }catch(e){}
     await fbPut(merged);
     state.colaboradores=merged.colaboradores;
     state.presencas=merged.presencas;
+    state.clientes=merged.clientes||[];
     clearPending();
     saveCache();
     lastSync=new Date();
@@ -664,7 +720,7 @@ async function pushToCloud(){
 async function pushForceToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
-    await fbPut({colaboradores:state.colaboradores,presencas:state.presencas});
+    await fbPut({colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[]});
     clearPending();
     saveCache();
     lastSync=new Date();
@@ -800,7 +856,7 @@ window.addEventListener('DOMContentLoaded',boot);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeColabModal();closeJustifModal();}});
 
 // === NAVIGATION ===
-const SCREEN_TITLES={dashboard:'Dashboard',presenca:'Presença',historico:'Histórico',absenteismo:'Absenteísmo',equipe:'Equipe',config:'Config'};
+const SCREEN_TITLES={dashboard:'Dashboard',presenca:'Presença',historico:'Histórico',absenteismo:'Absenteísmo',clientes:'Clientes',equipe:'Equipe',config:'Config'};
 function goTo(sc){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.bn,.snav-item').forEach(b=>b.classList.remove('active'));
@@ -812,6 +868,7 @@ function goTo(sc){
   if(sc==='presenca')   renderPresenca();
   if(sc==='historico')  renderHistorico();
   if(sc==='absenteismo')renderAbsenteismo();
+  if(sc==='clientes')   renderClientes();
   if(sc==='equipe')     renderEquipe();
   if(sc==='config')     renderConfig();
 }
@@ -836,12 +893,11 @@ function renderDashboard(){
   let totalEscalados=0,totalPresentes=0,totalAusentes=0,totalFolga=0;
   let gridHtml='<div class="posto-grid">';
 
-  POSTOS.forEach(posto=>{
-    const especial=POSTO_ESPECIAL[posto];
-
-    const colabsPostoHoje=colaboradoresAtivos().filter(c=>c.posto===posto&&deveTrabalharHoje(c,todayD));
+  const postosComGente=new Set(colaboradoresAtivos().map(c=>c.postoId).filter(Boolean));
+  postosAtivos().filter(pid=>postosComGente.has(pid)).forEach(posto=>{
+    const colabsPostoHoje=colaboradoresAtivos().filter(c=>c.postoId===posto&&deveTrabalharHoje(c,todayD));
     const colabsExtra=colaboradoresAtivos().filter(c=>{
-      if(c.posto!==posto)return false;
+      if(c.postoId!==posto)return false;
       const pres=presDay[posto]&&presDay[posto][c.nome];
       return pres&&pres.status==='E'; // extra (trabalhando na folga)
     });
@@ -853,11 +909,11 @@ function renderDashboard(){
       if(pres){if(pres.status==='P'||pres.status==='E')presentes++;else if(pres.status==='A')ausentes++;}
     });
     totalEscalados+=escalados;totalPresentes+=presentes;totalAusentes+=ausentes;
-    totalFolga+=colaboradoresAtivos().filter(c=>c.posto===posto&&!deveTrabalharHoje(c,todayD)).length;
+    totalFolga+=colaboradoresAtivos().filter(c=>c.postoId===posto&&!deveTrabalharHoje(c,todayD)).length;
     const pctPres=escalados>0?Math.round(presentes/escalados*100):0;
     const pctColor=pctPres===100?'var(--green)':pctPres>=70?'var(--warn)':'var(--red)';
     gridHtml+='<div class="posto-card" onclick="irParaPostoPresenca(\''+posto+'\')">';
-    gridHtml+='<div class="posto-name"><i class="ti '+POSTO_ICONS[posto]+'"></i>'+POSTOS_LABEL[posto]+'</div>';
+    gridHtml+='<div class="posto-name"><i class="ti '+postoIcon(posto)+'"></i>'+postoLabel(posto)+'</div>';
     gridHtml+='<div class="posto-stats">';
     gridHtml+='<div class="posto-stat"><div class="posto-stat-val purple">'+escalados+'</div><div class="posto-stat-lbl">Escalados</div></div>';
     gridHtml+='<div class="posto-stat"><div class="posto-stat-val green">'+presentes+'</div><div class="posto-stat-lbl">Presentes</div></div>';
@@ -882,7 +938,7 @@ function renderDashboard(){
     '<div class="kpi"><div class="kpi-lbl">Em folga</div><div class="kpi-val" style="color:var(--text3)">'+totalFolga+'</div></div>'+
     '</div>'+
     '<div class="sec">Postos</div>'+
-    gridHtml;
+    (postosComGente.size?gridHtml:'<div class="empty"><i class="ti ti-building-store" style="font-size:24px"></i><h3>Nenhum posto com colaborador ainda</h3><p>Cadastre Clientes/Postos/Cargos em <strong>Clientes</strong> e depois os colaboradores em <strong>Equipe</strong>.</p></div>');
 
   cont.innerHTML=html;
 }
@@ -915,7 +971,8 @@ function renderPresenca(){
   const fbtns=document.getElementById('posto-filter-btns');
   if(fbtns){
     let html='<button class="ds-btn'+(selPosto===null?' active':'')+'" onclick="selPostoFiltro(null)">Todos</button>';
-    POSTOS.forEach(p=>{html+='<button class="ds-btn posto-filter-btn'+(selPosto===p?' active':'')+'" data-posto="'+p+'" onclick="selPostoFiltro(\''+p+'\')">'+POSTOS_LABEL[p]+'</button>';});
+    const postosComGente=new Set(colaboradoresAtivos().map(c=>c.postoId).filter(Boolean));
+    postosAtivos().filter(pid=>postosComGente.has(pid)).forEach(p=>{html+='<button class="ds-btn posto-filter-btn'+(selPosto===p?' active':'')+'" data-posto="'+p+'" onclick="selPostoFiltro(\''+p+'\')">'+postoLabel(p)+'</button>';});
     fbtns.innerHTML=html;
   }
   renderPresContent();
@@ -934,16 +991,13 @@ function renderPresContent(){
   const todayD=today();
   const presDay=state.presencas[todayD]||{};
   const isFDS=isFimSemanaOuFeriado(todayD);
-  const postosVisiveis=selPosto?[selPosto]:POSTOS;
+  const postosVisiveis=selPosto?[selPosto]:postosAtivos();
   let html='';
 
   postosVisiveis.forEach(posto=>{
-    const especial=POSTO_ESPECIAL[posto];
-
-
-    const colabsPosto=colaboradoresAtivos().filter(c=>c.posto===posto);
+    const colabsPosto=colaboradoresAtivos().filter(c=>c.postoId===posto);
     if(!colabsPosto.length){
-      html+='<div class="card"><div class="card-title"><i class="ti '+POSTO_ICONS[posto]+'" style="color:var(--cyan)"></i>'+POSTOS_LABEL[posto]+'</div><div class="empty" style="padding:16px 0"><i class="ti ti-users" style="font-size:24px"></i><p>Nenhum colaborador cadastrado neste posto.</p></div></div>';
+      if(selPosto)html+='<div class="card"><div class="card-title"><i class="ti '+postoIcon(posto)+'" style="color:var(--cyan)"></i>'+postoLabel(posto)+'</div><div class="empty" style="padding:16px 0"><i class="ti ti-users" style="font-size:24px"></i><p>Nenhum colaborador cadastrado neste posto.</p></div></div>';
       return;
     }
 
@@ -956,7 +1010,7 @@ function renderPresContent(){
     escalados.forEach(c=>{const p=presPostoData[c.nome];if(p){if(p.status==='P')presentes++;else if(p.status==='A')ausentes++;}});
 
     html+='<div class="card" style="margin-bottom:14px">';
-    html+='<div class="card-title"><i class="ti '+POSTO_ICONS[posto]+'" style="color:var(--cyan)"></i>'+POSTOS_LABEL[posto];
+    html+='<div class="card-title"><i class="ti '+postoIcon(posto)+'" style="color:var(--cyan)"></i>'+postoLabel(posto);
     html+='<span style="margin-left:auto;font-size:11px;color:var(--text2);font-weight:400">'+escalados.length+' escalados · <span style="color:var(--green)">'+presentes+' pres.</span>'+(ausentes>0?' · <span style="color:var(--red)">'+ausentes+' aus.</span>':'')+'</span></div>';
 
     // Escalados section
@@ -966,14 +1020,27 @@ function renderPresContent(){
         const pres=presPostoData[c.nome];
         const status=pres?pres.status:'';
         const cardCls=status==='P'?'presente':status==='A'?'ausente':status==='E'?'extra':'trabalha';
+        const nomeJs=c.nome.replace(/'/g,"\\'");
+        const horarioCargo=cargoHorarioFmt(c.cargoId);
         html+='<div class="colab-pres-card '+cardCls+'">';
         html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
         html+='<div><div class="colab-name">'+c.nome+'</div>';
-        html+='<div class="colab-info"><span class="jornada-badge">'+JORNADAS[c.jornada]+'</span>'+(c.cargo?'<span style="font-size:11px;color:var(--text3)">'+c.cargo+'</span>':'')+'</div></div>';
+        html+='<div class="colab-info">'+(horarioCargo?'<span class="jornada-badge">'+horarioCargo+'</span>':'')+(c.cargoId?'<span style="font-size:11px;color:var(--text3)">'+cargoNome(c.cargoId)+'</span>':'')+'</div></div>';
         html+='<div class="pres-btns">';
-        html+='<button class="pb'+(status==='P'?' active-p':'')+'" onclick="setStatus(\''+posto+'\',\''+c.nome+'\',\'P\')"><i class="ti ti-check" style="font-size:12px"></i> Presente</button>';
-        html+='<button class="pb'+(status==='A'?' active-a':'')+'" onclick="setStatus(\''+posto+'\',\''+c.nome+'\',\'A\')"><i class="ti ti-x" style="font-size:12px"></i> Ausente</button>';
+        html+='<button class="pb'+(status==='P'?' active-p':'')+'" onclick="setStatus(\''+posto+'\',\''+nomeJs+'\',\'P\')"><i class="ti ti-check" style="font-size:12px"></i> Presente</button>';
+        html+='<button class="pb'+(status==='A'?' active-a':'')+'" onclick="setStatus(\''+posto+'\',\''+nomeJs+'\',\'A\')"><i class="ti ti-x" style="font-size:12px"></i> Ausente</button>';
         html+='</div></div>';
+        if(status==='P'||status==='E'){
+          const f=findCargo(c.cargoId);
+          const defEnt=(f&&f.cargo.horaEntrada)||'';
+          const defSai=(f&&f.cargo.horaSaida)||'';
+          html+='<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">';
+          html+='<div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em"><i class="ti ti-clock" style="font-size:11px"></i> Batida</div>';
+          html+='<input type="time" value="'+(pres.horaEntrada||defEnt)+'" onchange="setBatida(\''+posto+'\',\''+nomeJs+'\',\'horaEntrada\',this.value)" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px">';
+          html+='<span style="color:var(--text3);font-size:11px">até</span>';
+          html+='<input type="time" value="'+(pres.horaSaida||defSai)+'" onchange="setBatida(\''+posto+'\',\''+nomeJs+'\',\'horaSaida\',this.value)" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px">';
+          html+='</div>';
+        }
         if(pres&&pres.justificativa){html+='<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-info-circle" style="font-size:11px"></i> '+pres.justificativa+'</div>';}
         html+='</div>';
       });
@@ -984,19 +1051,21 @@ function renderPresContent(){
       html+='<div style="margin-top:12px">';
       html+='<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">';
       html+='<span>De folga hoje ('+folga.length+')</span>';
-      html+='<button onclick="toggleFolgaSection(\'folga-'+posto.replace(/ /g,'-')+'\')" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-weight:700">ver/ocultar</button></div>';
-      html+='<div id="folga-'+posto.replace(/ /g,'-')+'" style="display:none">';
+      html+='<button onclick="toggleFolgaSection(\'folga-'+posto.replace(/[^a-zA-Z0-9]/g,'_')+'\')" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-weight:700">ver/ocultar</button></div>';
+      html+='<div id="folga-'+posto.replace(/[^a-zA-Z0-9]/g,'_')+'" style="display:none">';
       folga.forEach(c=>{
         const pres=presPostoData[c.nome];
         const status=pres?pres.status:'';
         const cardCls=status==='E'?'extra':'folga';
+        const nomeJs=c.nome.replace(/'/g,"\\'");
+        const horarioCargo=cargoHorarioFmt(c.cargoId);
         html+='<div class="colab-pres-card '+cardCls+'">';
         html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
         html+='<div><div class="colab-name">'+c.nome+' <span class="ciclo-badge folga">Folga 12x36</span></div>';
-        html+='<div class="colab-info"><span class="jornada-badge">'+JORNADAS[c.jornada]+'</span></div></div>';
+        html+='<div class="colab-info">'+(horarioCargo?'<span class="jornada-badge">'+horarioCargo+'</span>':'')+'</div></div>';
         html+='<div class="pres-btns">';
-        html+='<button class="pb'+(status==='E'?' active-e':'')+'" onclick="lancarExtra(\''+posto+'\',\''+c.nome+'\')"><i class="ti ti-plus" style="font-size:12px"></i> Trabalho extra</button>';
-        if(status==='E')html+='<button class="pb" onclick="setStatus(\''+posto+'\',\''+c.nome+'\',\'\')"><i class="ti ti-x" style="font-size:12px"></i> Cancelar</button>';
+        html+='<button class="pb'+(status==='E'?' active-e':'')+'" onclick="lancarExtra(\''+posto+'\',\''+nomeJs+'\')"><i class="ti ti-plus" style="font-size:12px"></i> Trabalho extra</button>';
+        if(status==='E')html+='<button class="pb" onclick="setStatus(\''+posto+'\',\''+nomeJs+'\',\'\')"><i class="ti ti-x" style="font-size:12px"></i> Cancelar</button>';
         html+='</div></div>';
         if(pres&&pres.justificativa){html+='<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-info-circle" style="font-size:11px"></i> '+pres.justificativa+(pres.obs?' — '+pres.obs:'')+'</div>';}
         html+='</div>';
@@ -1023,7 +1092,11 @@ async function setStatus(posto,nome,status){
   if(status===''){
     delete state.presencas[todayD][posto][nome];
   }else{
-    state.presencas[todayD][posto][nome]={status,ts:new Date().toISOString(),who:currentUser?currentUser.user:'?'};
+    const anterior=state.presencas[todayD][posto][nome];
+    const f=findCargo((colaboradoresAtivos().find(c=>c.nome===nome)||{}).cargoId);
+    const horaEntrada=(anterior&&anterior.horaEntrada)||(f&&f.cargo.horaEntrada)||'';
+    const horaSaida=(anterior&&anterior.horaSaida)||(f&&f.cargo.horaSaida)||'';
+    state.presencas[todayD][posto][nome]={status,ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',horaEntrada,horaSaida};
   }
   saveCache();
   renderPresContent();
@@ -1034,11 +1107,23 @@ async function setStatus(posto,nome,status){
   verificarAusenciaLins();
 }
 
+// === BATIDA DE PONTO ===
+async function setBatida(posto,nome,campo,valor){
+  const todayD=today();
+  if(!state.presencas[todayD])state.presencas[todayD]={};
+  if(!state.presencas[todayD][posto])state.presencas[todayD][posto]={};
+  if(!state.presencas[todayD][posto][nome])return;
+  state.presencas[todayD][posto][nome][campo]=valor;
+  saveCache();
+  await pushToCloud();
+  showToast('Horário registrado!','ok');
+}
+
 function showPostoSaved(posto){
   // Find posto card title and add a temporary saved badge
   const titles = document.querySelectorAll('.card-title');
   titles.forEach(t=>{
-    if(t.textContent.includes(POSTOS_LABEL[posto]||posto)){
+    if(t.textContent.includes(postoLabel(posto)||posto)){
       // Remove existing badge if any
       const existing = t.querySelector('.posto-saved-badge');
       if(existing) existing.remove();
@@ -1116,7 +1201,7 @@ function renderHistMes(){
     let hasFalta=false;
     let postosHtml='';
 
-    POSTOS.forEach(posto=>{
+    postosAtivos().forEach(posto=>{
       const presPostoData=presDay[posto];
       if(!presPostoData||!Object.keys(presPostoData).length)return;
       postosHtml+=_renderHistTurnoRow(posto,presPostoData,date,canEdit);
@@ -1138,7 +1223,7 @@ function _renderHistTurnoRow(posto,presPostoData,date,canEdit){
   const entries=Object.entries(presPostoData).sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
   let presentes=0,ausentes=0,extras=0;
   let row='<div class="hist-turno-row">';
-  row+='<span class="hist-turno-lbl">'+POSTOS_LABEL[posto]+'</span>';
+  row+='<span class="hist-turno-lbl">'+postoLabel(posto)+'</span>';
   row+='<div class="hist-chips-wrap">';
   entries.forEach(([nome,v])=>{
     const nomeCurto=nome.split(' ').slice(0,2).join(' ');
@@ -1146,7 +1231,8 @@ function _renderHistTurnoRow(posto,presPostoData,date,canEdit){
     if(v.status==='A'){cls='hist-chip-a';icon='ti-x';ausentes++;}
     else if(v.status==='E'){cls='hist-chip-e';icon='ti-plus';extras++;}
     else{presentes++;}
-    const clickAttr=canEdit?' onclick="abrirEditPresenca(\'+date+\',\'+posto+\',\'+nome.replace(/'/g,"\'")+\')"':'';
+    const nomeEsc=nome.replace(/'/g,"\\'");
+    const clickAttr=canEdit?' onclick="abrirEditPresenca(\''+date+'\',\''+posto+'\',\''+nomeEsc+'\')"':'';
     const tip=canEdit?'Clique para editar':'';
     row+='<span class="hist-chip '+cls+(canEdit?' editable':'')+'"'+clickAttr+' title="'+tip+'"><i class="ti '+icon+'" style="font-size:10px"></i> '+nomeCurto+'</span>';
   });
@@ -1166,7 +1252,7 @@ function abrirEditPresenca(date,posto,nome){
   const v=(state.presencas[date]&&state.presencas[date][posto]&&state.presencas[date][posto][nome])||null;
   const statusLbl=v?(v.status==='A'?'Ausente':v.status==='E'?'Trabalho extra':'Presente'):'Sem registro';
   document.getElementById('edit-pres-nome').textContent=nome;
-  document.getElementById('edit-pres-info').textContent=POSTOS_LABEL[posto]+' · '+date.split('-').reverse().join('/')+' · Atual: '+statusLbl;
+  document.getElementById('edit-pres-info').textContent=postoLabel(posto)+' · '+date.split('-').reverse().join('/')+' · Atual: '+statusLbl;
   document.getElementById('edit-pres-modal').style.display='flex';
 }
 function closeEditPresencaModal(){
@@ -1217,7 +1303,7 @@ function renderPresHist(){
     const presDay=state.presencas[date]||{};
     const weekday=new Date(date+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'});
     let hasFalta=false,posHtml='';
-    POSTOS.forEach(posto=>{
+    postosAtivos().forEach(posto=>{
       const pd=presDay[posto];if(!pd||!Object.keys(pd).length)return;
       posHtml+=_renderHistTurnoRow(posto,pd,date,canEdit);
       if(Object.values(pd).some(v=>v.status==='A'))hasFalta=true;
@@ -1243,7 +1329,7 @@ function renderAbsenteismo(){
   const absMap={},diasMap={};
   dates.forEach(date=>{
     const presDay=state.presencas[date]||{};
-    POSTOS.forEach(posto=>{
+    postosAtivos().forEach(posto=>{
       const pd=presDay[posto]||{};
       Object.entries(pd).forEach(([nome,v])=>{
         if(!absMap[nome])absMap[nome]={faltas:0,presencas:0,extras:0,posto};
@@ -1275,10 +1361,10 @@ function renderAbsenteismo(){
   // By posto
   html+='<div class="card" style="margin-bottom:12px"><div class="card-title"><i class="ti ti-map-pin" style="color:var(--cyan)"></i>Faltas por posto</div>';
   html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">';
-  POSTOS.forEach(posto=>{
+  postosAtivos().forEach(posto=>{
     let faltasP=0;
     Object.entries(absMap).forEach(([,d])=>{if(d.posto===posto)faltasP+=d.faltas;});
-    html+='<div style="background:var(--bg3);border-radius:9px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">'+POSTOS_LABEL[posto]+'</div><div style="font-size:20px;font-weight:700;color:'+(faltasP>0?'var(--red)':'var(--green)')+'">'+faltasP+'</div></div>';
+    html+='<div style="background:var(--bg3);border-radius:9px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">'+postoLabel(posto)+'</div><div style="font-size:20px;font-weight:700;color:'+(faltasP>0?'var(--red)':'var(--green)')+'">'+faltasP+'</div></div>';
   });
   html+='</div></div>';
 
@@ -1294,7 +1380,7 @@ function renderAbsenteismo(){
     const barColor=pct>=15?'var(--red)':pct>=8?'var(--warn)':'var(--green)';
     html+='<div class="abs-row">';
     html+='<div style="min-width:140px;max-width:200px"><div style="font-size:13px;font-weight:700;color:var(--text)">'+nome+'</div>';
-    html+='<div style="font-size:10px;color:var(--text2)">'+POSTOS_LABEL[d.posto]+'</div></div>';
+    html+='<div style="font-size:10px;color:var(--text2)">'+postoLabel(d.posto)+'</div></div>';
     html+='<div class="abs-bar-wrap"><div class="abs-bar" style="width:'+pct+'%;background:'+barColor+'"></div></div>';
     html+='<div style="text-align:right;min-width:80px"><div style="font-size:12px;font-weight:700;color:var(--text)">'+d.faltas+' falta(s)</div><div style="font-size:11px;color:var(--text2)">'+d.presencas+' pres.'+(d.extras?' · '+d.extras+' extra':'')+'</div></div>';
     html+='<div style="min-width:70px;text-align:right"><span class="badge '+statusCls+'">'+status+'</span><div style="font-size:11px;color:var(--text2);margin-top:2px">'+pct+'%</div></div>';
@@ -1309,7 +1395,7 @@ function exportarAbsLins(){
   const absMap={},diasMap={};
   dates.forEach(date=>{
     const presDay=state.presencas[date]||{};
-    POSTOS.forEach(posto=>{
+    postosAtivos().forEach(posto=>{
       Object.entries(presDay[posto]||{}).forEach(([nome,v])=>{
         if(!absMap[nome])absMap[nome]={faltas:0,presencas:0,extras:0,posto};
         if(!diasMap[nome])diasMap[nome]=0;
@@ -1325,12 +1411,196 @@ function exportarAbsLins(){
     const total=diasMap[nome]||0;
     const pct=total>0?Math.round(d.faltas/total*100):0;
     const status=pct>=15?'CRITICO':pct>=8?'ATENCAO':'OK';
-    csv+='"'+nome+'","'+POSTOS_LABEL[d.posto]+'",'+d.faltas+','+d.presencas+','+d.extras+','+total+','+pct+'%,'+status+'\n';
+    csv+='"'+nome+'","'+postoLabel(d.posto)+'",'+d.faltas+','+d.presencas+','+d.extras+','+total+','+pct+'%,'+status+'\n';
   });
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='marilia_ops_absenteismo_'+today()+'.csv';a.click();URL.revokeObjectURL(a.href);
   showToast('Exportado!','ok');
+}
+
+// === CLIENTES / POSTOS / CARGOS ===
+function podeEditarClientes(){return currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor';}
+function renderClientes(){
+  const cont=document.getElementById('clientes-content');if(!cont)return;
+  const canEdit=podeEditarClientes();
+  const clientes=state.clientes||[];
+  let html='<div class="card"><div class="card-title"><i class="ti ti-building" style="color:var(--cyan)"></i>Clientes ('+clientes.filter(c=>c.ativo!==false).length+')';
+  if(canEdit)html+='<button onclick="abrirClienteModal(null)" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-plus"></i> Adicionar Cliente</button>';
+  html+='</div></div>';
+
+  const ativos=clientes.filter(c=>c.ativo!==false);
+  if(!ativos.length){
+    html+='<div class="empty"><i class="ti ti-building-store" style="font-size:24px"></i><h3>Nenhum cliente cadastrado</h3><p>Clique em "Adicionar Cliente" para começar a cadastrar clientes, postos e cargos.</p></div>';
+    cont.innerHTML=html;return;
+  }
+
+  ativos.forEach(cl=>{
+    html+='<div class="card" style="margin-bottom:12px">';
+    html+='<div class="card-title"><i class="ti ti-building" style="color:var(--cyan)"></i>'+cl.nome;
+    if(canEdit){
+      html+='<div style="margin-left:auto;display:flex;gap:6px">';
+      html+='<button onclick="abrirPostoModal(\''+cl.id+'\',null)" style="background:none;border:1px solid var(--cyan-bd);border-radius:7px;padding:5px 10px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px"><i class="ti ti-plus"></i> Posto</button>';
+      html+='<button onclick="abrirClienteModal(\''+cl.id+'\')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 9px;color:var(--text2);font-size:11px;cursor:pointer"><i class="ti ti-pencil"></i></button>';
+      html+='<button onclick="excluirCliente(\''+cl.id+'\')" style="background:none;border:1px solid var(--red-bd);border-radius:7px;padding:5px 9px;color:var(--red);font-size:11px;cursor:pointer"><i class="ti ti-trash"></i></button>';
+      html+='</div>';
+    }
+    html+='</div>';
+    const postos=cl.postos||[];
+    if(!postos.length){
+      html+='<div style="font-size:12px;color:var(--text3);padding:6px 0 2px">Nenhum posto cadastrado para este cliente ainda.</div>';
+    }
+    postos.forEach(p=>{
+      html+='<div style="background:var(--bg3);border-radius:9px;padding:10px 12px;margin-top:8px">';
+      html+='<div style="display:flex;align-items:center;gap:8px"><i class="ti ti-map-pin" style="color:var(--cyan);font-size:14px"></i><div style="font-size:13px;font-weight:700;color:var(--text);flex:1">'+p.nome+'</div>';
+      if(canEdit){
+        html+='<button onclick="abrirCargoModal(\''+cl.id+'\',\''+p.id+'\',null)" style="background:none;border:1px solid var(--cyan-bd);border-radius:6px;padding:4px 8px;color:var(--cyan);font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:3px"><i class="ti ti-plus" style="font-size:11px"></i> Cargo</button>';
+        html+='<button onclick="abrirPostoModal(\''+cl.id+'\',\''+p.id+'\')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text2);font-size:10px;cursor:pointer;margin-left:6px"><i class="ti ti-pencil" style="font-size:11px"></i></button>';
+        html+='<button onclick="excluirPosto(\''+cl.id+'\',\''+p.id+'\')" style="background:none;border:1px solid var(--red-bd);border-radius:6px;padding:4px 8px;color:var(--red);font-size:10px;cursor:pointer;margin-left:6px"><i class="ti ti-trash" style="font-size:11px"></i></button>';
+      }
+      html+='</div>';
+      const cargos=p.cargos||[];
+      if(!cargos.length){
+        html+='<div style="font-size:11px;color:var(--text3);margin-top:6px;padding-left:22px">Nenhum cargo cadastrado.</div>';
+      }else{
+        html+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-left:22px">';
+        cargos.forEach(cg=>{
+          const hor=(cg.horaEntrada?cg.horaEntrada+'–'+(cg.horaSaida||'?'):'');
+          html+='<span style="display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text)">'+cg.nome+(hor?' <span style="color:var(--text3)">· '+hor+'</span>':'');
+          if(canEdit)html+=' <i class="ti ti-pencil" style="font-size:10px;color:var(--text3);cursor:pointer" onclick="abrirCargoModal(\''+cl.id+'\',\''+p.id+'\',\''+cg.id+'\')"></i> <i class="ti ti-x" style="font-size:10px;color:var(--red);cursor:pointer" onclick="excluirCargo(\''+cl.id+'\',\''+p.id+'\',\''+cg.id+'\')"></i>';
+          html+='</span>';
+        });
+        html+='</div>';
+      }
+      html+='</div>';
+    });
+    html+='</div>';
+  });
+  cont.innerHTML=html;
+}
+
+let _clienteModalId=null;
+function abrirClienteModal(clienteId){
+  if(!podeEditarClientes()){showToast('Apenas administradores/gestores podem editar clientes.','err');return;}
+  _clienteModalId=clienteId;
+  const cl=clienteId?(state.clientes||[]).find(c=>c.id===clienteId):null;
+  document.getElementById('cliente-modal-title').textContent=cl?'Editar cliente':'Novo cliente';
+  document.getElementById('cliente-modal-nome').value=cl?cl.nome:'';
+  document.getElementById('cliente-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('cliente-modal-nome').focus(),50);
+}
+function closeClienteModal(){document.getElementById('cliente-modal').style.display='none';}
+async function salvarClienteModal(){
+  const nome=document.getElementById('cliente-modal-nome').value.trim();
+  if(!nome){document.getElementById('cliente-modal-nome').style.borderColor='var(--red)';return;}
+  document.getElementById('cliente-modal-nome').style.borderColor='';
+  if(!state.clientes)state.clientes=[];
+  if(_clienteModalId){
+    const cl=state.clientes.find(c=>c.id===_clienteModalId);
+    if(cl)cl.nome=nome;
+  }else{
+    state.clientes.push({id:uid(),nome,ativo:true,postos:[]});
+  }
+  closeClienteModal();
+  showToast('Cliente salvo!','ok');
+  saveCache();await pushForceToCloud();renderClientes();
+}
+async function excluirCliente(clienteId){
+  const cl=(state.clientes||[]).find(c=>c.id===clienteId);
+  if(!cl)return;
+  if(!confirm('Excluir o cliente "'+cl.nome+'" e todos os seus postos/cargos? Colaboradores já cadastrados nesses postos ficarão sem posto válido — edite-os depois.'))return;
+  cl.ativo=false;
+  showToast('Cliente removido.','ok');
+  saveCache();await pushForceToCloud();renderClientes();
+}
+
+let _postoModalClienteId=null,_postoModalId=null;
+function abrirPostoModal(clienteId,postoId){
+  if(!podeEditarClientes()){showToast('Apenas administradores/gestores podem editar postos.','err');return;}
+  _postoModalClienteId=clienteId;_postoModalId=postoId;
+  const cl=(state.clientes||[]).find(c=>c.id===clienteId);
+  const p=postoId&&cl?(cl.postos||[]).find(x=>x.id===postoId):null;
+  document.getElementById('posto-modal-title').textContent=p?'Editar posto':'Novo posto';
+  document.getElementById('posto-modal-cliente-lbl').textContent=cl?cl.nome:'';
+  document.getElementById('posto-modal-nome').value=p?p.nome:'';
+  document.getElementById('posto-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('posto-modal-nome').focus(),50);
+}
+function closePostoModal(){document.getElementById('posto-modal').style.display='none';}
+async function salvarPostoModal(){
+  const nome=document.getElementById('posto-modal-nome').value.trim();
+  if(!nome){document.getElementById('posto-modal-nome').style.borderColor='var(--red)';return;}
+  document.getElementById('posto-modal-nome').style.borderColor='';
+  const cl=(state.clientes||[]).find(c=>c.id===_postoModalClienteId);
+  if(!cl)return;
+  if(!cl.postos)cl.postos=[];
+  if(_postoModalId){
+    const p=cl.postos.find(x=>x.id===_postoModalId);
+    if(p)p.nome=nome;
+  }else{
+    cl.postos.push({id:uid(),nome,cargos:[]});
+  }
+  closePostoModal();
+  showToast('Posto salvo!','ok');
+  saveCache();await pushForceToCloud();renderClientes();
+}
+async function excluirPosto(clienteId,postoId){
+  const cl=(state.clientes||[]).find(c=>c.id===clienteId);
+  if(!cl)return;
+  const p=(cl.postos||[]).find(x=>x.id===postoId);
+  if(!p)return;
+  if(!confirm('Excluir o posto "'+p.nome+'" e seus cargos? Colaboradores já cadastrados nesse posto ficarão sem posto válido — edite-os depois.'))return;
+  cl.postos=cl.postos.filter(x=>x.id!==postoId);
+  showToast('Posto removido.','ok');
+  saveCache();await pushForceToCloud();renderClientes();
+}
+
+let _cargoModalClienteId=null,_cargoModalPostoId=null,_cargoModalId=null;
+function abrirCargoModal(clienteId,postoId,cargoId){
+  if(!podeEditarClientes()){showToast('Apenas administradores/gestores podem editar cargos.','err');return;}
+  _cargoModalClienteId=clienteId;_cargoModalPostoId=postoId;_cargoModalId=cargoId;
+  const cl=(state.clientes||[]).find(c=>c.id===clienteId);
+  const p=cl&&(cl.postos||[]).find(x=>x.id===postoId);
+  const cg=cargoId&&p?(p.cargos||[]).find(x=>x.id===cargoId):null;
+  document.getElementById('cargo-modal-title').textContent=cg?'Editar cargo':'Novo cargo';
+  document.getElementById('cargo-modal-posto-lbl').textContent=(cl?cl.nome+' · ':'')+(p?p.nome:'');
+  document.getElementById('cargo-modal-nome').value=cg?cg.nome:'';
+  document.getElementById('cargo-modal-entrada').value=cg?(cg.horaEntrada||''):'';
+  document.getElementById('cargo-modal-saida').value=cg?(cg.horaSaida||''):'';
+  document.getElementById('cargo-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('cargo-modal-nome').focus(),50);
+}
+function closeCargoModal(){document.getElementById('cargo-modal').style.display='none';}
+async function salvarCargoModal(){
+  const nome=document.getElementById('cargo-modal-nome').value.trim();
+  if(!nome){document.getElementById('cargo-modal-nome').style.borderColor='var(--red)';return;}
+  document.getElementById('cargo-modal-nome').style.borderColor='';
+  const horaEntrada=document.getElementById('cargo-modal-entrada').value||'';
+  const horaSaida=document.getElementById('cargo-modal-saida').value||'';
+  const cl=(state.clientes||[]).find(c=>c.id===_cargoModalClienteId);
+  const p=cl&&(cl.postos||[]).find(x=>x.id===_cargoModalPostoId);
+  if(!p)return;
+  if(!p.cargos)p.cargos=[];
+  if(_cargoModalId){
+    const cg=p.cargos.find(x=>x.id===_cargoModalId);
+    if(cg){cg.nome=nome;cg.horaEntrada=horaEntrada;cg.horaSaida=horaSaida;}
+  }else{
+    p.cargos.push({id:uid(),nome,horaEntrada,horaSaida});
+  }
+  closeCargoModal();
+  showToast('Cargo salvo!','ok');
+  saveCache();await pushForceToCloud();renderClientes();
+}
+async function excluirCargo(clienteId,postoId,cargoId){
+  const cl=(state.clientes||[]).find(c=>c.id===clienteId);
+  const p=cl&&(cl.postos||[]).find(x=>x.id===postoId);
+  if(!p)return;
+  const cg=(p.cargos||[]).find(x=>x.id===cargoId);
+  if(!cg)return;
+  if(!confirm('Excluir o cargo "'+cg.nome+'"? Colaboradores já cadastrados nesse cargo ficarão sem cargo válido — edite-os depois.'))return;
+  p.cargos=p.cargos.filter(x=>x.id!==cargoId);
+  showToast('Cargo removido.','ok');
+  saveCache();await pushForceToCloud();renderClientes();
 }
 </script>
 
@@ -1346,18 +1616,19 @@ function renderEquipe(){
   html+='</div>';
 
   // Group by posto
-  POSTOS.forEach(posto=>{
-    const colabs=ativos.filter(c=>c.posto===posto);
+  postosAtivos().forEach(posto=>{
+    const colabs=ativos.filter(c=>c.postoId===posto);
     if(!colabs.length)return;
-    html+='<div style="font-size:10px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.1em;margin:14px 0 8px;display:flex;align-items:center;gap:6px"><i class="ti '+POSTO_ICONS[posto]+'" style="font-size:13px"></i>'+POSTOS_LABEL[posto]+' ('+colabs.length+')</div>';
+    html+='<div style="font-size:10px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.1em;margin:14px 0 8px;display:flex;align-items:center;gap:6px"><i class="ti '+postoIcon(posto)+'" style="font-size:13px"></i>'+postoLabel(posto)+' ('+colabs.length+')</div>';
     colabs.forEach((c,idx)=>{
       const globalIdx=state.colaboradores.indexOf(c);
       const cicloInfo=c.inicioCiclo?calcCiclo(c,today()):{};
       html+='<div class="colab-item"><div class="colab-av">'+c.nome.slice(0,2).toUpperCase()+'</div>';
       html+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text)">'+c.nome+'</div>';
       html+='<div style="font-size:11px;color:var(--text2);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">';
-      html+='<span class="jornada-badge">'+JORNADAS[c.jornada]+'</span>';
-      if(c.cargo)html+='<span>'+c.cargo+'</span>';
+      const horarioC=cargoHorarioFmt(c.cargoId);
+      if(horarioC)html+='<span class="jornada-badge">'+horarioC+'</span>';
+      if(cargoNome(c.cargoId))html+='<span>'+cargoNome(c.cargoId)+'</span>';
       if(c.inicioCiclo)html+='<span style="color:'+(cicloInfo.trabalha?'var(--cyan)':'var(--text3)')+'">'+( cicloInfo.trabalha?'Trabalha hoje':'Folga hoje')+'</span>';
       html+='</div></div>';
       html+='<div style="display:flex;gap:6px;align-items:center">';
@@ -1381,7 +1652,7 @@ function renderEquipe(){
         const globalIdx=state.colaboradores.indexOf(c);
         html+='<div class="colab-item" style="opacity:.6"><div class="colab-av" style="background:var(--red-bg);color:var(--red)">'+c.nome.slice(0,2).toUpperCase()+'</div>';
         html+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text)">'+c.nome+'</div>';
-        html+='<div style="font-size:11px;color:var(--text2);margin-top:2px">'+(POSTOS_LABEL[c.posto]||c.posto)+(c.excluidoEm?' · Excluído em '+new Date(c.excluidoEm).toLocaleDateString('pt-BR')+(c.excluidoPor?' por '+c.excluidoPor:''):'')+'</div></div>';
+        html+='<div style="font-size:11px;color:var(--text2);margin-top:2px">'+(postoLabel(c.postoId)||c.postoId||'')+(c.excluidoEm?' · Excluído em '+new Date(c.excluidoEm).toLocaleDateString('pt-BR')+(c.excluidoPor?' por '+c.excluidoPor:''):'')+'</div></div>';
         html+='<button onclick="restaurarColab('+globalIdx+')" style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:7px;padding:5px 10px;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-restore"></i> Restaurar</button>';
         html+='</div>';
       });
@@ -1429,16 +1700,60 @@ function toggleCicloCalendar(idx){
 }
 
 let _modalIdx=-1;
+function _modalFillClientes(selClienteId){
+  const sel=document.getElementById('modal-cliente');
+  const cls=clientesAtivos();
+  sel.innerHTML=cls.length?cls.map(cl=>'<option value="'+cl.id+'">'+cl.nome+'</option>').join(''):'<option value="">Nenhum cliente cadastrado</option>';
+  if(selClienteId&&cls.some(cl=>cl.id===selClienteId))sel.value=selClienteId;
+}
+function _modalFillPostos(clienteId,selPostoId){
+  const sel=document.getElementById('modal-posto');
+  const cl=clientesAtivos().find(c=>c.id===clienteId);
+  const postos=(cl&&cl.postos)||[];
+  sel.innerHTML=postos.length?postos.map(p=>'<option value="'+p.id+'">'+p.nome+'</option>').join(''):'<option value="">Nenhum posto cadastrado</option>';
+  if(selPostoId&&postos.some(p=>p.id===selPostoId))sel.value=selPostoId;
+}
+function _modalFillCargos(clienteId,postoId,selCargoId){
+  const sel=document.getElementById('modal-cargo');
+  const cl=clientesAtivos().find(c=>c.id===clienteId);
+  const posto=cl&&(cl.postos||[]).find(p=>p.id===postoId);
+  const cargos=(posto&&posto.cargos)||[];
+  sel.innerHTML=cargos.length?cargos.map(cg=>'<option value="'+cg.id+'">'+cg.nome+'</option>').join(''):'<option value="">Nenhum cargo cadastrado</option>';
+  if(selCargoId&&cargos.some(cg=>cg.id===selCargoId))sel.value=selCargoId;
+  _modalUpdateHorario();
+}
+function _modalUpdateHorario(){
+  const cargoId=document.getElementById('modal-cargo').value;
+  const wrap=document.getElementById('modal-cargo-horario-wrap');
+  const lbl=document.getElementById('modal-cargo-horario');
+  const h=cargoId?cargoHorarioFmt(cargoId):'';
+  if(h){wrap.style.display='block';lbl.textContent=h;}
+  else{wrap.style.display='none';}
+}
+function _modalOnClienteChange(){
+  const clienteId=document.getElementById('modal-cliente').value;
+  _modalFillPostos(clienteId);
+  _modalFillCargos(clienteId,document.getElementById('modal-posto').value);
+}
+function _modalOnPostoChange(){
+  const clienteId=document.getElementById('modal-cliente').value;
+  const postoId=document.getElementById('modal-posto').value;
+  _modalFillCargos(clienteId,postoId);
+}
+function _modalOnCargoChange(){ _modalUpdateHorario(); }
 function openColabModal(idx){
   _modalIdx=idx;
   const isEdit=idx>=0;
   const c=isEdit?state.colaboradores[idx]:null;
   document.getElementById('modal-title-txt').textContent=isEdit?'Editar colaborador':'Novo colaborador';
   document.getElementById('modal-nome').value=isEdit?c.nome:'';
-  document.getElementById('modal-posto').value=isEdit?c.posto:'Acim';
-  document.getElementById('modal-jornada').value=isEdit?c.jornada:'D06';
+  let clienteId='';
+  if(isEdit&&c.postoId){ const f=findPosto(c.postoId); clienteId=f?f.cliente.id:''; }
+  if(!clienteId){ const first=clientesAtivos()[0]; clienteId=first?first.id:''; }
+  _modalFillClientes(clienteId);
+  _modalFillPostos(clienteId, isEdit?c.postoId:null);
+  _modalFillCargos(clienteId, document.getElementById('modal-posto').value, isEdit?c.cargoId:null);
   document.getElementById('modal-ciclo').value=isEdit?(c.inicioCiclo||''):'';
-  document.getElementById('modal-cargo').value=isEdit?(c.cargo||'Controlador de Acesso'):'Controlador de Acesso';
   document.getElementById('modal-del-btn').style.display=(isEdit&&currentRole==='superadmin')?'block':'none';
   document.getElementById('colab-modal').style.display='flex';
   setTimeout(()=>document.getElementById('modal-nome').focus(),50);
@@ -1448,14 +1763,18 @@ async function saveColabModal(){
   const nome=document.getElementById('modal-nome').value.trim();
   if(!nome){document.getElementById('modal-nome').style.borderColor='var(--red)';return;}
   document.getElementById('modal-nome').style.borderColor='';
+  const postoId=document.getElementById('modal-posto').value;
+  const cargoId=document.getElementById('modal-cargo').value;
+  if(!postoId||!cargoId){showToast('Cadastre Clientes/Postos/Cargos antes de adicionar colaboradores.','warn');return;}
+  const clienteId=document.getElementById('modal-cliente').value;
   const colab={
     nome,
-    posto:document.getElementById('modal-posto').value,
-    jornada:document.getElementById('modal-jornada').value,
-    inicioCiclo:document.getElementById('modal-ciclo').value||'',
-    cargo:document.getElementById('modal-cargo').value
+    clienteId,
+    postoId,
+    cargoId,
+    inicioCiclo:document.getElementById('modal-ciclo').value||''
   };
-  if(_modalIdx>=0) state.colaboradores[_modalIdx]=colab;
+  if(_modalIdx>=0) state.colaboradores[_modalIdx]=Object.assign({},state.colaboradores[_modalIdx],colab);
   else state.colaboradores.push(colab);
   closeColabModal();
   showToast(_modalIdx>=0?'Colaborador atualizado!':'Colaborador adicionado!','ok');
@@ -1558,9 +1877,9 @@ function exportarCSVLins(){
   let csv='Data,Posto,Colaborador,Status,Justificativa\n';
   dates.forEach(date=>{
     const presDay=state.presencas[date]||{};
-    POSTOS.forEach(posto=>{
+    postosAtivos().forEach(posto=>{
       Object.entries(presDay[posto]||{}).forEach(([nome,v])=>{
-        csv+=date+','+POSTOS_LABEL[posto]+',"'+nome+'",'+v.status+','+(v.justificativa||'')+'\n';
+        csv+=date+','+postoLabel(posto)+',"'+nome+'",'+v.status+','+(v.justificativa||'')+'\n';
       });
     });
   });
@@ -1597,12 +1916,12 @@ function verificarAusenciaLins(){
   const todayD=today();
   const presDay=state.presencas[todayD]||{};
   let totalEsc=0,totalAus=0,ausentesInfo=[];
-  POSTOS.forEach(posto=>{
-    const escalados=colaboradoresAtivos().filter(c=>c.posto===posto&&deveTrabalharHoje(c,todayD));
+  postosAtivos().forEach(posto=>{
+    const escalados=colaboradoresAtivos().filter(c=>c.postoId===posto&&deveTrabalharHoje(c,todayD));
     totalEsc+=escalados.length;
     escalados.forEach(c=>{
       const pres=presDay[posto]&&presDay[posto][c.nome];
-      if(pres&&pres.status==='A'){totalAus++;ausentesInfo.push(c.nome.split(' ')[0]+' ('+POSTOS_LABEL[posto]+')');}
+      if(pres&&pres.status==='A'){totalAus++;ausentesInfo.push(c.nome.split(' ')[0]+' ('+postoLabel(posto)+')');}
     });
   });
   const pct=totalEsc>0?totalAus/totalEsc:0;
@@ -1628,13 +1947,13 @@ async function enviarResumoPresencaLins(hora){
   const presDay=state.presencas[todayD]||{};
   const label=hora===8?'08h (inicio)':'20h';
   let linhas=['Marilia Ops - Presenca '+label,'Data: '+todayD.split('-').reverse().join('/'),''];
-  POSTOS.forEach(posto=>{
-    const escalados=colaboradoresAtivos().filter(c=>c.posto===posto&&deveTrabalharHoje(c,todayD));
+  postosAtivos().forEach(posto=>{
+    const escalados=colaboradoresAtivos().filter(c=>c.postoId===posto&&deveTrabalharHoje(c,todayD));
     if(!escalados.length)return;
     const presPostoData=presDay[posto]||{};
     const pres=escalados.filter(c=>presPostoData[c.nome]&&(presPostoData[c.nome].status==='P'||presPostoData[c.nome].status==='E')).length;
     const aus=escalados.filter(c=>presPostoData[c.nome]&&presPostoData[c.nome].status==='A').map(c=>c.nome.split(' ')[0]);
-    linhas.push(POSTOS_LABEL[posto]+': '+pres+'/'+escalados.length+(aus.length?' | Ausentes: '+aus.join(', '):''));
+    linhas.push(postoLabel(posto)+': '+pres+'/'+escalados.length+(aus.length?' | Ausentes: '+aus.join(', '):''));
   });
   await enviarWhatsAppLins(linhas);
 }

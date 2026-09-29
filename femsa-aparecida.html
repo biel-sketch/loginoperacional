@@ -559,6 +559,7 @@ const USERS=[
   {user:'Simone',    senha:'Login@982',  role:'admin'},
   {user:'João',      senha:'Login@982',  role:'superadmin'},
   {user:'Gabriel',   senha:'L@gin982',   role:'superadmin'},
+  {user:'lançamentos', senha:'login@aparecida', role:'lancamentos'},
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
 let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
@@ -1111,6 +1112,7 @@ function showScreen(s){
 
 const SCREEN_TITLES={dashboard:'Dashboard',presenca:'Presença',operacao:'Operação',absenteismo:'Absenteísmo',equipe:'Equipe',config:'Configurações'};
 function goTo(sc){
+  if(!telasPermitidas().includes(sc))sc='operacao';
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.bn,.snav-item').forEach(b=>b.classList.remove('active'));
   const scEl=document.getElementById('sc-'+sc);if(scEl)scEl.classList.add('active');
@@ -1143,17 +1145,23 @@ function updateUserDisplay(){
   }
   if(!currentUser)return;
   const u=currentUser.user,av=u.slice(0,2).toUpperCase();
-  const lbl=(role==='admin'||role==='superadmin')?'Administrador':role==='gestor'?'Gestor':'Operador';
+  const lbl=(role==='admin'||role==='superadmin')?'Administrador':role==='gestor'?'Gestor':role==='lancamentos'?'Lançamentos':'Operador';
   const block=document.getElementById('sidebar-user-block');
   if(block)block.innerHTML='<div style="width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2px solid rgba(255,255,255,.15)">'+av+'</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+u+'</div><div style="font-size:10px;color:var(--text2);margin-top:1px">'+lbl+'</div></div>';
   const ma=document.getElementById('mob-avatar');if(ma)ma.textContent=av;
 }
 
+function telasPermitidas(){
+  if(currentRole==='lancamentos')return['presenca','operacao'];
+  return['dashboard','presenca','operacao','absenteismo','equipe','config'];
+}
 function buildNav(){
   if(!currentRole&&currentUser)currentRole=currentUser.role;
+  const permitidas=telasPermitidas();
   ['dashboard','presenca','operacao','absenteismo','equipe','config'].forEach(id=>{
-    const sn=document.getElementById('snav-'+id);if(sn)sn.style.display='flex';
-    const bn=document.getElementById('bn-'+id);if(bn)bn.style.display='flex';
+    const permitido=permitidas.includes(id);
+    const sn=document.getElementById('snav-'+id);if(sn)sn.style.display=permitido?'flex':'none';
+    const bn=document.getElementById('bn-'+id);if(bn)bn.style.display=permitido?'flex':'none';
   });
   updateUserDisplay();
 }

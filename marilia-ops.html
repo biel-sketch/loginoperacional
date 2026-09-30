@@ -571,6 +571,9 @@ function cargoHorarioFmt(cargoId,turnoId){
   return turnos.map(t=>t.horaEntrada?(t.nome+' '+_turnoFmtOne(t)):t.nome).join(' · ');
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function normTxt(s){
+  return (s||'').toString().normalize('NFKD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+}
 
 const USERS = [
   {user:'Gustavo',   senha:'LoginBH26',  role:'gestor'},
@@ -1925,6 +1928,14 @@ function renderConfig(){
   html+='<button class="btn btn-ghost btn-sm" onclick="exportarAbsLins()"><i class="ti ti-user-off"></i> Absenteísmo CSV</button>';
   html+='</div></div>';
 
+  html+='<div class="card"><div class="card-title"><i class="ti ti-upload" style="color:var(--purple)"></i>Importação em lote de Colaboradores</div>';
+  html+='<div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Cole o JSON já validado abaixo (ou carregue o arquivo) e clique em Analisar. Nada é gravado até você conferir a lista e clicar em Confirmar. Cliente/Posto/Cargo/Turno precisam já existir na tela de Clientes com os nomes exatos.</div>';
+  html+='<input type="file" accept=".json,application/json" onchange="onImportLoteFile(this)" style="margin-bottom:8px;font-size:12px;color:var(--text2)">';
+  html+='<textarea id="import-lote-text" placeholder=\'Cole aqui o JSON de colaboradores, ex: [{"nome":"...","clienteNome":"...","postoNome":"...","cargoNome":"...","turnoNome":"Turno A"}]\' style="width:100%;min-height:90px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:monospace;font-size:11px;box-sizing:border-box"></textarea>';
+  html+='<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="analisarImportLote()"><i class="ti ti-search"></i> Analisar</button>';
+  html+='<div id="import-lote-preview"></div>';
+  html+='</div>';
+
   // WhatsApp card
   const r=NOTIF_RECIPIENTS[0];
   const apiOk=r&&r.apikey;
@@ -1998,6 +2009,114 @@ function exportarJSONLins(){
   const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),...state},null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='marilia_ops_backup_'+today()+'.json';a.click();URL.revokeObjectURL(a.href);
+}
+
+// === IMPORTAÇÃO EM LOTE DE COLABORADORES ===
+// Espera uma lista de objetos: {nome, clienteNome, postoNome, cargoNome, turnoNome?, inicioCiclo?}
+// Resolve contra o cadastro atual (state.clientes) por nome normalizado — nada é gravado
+// até confirmarImportLote() ser chamado.
+let _importAnalise=null;
+
+function onImportLoteFile(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){ document.getElementById('import-lote-text').value=e.target.result; };
+  reader.onerror=function(){ showToast('Não foi possível ler o arquivo.','warn'); };
+  reader.readAsText(file,'utf-8');
+}
+
+function analisarImportLote(){
+  const txt=(document.getElementById('import-lote-text').value||'').trim();
+  if(!txt){showToast('Cole ou carregue o JSON primeiro.','warn');return;}
+  let arr;
+  try{ arr=JSON.parse(txt); }catch(e){ showToast('JSON inválido: '+e.message,'warn'); return; }
+  if(!Array.isArray(arr)){ showToast('O JSON precisa ser uma lista de colaboradores.','warn'); return; }
+
+  const clientes=state.clientes||[];
+  const existentesKey=new Set(colaboradoresAtivos().map(c=>normTxt(c.nome)+'|'+c.postoId));
+  const vistosNesteLote=new Set();
+
+  const resultados=arr.map(rec=>{
+    const nome=(rec&&rec.nome||'').toString().trim();
+    const r={nome:nome||'(sem nome)',raw:rec||{},status:'erro',msg:''};
+    if(!nome){ r.msg='Nome vazio'; return r; }
+    const cliente=clientes.find(c=>c.ativo!==false&&normTxt(c.nome)===normTxt(rec.clienteNome));
+    if(!cliente){ r.msg='Cliente "'+(rec.clienteNome||'?')+'" não encontrado'; return r; }
+    const posto=(cliente.postos||[]).find(p=>normTxt(p.nome)===normTxt(rec.postoNome));
+    if(!posto){ r.msg='Posto "'+(rec.postoNome||'?')+'" não encontrado em '+cliente.nome; return r; }
+    const cargo=(posto.cargos||[]).find(cg=>normTxt(cg.nome)===normTxt(rec.cargoNome));
+    if(!cargo){ r.msg='Cargo "'+(rec.cargoNome||'?')+'" não encontrado em '+posto.nome; return r; }
+    const turnos=cargoTurnos(cargo);
+    let turno=null;
+    if(rec.turnoNome) turno=turnos.find(t=>normTxt(t.nome)===normTxt(rec.turnoNome));
+    if(!turno&&turnos.length===1) turno=turnos[0];
+    if(!turno){ r.msg='Turno "'+(rec.turnoNome||'?')+'" não encontrado em '+cargo.nome; return r; }
+    r.clienteId=cliente.id; r.postoId=posto.id; r.cargoId=cargo.id; r.turnoId=turno.id;
+    r.clienteNome=cliente.nome; r.postoNome=posto.nome; r.cargoNome=cargo.nome; r.turnoNome=turno.nome;
+    r.usa12x36=!!turno.escala12x36;
+    r.inicioCiclo=r.usa12x36?((rec.inicioCiclo||'').toString().trim()):'';
+    if(r.usa12x36&&!r.inicioCiclo){ r.status='atencao'; r.msg='Turno 12x36 sem "inicioCiclo" — não será importado'; return r; }
+    const key=normTxt(nome)+'|'+posto.id;
+    if(existentesKey.has(key)){ r.status='duplicado'; r.msg='Já existe colaborador ativo com este nome neste posto'; return r; }
+    if(vistosNesteLote.has(key)){ r.status='duplicado'; r.msg='Repetido dentro do próprio arquivo'; return r; }
+    vistosNesteLote.add(key);
+    r.status='pronto'; r.msg='OK';
+    return r;
+  });
+
+  _importAnalise=resultados;
+  renderImportLotePreview();
+}
+
+function renderImportLotePreview(){
+  const cont=document.getElementById('import-lote-preview');
+  if(!cont||!_importAnalise)return;
+  const prontos=_importAnalise.filter(r=>r.status==='pronto').length;
+  const dup=_importAnalise.filter(r=>r.status==='duplicado').length;
+  const atencao=_importAnalise.filter(r=>r.status==='atencao').length;
+  const erros=_importAnalise.filter(r=>r.status==='erro').length;
+  let html='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">';
+  html+='<span style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700">'+prontos+' prontos p/ importar</span>';
+  if(dup)html+='<span style="background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700">'+dup+' já existentes (pulados)</span>';
+  if(atencao)html+='<span style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bd);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700">'+atencao+' precisam de atenção</span>';
+  if(erros)html+='<span style="background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700">'+erros+' não encontrados</span>';
+  html+='</div>';
+  html+='<div style="max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px">';
+  html+='<table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html+='<thead style="position:sticky;top:0;background:var(--bg2)"><tr><th style="text-align:left;padding:6px 8px">Nome</th><th style="text-align:left;padding:6px 8px">Cliente › Posto › Cargo › Turno</th><th style="text-align:left;padding:6px 8px">Status</th></tr></thead><tbody>';
+  _importAnalise.forEach(r=>{
+    const color=r.status==='pronto'?'var(--green)':r.status==='duplicado'?'var(--text2)':r.status==='atencao'?'var(--warn)':'var(--red)';
+    const detalhe=r.clienteNome?[r.clienteNome,r.postoNome,r.cargoNome,r.turnoNome].join(' › '):[r.raw.clienteNome,r.raw.postoNome,r.raw.cargoNome].filter(Boolean).join(' › ');
+    html+='<tr style="border-top:1px solid var(--border)"><td style="padding:6px 8px">'+r.nome+'</td><td style="padding:6px 8px;color:var(--text2)">'+detalhe+'</td><td style="padding:6px 8px;color:'+color+';font-weight:600">'+r.msg+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  html+='<button class="btn btn-purple btn-sm" style="margin-top:10px" onclick="confirmarImportLote()"'+(prontos?'':' disabled')+'><i class="ti ti-upload"></i> Confirmar importação ('+prontos+')</button>';
+  cont.innerHTML=html;
+}
+
+async function confirmarImportLote(){
+  if(!_importAnalise)return;
+  const prontos=_importAnalise.filter(r=>r.status==='pronto');
+  if(!prontos.length){ showToast('Nada pronto para importar.','warn'); return; }
+  if(!confirm('Importar '+prontos.length+' colaborador(es) agora? Essa ação grava direto no Firebase.'))return;
+  prontos.forEach(r=>{
+    state.colaboradores.push({
+      nome:r.nome,
+      clienteId:r.clienteId,
+      postoId:r.postoId,
+      cargoId:r.cargoId,
+      turnoId:r.turnoId,
+      inicioCiclo:r.inicioCiclo||''
+    });
+  });
+  showToast(prontos.length+' colaborador(es) importado(s)!','ok');
+  _importAnalise=null;
+  const ta=document.getElementById('import-lote-text'); if(ta)ta.value='';
+  saveCache();
+  await pushForceToCloud();
+  renderConfig();
+  renderEquipe();
 }
 
 // === NOTIFICAÇÕES ===

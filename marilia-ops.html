@@ -83,6 +83,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .colab-pres-card.presente{border-left:3px solid var(--green);background:rgba(0,229,160,.05)}
 .colab-pres-card.ausente{border-left:3px solid var(--red);background:rgba(255,77,106,.05)}
 .colab-pres-card.extra{border-left:3px solid var(--warn);background:rgba(245,158,11,.05)}
+.colab-pres-card.atestado{border-left:3px solid var(--warn);background:rgba(245,158,11,.08);cursor:not-allowed}
 .colab-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px}
 .colab-info{font-size:11px;color:var(--text2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .jornada-badge{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:700;background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-bd)}
@@ -560,6 +561,29 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     </div>
   </div>
 </div>
+
+<!-- Modal Atestado / Afastamento -->
+<div id="afast-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeAfastModal()">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-file-certificate" style="color:var(--cyan)"></i>Novo Atestado / Afastamento</div>
+    <div class="field"><label>Colaborador</label>
+      <select id="afast-nome"></select>
+    </div>
+    <div class="field"><label>Tipo</label>
+      <select id="afast-tipo">
+        <option>Atestado Médico</option>
+        <option>Afastamento</option>
+      </select>
+    </div>
+    <div class="field"><label>Data início</label><input type="date" id="afast-inicio"></div>
+    <div class="field"><label>Data fim</label><input type="date" id="afast-fim"></div>
+    <div class="field"><label>Motivo / Observação</label><input type="text" id="afast-motivo" placeholder="Opcional"></div>
+    <div class="modal-btns">
+      <button class="modal-btn-primary" onclick="salvarAfastamento()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
+      <button class="modal-btn-ghost" onclick="closeAfastModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 
@@ -568,7 +592,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-09-30-19:10';
+const BUILD_VERSION='2026-09-30-20:45';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -673,7 +697,7 @@ const NOTIF_RECIPIENTS = [
 ];
 
 // === STATE ===
-let state = {colaboradores:[], presencas:{}, clientes:[], supervisores:[], checkins:{}};
+let state = {colaboradores:[], presencas:{}, clientes:[], supervisores:[], checkins:{}, afastamentos:[]};
 let currentUser=null, currentRole=null;
 let isSyncing=false, lastSync=null, syncTimer=null;
 function colaboradoresAtivos(){ return state.colaboradores.filter(c=>c.ativo!==false); }
@@ -784,6 +808,7 @@ function loadCache(){
       if(p.clientes) state.clientes=p.clientes;
       if(p.supervisores) state.supervisores=p.supervisores;
       if(p.checkins) state.checkins=p.checkins;
+      if(p.afastamentos) state.afastamentos=p.afastamentos;
     }
   }catch(e){}
 }
@@ -796,6 +821,7 @@ function mergeState(cloud){
   if(cloud.clientes) state.clientes=cloud.clientes;
   if(cloud.supervisores) state.supervisores=cloud.supervisores;
   if(cloud.checkins) state.checkins=cloud.checkins;
+  if(cloud.afastamentos) state.afastamentos=cloud.afastamentos;
 }
 
 async function syncFromCloud(){
@@ -828,7 +854,7 @@ async function syncFromCloud(){
 async function pushToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
-    let merged={colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{}};
+    let merged={colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{},afastamentos:state.afastamentos||[]};
     try{
       const cloud=await fbGet();
       if(cloud){
@@ -870,7 +896,12 @@ async function pushToCloud(){
             mc[d][supId]=uniao;
           });
         });
-        merged={colaboradores:mergedColabs,presencas:mp,clientes:mergedClientes,supervisores:mergedSupervisores,checkins:mc};
+        // Merge afastamentos por id: mesma lógica dos clientes/supervisores
+        const cloudAfast=cloud.afastamentos||[];
+        const localAfastIds=new Set((state.afastamentos||[]).map(a=>a.id));
+        const mergedAfast=[...(state.afastamentos||[])];
+        cloudAfast.forEach(ca=>{ if(!localAfastIds.has(ca.id)) mergedAfast.push(ca); });
+        merged={colaboradores:mergedColabs,presencas:mp,clientes:mergedClientes,supervisores:mergedSupervisores,checkins:mc,afastamentos:mergedAfast};
       }
     }catch(e){}
     // Reaplica exclusões locais de registros de presença que o merge acima (que só
@@ -893,6 +924,7 @@ async function pushToCloud(){
     state.clientes=merged.clientes||[];
     state.supervisores=merged.supervisores||[];
     state.checkins=merged.checkins||{};
+    state.afastamentos=merged.afastamentos||[];
     clearPending();
     clearPendingPresDeletes();
     clearPendingCheckinDeletes();
@@ -911,7 +943,7 @@ async function pushToCloud(){
 async function pushForceToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
-    await fbPut({colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{}});
+    await fbPut({colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{},afastamentos:state.afastamentos||[]});
     clearPending();
     saveCache();
     lastSync=new Date();
@@ -1122,8 +1154,9 @@ function renderDashboard(){
 
   gridHtml+='</div>';
 
-  // Montagem final em ordem linear: data > KPIs > título > grid de postos
-  let html='<div style="font-size:13px;color:var(--text2);margin-bottom:16px">'+dateFull(todayD)+(isFDS?' <span class="badge" style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bd);margin-left:6px">Fim de semana</span>':'')+'</div>';
+  // Montagem final em ordem linear: data > alerta atestados > KPIs > título > grid de postos
+  let html=buildAfastamentosHojeAlertCard();
+  html+='<div style="font-size:13px;color:var(--text2);margin-bottom:16px">'+dateFull(todayD)+(isFDS?' <span class="badge" style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bd);margin-left:6px">Fim de semana</span>':'')+'</div>';
   html+='<div class="kpi-grid-4" style="margin-bottom:16px">'+
     '<div class="kpi"><div class="kpi-lbl">Escalados hoje</div><div class="kpi-val purple">'+totalEscalados+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Presentes</div><div class="kpi-val green">'+totalPresentes+'</div></div>'+
@@ -1210,6 +1243,17 @@ function renderPresContent(){
     if(escalados.length){
       html+='<div style="font-size:10px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Escalados hoje</div>';
       escalados.forEach(c=>{
+        const afast=afastamentoAtivoParaData(c.nome,todayD);
+        if(afast){
+          const horarioCargo0=cargoHorarioFmt(c.cargoId,c.turnoId);
+          html+='<div class="colab-pres-card atestado" onclick="showToast(\'Colaborador em '+afast.tipo.replace(/'/g,"\\'")+' até '+afast.dataFim.split('-').reverse().join('/')+'. Não é possível lançar presença.\',\'warn\')">';
+          html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
+          html+='<div><div class="colab-name">'+c.nome+'</div>';
+          html+='<div class="colab-info">'+(horarioCargo0?'<span class="jornada-badge">'+horarioCargo0+'</span>':'')+(c.cargoId?'<span style="font-size:11px;color:var(--text3)">'+cargoNome(c.cargoId)+'</span>':'')+'</div></div>';
+          html+='<span class="badge b-warn"><i class="ti ti-file-certificate" style="font-size:11px"></i> '+afast.tipo+' até '+afast.dataFim.split('-').reverse().join('/')+'</span>';
+          html+='</div></div>';
+          return;
+        }
         const pres=presPostoData[c.nome];
         const status=pres?pres.status:'';
         const cardCls=status==='P'?'presente':status==='A'?'ausente':status==='E'?'extra':'trabalha';
@@ -1280,6 +1324,8 @@ function toggleFolgaSection(id){
 
 async function setStatus(posto,nome,status){
   const todayD=today();
+  const afast=afastamentoAtivoParaData(nome,todayD);
+  if(afast){showToast('Colaborador em '+afast.tipo+' até '+afast.dataFim.split('-').reverse().join('/')+'. Não é possível lançar presença.','warn');renderPresContent();return;}
   if(!state.presencas[todayD])state.presencas[todayD]={};
   if(!state.presencas[todayD][posto])state.presencas[todayD][posto]={};
   if(status===''){
@@ -1520,7 +1566,7 @@ function navPresHistMes(d){
 function renderAbsenteismo(){
   const cont=document.getElementById('abs-content');if(!cont)return;
   const dates=Object.keys(state.presencas).sort();
-  if(!dates.length){cont.innerHTML='<div class="empty"><i class="ti ti-user-off"></i><h3>Nenhum dado de presença ainda</h3></div>';return;}
+  if(!dates.length){cont.innerHTML=buildAfastamentosCard()+'<div class="empty"><i class="ti ti-user-off"></i><h3>Nenhum dado de presença ainda</h3></div>';return;}
 
   const absMap={},diasMap={};
   dates.forEach(date=>{
@@ -1544,7 +1590,8 @@ function renderAbsenteismo(){
   const atencao=sorted.filter(([,d])=>{const t=diasMap[_getNome(d)]||0;return t>0&&d.faltas/t>=.08&&d.faltas/t<.15;}).length;
   function _getNome(d){return sorted.find(([,dd])=>dd===d)?.[0]||'';}
 
-  let html='<div class="sec">Histórico de absenteísmo</div>';
+  let html=buildAfastamentosCard();
+  html+='<div class="sec">Histórico de absenteísmo</div>';
   html+='<div class="kpi-grid-4" style="margin-bottom:16px">';
   html+='<div class="kpi"><div class="kpi-lbl">Total faltas</div><div class="kpi-val red">'+totalFaltas+'</div><div class="kpi-sub">'+dates.length+' dia(s)</div></div>';
   const totalReg=sorted.reduce((s,[,d])=>s+diasMap[d.posto]||0,0);
@@ -2332,6 +2379,91 @@ function renderSupervisoresMetricas(){
   });
 
   cont.innerHTML=html;
+}
+</script>
+
+<script>
+// === ATESTADOS / AFASTAMENTOS ===
+// state.afastamentos = [{id, nome, postoId, cargoId, tipo, dataInicio, dataFim, motivo, criadoPor, criadoEm}]
+// Mesma lógica usada no painel de Aparecida: enquanto o colaborador está com um
+// atestado/afastamento ativo pra data, ele não pode ter presença lançada — o card dele
+// fica bloqueado mostrando o tipo e até quando.
+function afastamentoAtivoParaData(nome,data){
+  return (state.afastamentos||[]).find(a=>a.nome===nome&&a.dataInicio<=data&&a.dataFim>=data)||null;
+}
+function afastamentosAtivosHoje(){
+  const hoje=today();
+  return (state.afastamentos||[]).filter(a=>a.dataInicio<=hoje&&a.dataFim>=hoje);
+}
+function abrirAfastModal(){
+  if(!podeEditarPresenca()){showToast('Apenas administradores podem lançar atestados/afastamentos.','err');return;}
+  const sel=document.getElementById('afast-nome');
+  sel.innerHTML=colaboradoresAtivos().map(c=>'<option value="'+c.nome.replace(/"/g,'&quot;')+'">'+c.nome+' ('+postoLabel(c.postoId)+')</option>').join('');
+  document.getElementById('afast-tipo').value='Atestado Médico';
+  document.getElementById('afast-inicio').value=today();
+  document.getElementById('afast-fim').value=today();
+  document.getElementById('afast-motivo').value='';
+  document.getElementById('afast-modal').style.display='flex';
+}
+function closeAfastModal(){ document.getElementById('afast-modal').style.display='none'; }
+async function salvarAfastamento(){
+  const nome=document.getElementById('afast-nome').value;
+  const tipo=document.getElementById('afast-tipo').value;
+  const dataInicio=document.getElementById('afast-inicio').value;
+  const dataFim=document.getElementById('afast-fim').value;
+  const motivo=document.getElementById('afast-motivo').value.trim();
+  if(!nome){showToast('Selecione o colaborador.','warn');return;}
+  if(!dataInicio||!dataFim){showToast('Informe as duas datas.','warn');return;}
+  if(dataFim<dataInicio){showToast('Data fim deve ser igual ou depois da data início.','warn');return;}
+  const c=colaboradoresAtivos().find(x=>x.nome===nome);
+  const registro={
+    id:uid(), nome, postoId:c?c.postoId:'', cargoId:c?c.cargoId:'',
+    tipo, dataInicio, dataFim, motivo,
+    criadoPor:currentUser?currentUser.user:'?', criadoEm:new Date().toISOString()
+  };
+  if(!state.afastamentos)state.afastamentos=[];
+  state.afastamentos.push(registro);
+  closeAfastModal();
+  showToast(tipo+' salvo!','ok');
+  saveCache();await pushForceToCloud();renderAll();
+}
+async function excluirAfastamento(id){
+  if(!podeEditarPresenca())return;
+  const reg=(state.afastamentos||[]).find(a=>a.id===id);
+  if(!reg)return;
+  if(!confirm('Remover este registro de '+reg.tipo+' de '+reg.nome+'? Irreversível.'))return;
+  state.afastamentos=(state.afastamentos||[]).filter(a=>a.id!==id);
+  showToast('Registro removido.','ok');
+  saveCache();await pushForceToCloud();renderAll();
+}
+function buildAfastamentosHojeAlertCard(){
+  const ativos=afastamentosAtivosHoje();
+  if(!ativos.length)return'';
+  const item=a=>'<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><i class="ti ti-file-certificate" style="font-size:14px;color:var(--warn);flex-shrink:0"></i><span style="font-size:13px;color:var(--text)"><strong>'+a.nome+'</strong> · '+a.tipo+' até '+dateFull(a.dataFim).split(' de ').slice(0,2).join(' de ')+'</span></div>';
+  return'<div class="card" style="border-color:var(--warn-bd);background:var(--warn-bg);margin-bottom:16px">'+
+    '<div class="card-title" style="color:var(--warn)"><i class="ti ti-alert-triangle"></i>'+ativos.length+' colaborador(es) de atestado/afastamento hoje</div>'+
+    ativos.map(item).join('')+'</div>';
+}
+function buildAfastamentosCard(){
+  const isAdmin=podeEditarPresenca();
+  const ativos=afastamentosAtivosHoje();
+  const todos=(state.afastamentos||[]).slice().sort((a,b)=>b.dataInicio.localeCompare(a.dataInicio));
+  const linha=(a,destaque)=>'<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'+
+    '<div style="width:8px;height:8px;border-radius:50%;background:'+(a.tipo==='Atestado Médico'?'var(--warn)':'var(--purple,#a78bfa)')+';flex-shrink:0"></div>'+
+    '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">'+a.nome+'</div>'+
+    '<div style="font-size:11px;color:var(--text2)">'+a.tipo+' · '+a.dataInicio.split('-').reverse().join('/')+' a '+a.dataFim.split('-').reverse().join('/')+(a.motivo?' · '+a.motivo:'')+'</div></div>'+
+    (destaque?'<span class="badge b-warn" style="flex-shrink:0">ATIVO HOJE</span>':'')+
+    (isAdmin?'<button onclick="excluirAfastamento(\''+a.id+'\')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text2);font-size:11px;cursor:pointer;flex-shrink:0"><i class="ti ti-trash" style="font-size:12px"></i></button>':'')+
+    '</div>';
+  return'<div class="card" style="margin-bottom:12px"><div class="card-title"><i class="ti ti-file-certificate" style="color:var(--cyan)"></i>Atestados e Afastamentos'+
+    (isAdmin?'<button onclick="abrirAfastModal()" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-plus" style="font-size:13px"></i> Novo</button>':'')+
+    '</div>'+
+    (todos.length?
+      (ativos.length?'<div style="font-size:11px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Ativos hoje ('+ativos.length+')</div>'+ativos.map(a=>linha(a,true)).join(''):'')+
+      '<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-top:'+(ativos.length?'14px':'0')+';margin-bottom:4px">Histórico ('+todos.length+')</div>'+
+      todos.map(a=>linha(a,false)).join('')
+    :'<div class="empty" style="padding:16px 0"><i class="ti ti-file-certificate"></i><h3>Nenhum atestado ou afastamento lançado</h3></div>')+
+    '</div>';
 }
 </script>
 

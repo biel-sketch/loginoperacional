@@ -497,7 +497,69 @@ async function hubCarregarUnidade(u){
     if(lbl)lbl.textContent='Sem conexão';
   }
 }
-function hubCarregarTudo(){HUB_UNITS.forEach(hubCarregarUnidade);}
+
+// === Marília Operações (postos de segurança/serviços — modelo por posto+ciclo) ===
+const FB_URL_MARILIA_OPS='https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
+const MOPS_POSTOS=['Acim','Americas','ClinicPrev','Dallas','Dori','Emdurb','Grespan','Jazam','Mirai Marilia','Mirai Tupa','Moradas','Mustache','Pib','Prever','Ravena','TSERVICE','Tamoyo','Velocity'];
+function hubIsFimSemana(dateStr){
+  const dow=new Date(dateStr+'T12:00').getDay();
+  return dow===0||dow===6;
+}
+function hubCalcCiclo(colab,dateStr){
+  if(!colab.inicioCiclo)return{trabalha:true};
+  const inicio=new Date(colab.inicioCiclo+'T12:00');
+  const alvo=new Date(dateStr+'T12:00');
+  const diffDias=Math.round((alvo-inicio)/(1000*60*60*24));
+  return{trabalha:diffDias>=0&&diffDias%2===0};
+}
+function hubDeveTrabalhar(colab,dateStr){
+  if(!colab.inicioCiclo)return true;
+  return hubCalcCiclo(colab,dateStr).trabalha;
+}
+async function hubCarregarMariliaOps(){
+  try{
+    const r=await fetch(FB_URL_MARILIA_OPS,{cache:'no-store'});
+    if(!r.ok)throw new Error(r.status);
+    const data=await r.json()||{};
+    const colaboradores=(data.colaboradores||[]).filter(c=>c.ativo!==false);
+    const todayD=hubToday();
+    const presDay=(data.presencas&&data.presencas[todayD])||{};
+    let totalEscalados=0,totalPresentes=0,totalAusentes=0,latest=null;
+    MOPS_POSTOS.forEach(posto=>{
+      const colabsHoje=colaboradores.filter(c=>c.posto===posto&&hubDeveTrabalhar(c,todayD));
+      const presPosto=presDay[posto]||{};
+      const colabsExtra=colaboradores.filter(c=>c.posto===posto&&presPosto[c.nome]&&presPosto[c.nome].status==='E');
+      const todos=[...new Set([...colabsHoje,...colabsExtra])];
+      totalEscalados+=todos.length;
+      todos.forEach(c=>{
+        const pres=presPosto[c.nome];
+        if(pres){
+          if(pres.status==='P'||pres.status==='E')totalPresentes++;
+          else if(pres.status==='A')totalAusentes++;
+        }
+      });
+    });
+    Object.values(data.presencas||{}).forEach(postos=>{
+      Object.values(postos||{}).forEach(nomes=>{
+        Object.values(nomes||{}).forEach(v=>{if(v&&v.ts&&(!latest||v.ts>latest))latest=v.ts;});
+      });
+    });
+    hubSetTxt('mops-escalados',totalEscalados);
+    hubSetTxt('mops-presentes',totalPresentes);
+    hubSetTxt('mops-ausentes',totalAusentes);
+    const ago=hubTimeAgo(latest);
+    hubSetTxt('mops-freshness-lbl',ago?('Atualizado '+ago):'Sem lançamentos ainda');
+    const dot=document.getElementById('dot-marilia-ops'),lbl=document.getElementById('lbl-marilia-ops');
+    if(dot)dot.className='status-dot online';
+    if(lbl)lbl.textContent='Online';
+  }catch(e){
+    console.error('Hub fetch marilia-ops',e);
+    const dot=document.getElementById('dot-marilia-ops'),lbl=document.getElementById('lbl-marilia-ops');
+    if(dot)dot.className='status-dot loading';
+    if(lbl)lbl.textContent='Sem conexão';
+  }
+}
+function hubCarregarTudo(){HUB_UNITS.forEach(hubCarregarUnidade);hubCarregarMariliaOps();}
 document.addEventListener('DOMContentLoaded',hubCarregarTudo);
 setInterval(hubCarregarTudo,60000);
 </script>

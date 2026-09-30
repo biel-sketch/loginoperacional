@@ -600,6 +600,20 @@ function colaboradoresAtivos(){ return state.colaboradores.filter(c=>c.ativo!==f
 function markPending(){ try{ localStorage.setItem(LS_CACHE+'_pending','1'); }catch(e){} }
 function clearPending(){ try{ localStorage.removeItem(LS_CACHE+'_pending'); }catch(e){} }
 function hasPending(){ try{ return localStorage.getItem(LS_CACHE+'_pending')==='1'; }catch(e){ return false; } }
+// Registros de presença removidos localmente (ex: botão "Remover registro") que ainda
+// não foram confirmados no Firebase. O merge de pushToCloud() só ADICIONA entradas —
+// sem isso, uma exclusão local era sobrescrita de volta pela cópia da nuvem no próximo
+// envio/sincronização, fazendo o registro "voltar sozinho".
+const LS_PRES_DELETES=LS_CACHE+'_pres_deletes';
+function addPendingPresDelete(date,posto,nome){
+  const list=getPendingPresDeletes();
+  list.push({date,posto,nome});
+  try{ localStorage.setItem(LS_PRES_DELETES, JSON.stringify(list)); }catch(e){}
+}
+function getPendingPresDeletes(){
+  try{ return JSON.parse(localStorage.getItem(LS_PRES_DELETES)||'[]'); }catch(e){ return []; }
+}
+function clearPendingPresDeletes(){ try{ localStorage.removeItem(LS_PRES_DELETES); }catch(e){} }
 let syncCountdown=0, countdownTimer=null;
 let selDate=null, selPosto=null, presView='hoje';
 let histMes=null, absDates=[];
@@ -748,11 +762,20 @@ async function pushToCloud(){
         merged={colaboradores:mergedColabs,presencas:mp,clientes:mergedClientes};
       }
     }catch(e){}
+    // Reaplica exclusões locais de registros de presença que o merge acima (que só
+    // adiciona/atualiza) traria de volta a partir da cópia da nuvem.
+    getPendingPresDeletes().forEach(({date,posto,nome})=>{
+      if(merged.presencas[date]&&merged.presencas[date][posto]){
+        delete merged.presencas[date][posto][nome];
+        if(!Object.keys(merged.presencas[date][posto]).length) delete merged.presencas[date][posto];
+      }
+    });
     await fbPut(merged);
     state.colaboradores=merged.colaboradores;
     state.presencas=merged.presencas;
     state.clientes=merged.clientes||[];
     clearPending();
+    clearPendingPresDeletes();
     saveCache();
     lastSync=new Date();
     setSyncDot('ok','Salvo '+lastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
@@ -1139,6 +1162,7 @@ async function setStatus(posto,nome,status){
   if(!state.presencas[todayD][posto])state.presencas[todayD][posto]={};
   if(status===''){
     delete state.presencas[todayD][posto][nome];
+    addPendingPresDelete(todayD,posto,nome);
   }else{
     const anterior=state.presencas[todayD][posto][nome];
     const colabRef=colaboradoresAtivos().find(c=>c.nome===nome)||{};
@@ -1316,6 +1340,7 @@ async function salvarEditPresenca(status){
   if(!state.presencas[date][posto])state.presencas[date][posto]={};
   if(status===''){
     delete state.presencas[date][posto][nome];
+    addPendingPresDelete(date,posto,nome);
   }else{
     state.presencas[date][posto][nome]={status,ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',editadoManualmente:true};
   }

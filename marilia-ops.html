@@ -145,7 +145,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .hist-turno-row:last-child{border-bottom:none}
 .hist-turno-lbl{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;width:80px;flex-shrink:0;padding-top:2px}
 .hist-ausentes{display:flex;flex-wrap:wrap;gap:4px;flex:1}
-.hist-ausente-tag{font-size:11px;padding:2px 8px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:6px;color:var(--red);font-weight:600}.hist-chip{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin:2px 4px 2px 0;border:1px solid transparent}.hist-chip.editable{cursor:pointer}.hist-chip.editable:hover{filter:brightness(1.25);transform:translateY(-1px)}.hist-chip-p{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}.hist-chip-a{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}.hist-chip-e{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}.hist-chips-wrap{display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+.hist-ausente-tag{font-size:11px;padding:2px 8px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:6px;color:var(--red);font-weight:600}.hist-chip{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin:2px 4px 2px 0;border:1px solid transparent}.hist-chip.editable{cursor:pointer}.hist-chip.editable:hover{filter:brightness(1.25);transform:translateY(-1px)}.hist-chip-p{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}.hist-chip-a{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}.hist-chip-e{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}.hist-chip-c{background:rgba(167,139,250,.12);border-color:rgba(167,139,250,.35);color:#a78bfa}.hist-chips-wrap{display:flex;flex-wrap:wrap;align-items:center;gap:2px}
 .hist-ok{font-size:11px;color:var(--green);font-weight:600}
 .hist-sem-reg{font-size:11px;color:var(--text3);font-style:italic}
 
@@ -320,12 +320,14 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
           <div class="vtoggle">
             <button class="vtog active" id="ptog-hoje" onclick="setPresView('hoje')">Hoje</button>
             <button class="vtog" id="ptog-hist" onclick="setPresView('historico')">Histórico</button>
+            <button class="vtog" id="ptog-retro" onclick="setPresView('retro')">Lançamento retroativo</button>
           </div>
           <div id="pv-hoje">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
               <div style="font-size:13px;color:var(--text2)" id="pres-date-lbl"></div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
                 <button id="pres-btn-afast" onclick="abrirAfastModal()" style="display:none;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;align-items:center;gap:5px"><i class="ti ti-file-certificate" style="font-size:13px"></i> Atestado / Afastamento / Férias</button>
+                <button id="pres-btn-cobertura" onclick="abrirCoberturaModal()" style="display:none;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.35);border-radius:7px;padding:6px 12px;color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer;align-items:center;gap:5px"><i class="ti ti-replace" style="font-size:13px"></i> Cobertura de posto</button>
                 <div style="display:flex;gap:6px;flex-wrap:wrap" id="posto-filter-btns"></div>
               </div>
             </div>
@@ -333,6 +335,16 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
           </div>
           <div id="pv-historico" style="display:none">
             <div id="pres-hist-content"></div>
+          </div>
+          <div id="pv-retro" style="display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <input type="date" id="retro-date" onchange="renderRetroContent()" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px">
+                <select id="retro-posto" onchange="renderRetroContent()" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px"></select>
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--text2);margin-bottom:10px"><i class="ti ti-info-circle" style="font-size:12px"></i> Use esta tela para lançar presença de um dia que passou em branco. Registros já lançados podem ser editados normalmente em Histórico.</div>
+            <div id="retro-content"></div>
           </div>
         </div>
 
@@ -596,6 +608,28 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     </div>
   </div>
 </div>
+
+<!-- Modal Cobertura de Posto -->
+<div id="cobertura-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeCoberturaModal()">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-replace" style="color:#a78bfa"></i>Nova Cobertura de Posto</div>
+    <div class="field"><label>Colaborador que vai cobrir</label>
+      <select id="cob-colab"></select>
+    </div>
+    <div class="field"><label>Cliente (destino da cobertura)</label>
+      <select id="cob-cliente" onchange="_coberturaModalFillPostos()"></select>
+    </div>
+    <div class="field"><label>Posto (destino da cobertura)</label>
+      <select id="cob-posto"></select>
+    </div>
+    <div class="field"><label>Data</label><input type="date" id="cob-data"></div>
+    <div class="field"><label>Motivo / Observação</label><input type="text" id="cob-motivo" placeholder="Opcional, ex: cobrindo falta de Fulano"></div>
+    <div class="modal-btns">
+      <button class="modal-btn-primary" onclick="salvarCobertura()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
+      <button class="modal-btn-ghost" onclick="closeCoberturaModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 
@@ -604,7 +638,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-09-30-22:15';
+const BUILD_VERSION='2026-09-30-22:50';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -1237,15 +1271,20 @@ function setPresView(v){
   presView=v;
   document.getElementById('ptog-hoje').className='vtog'+(v==='hoje'?' active':'');
   document.getElementById('ptog-hist').className='vtog'+(v==='historico'?' active':'');
+  document.getElementById('ptog-retro').className='vtog'+(v==='retro'?' active':'');
   document.getElementById('pv-hoje').style.display=v==='hoje'?'block':'none';
   document.getElementById('pv-historico').style.display=v==='historico'?'block':'none';
+  document.getElementById('pv-retro').style.display=v==='retro'?'block':'none';
   if(v==='historico') renderPresHist();
+  if(v==='retro') renderRetroScreen();
 }
 
 function renderPresenca(){
   document.getElementById('pres-date-lbl').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
   const afastBtn=document.getElementById('pres-btn-afast');
   if(afastBtn)afastBtn.style.display=podeEditarPresenca()?'flex':'none';
+  const coberturaBtn=document.getElementById('pres-btn-cobertura');
+  if(coberturaBtn)coberturaBtn.style.display=podeEditarPresenca()?'flex':'none';
   // Posto filter buttons
   const fbtns=document.getElementById('posto-filter-btns');
   if(fbtns){
@@ -1334,6 +1373,24 @@ function renderPresContent(){
         if(pres&&pres.justificativa){html+='<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-info-circle" style="font-size:11px"></i> '+pres.justificativa+'</div>';}
         html+='</div>';
       });
+    }
+
+    // Cobertura section: colaboradores de OUTROS postos cobrindo aqui hoje
+    const coberturasHoje=Object.entries(presPostoData).filter(([,v])=>v.status==='C');
+    if(coberturasHoje.length){
+      html+='<div style="margin-top:12px">';
+      html+='<div style="font-size:10px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Cobertura hoje ('+coberturasHoje.length+')</div>';
+      coberturasHoje.forEach(([nome,v])=>{
+        const origem=v.postoOrigemId?postoLabel(v.postoOrigemId):'';
+        const nomeJs=nome.replace(/'/g,"\\'");
+        html+='<div class="colab-pres-card" style="border-left:3px solid #a78bfa;background:rgba(167,139,250,.08)">';
+        html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
+        html+='<div><div class="colab-name">'+nome+'</div>';
+        html+='<div class="colab-info">'+(origem?'<span style="font-size:11px;color:var(--text3)">Posto de origem: '+origem+'</span>':'')+(v.motivo?'<div style="font-size:11px;color:var(--text2);margin-top:2px">'+v.motivo+'</div>':'')+'</div></div>';
+        html+='<button onclick="excluirCobertura(\''+todayD+'\',\''+posto+'\',\''+nomeJs+'\')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text2);font-size:11px;cursor:pointer"><i class="ti ti-trash" style="font-size:12px"></i></button>';
+        html+='</div></div>';
+      });
+      html+='</div>';
     }
 
     // Folga section (collapsed by default, expandable)
@@ -1515,7 +1572,7 @@ function podeEditarPresenca(){return currentRole==='admin'||currentRole==='super
 
 function _renderHistTurnoRow(posto,presPostoData,date,canEdit){
   const entries=Object.entries(presPostoData).sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
-  let presentes=0,ausentes=0,extras=0;
+  let presentes=0,ausentes=0,extras=0,coberturas=0;
   let row='<div class="hist-turno-row">';
   row+='<span class="hist-turno-lbl">'+postoLabel(posto)+'</span>';
   row+='<div class="hist-chips-wrap">';
@@ -1524,16 +1581,18 @@ function _renderHistTurnoRow(posto,presPostoData,date,canEdit){
     let cls='hist-chip-p',icon='ti-check';
     if(v.status==='A'){cls='hist-chip-a';icon='ti-x';ausentes++;}
     else if(v.status==='E'){cls='hist-chip-e';icon='ti-plus';extras++;}
+    else if(v.status==='C'){cls='hist-chip-c';icon='ti-replace';coberturas++;}
     else{presentes++;}
     const nomeEsc=nome.replace(/'/g,"\\'");
-    const clickAttr=canEdit?' onclick="abrirEditPresenca(\''+date+'\',\''+posto+'\',\''+nomeEsc+'\')"':'';
-    const tip=canEdit?'Clique para editar':'';
-    row+='<span class="hist-chip '+cls+(canEdit?' editable':'')+'"'+clickAttr+' title="'+tip+'"><i class="ti '+icon+'" style="font-size:10px"></i> '+nomeCurto+'</span>';
+    const clickAttr=canEdit?(v.status==='C'?' onclick="excluirCobertura(\''+date+'\',\''+posto+'\',\''+nomeEsc+'\')"':' onclick="abrirEditPresenca(\''+date+'\',\''+posto+'\',\''+nomeEsc+'\')"'):'';
+    const tip=canEdit?(v.status==='C'?'Clique para remover a cobertura':'Clique para editar'):'';
+    row+='<span class="hist-chip '+cls+(canEdit?' editable':'')+'"'+clickAttr+' title="'+tip+'"><i class="ti '+icon+'" style="font-size:10px"></i> '+nomeCurto+(v.status==='C'?' (cobertura)':'')+'</span>';
   });
   let summary=[];
   if(presentes)summary.push('<span class="hist-ok"><i class="ti ti-check" style="font-size:11px"></i> '+presentes+' pres.</span>');
   if(ausentes)summary.push('<span style="color:var(--red);font-weight:600">'+ausentes+' aus.</span>');
   if(extras)summary.push('<span style="color:var(--warn);font-weight:600">'+extras+' extra</span>');
+  if(coberturas)summary.push('<span style="color:#a78bfa;font-weight:600">'+coberturas+' cobertura</span>');
   row+='<span class="hist-summary">'+summary.join(' · ')+'</span>';
   row+='</div></div>';
   return row;
@@ -1615,11 +1674,86 @@ function navPresHistMes(d){
   renderPresHist();
 }
 
+// === LANÇAMENTO RETROATIVO (aba na tela de presença) ===
+function renderRetroScreen(){
+  const dateInp=document.getElementById('retro-date');
+  if(dateInp&&!dateInp.value){
+    const y=new Date(Date.now()-24*60*60*1000); // ontem, por padrão
+    dateInp.value=fmtYMD(y);
+  }
+  if(dateInp)dateInp.max=today();
+  const sel=document.getElementById('retro-posto');
+  if(sel){
+    const postosComGente=new Set(colaboradoresAtivos().map(c=>c.postoId).filter(Boolean));
+    const postos=postosAtivos().filter(pid=>postosComGente.has(pid));
+    sel.innerHTML='<option value="">Todos os postos</option>'+postos.map(p=>'<option value="'+p+'">'+postoLabel(p)+'</option>').join('');
+  }
+  renderRetroContent();
+}
+function renderRetroContent(){
+  const cont=document.getElementById('retro-content');if(!cont)return;
+  const dateInp=document.getElementById('retro-date');
+  const date=(dateInp&&dateInp.value)||fmtYMD(new Date(Date.now()-24*60*60*1000));
+  if(date>today()){cont.innerHTML='<div class="empty"><i class="ti ti-calendar-off"></i><h3>Selecione uma data até hoje</h3></div>';return;}
+  const postoSel=(document.getElementById('retro-posto')||{}).value||'';
+  const presDay=state.presencas[date]||{};
+  const postosVisiveis=postoSel?[postoSel]:postosAtivos();
+  let html='';
+  postosVisiveis.forEach(posto=>{
+    const colabsPosto=colaboradoresAtivos().filter(c=>c.postoId===posto&&deveTrabalharHoje(c,date));
+    if(!colabsPosto.length)return;
+    const presPostoData=presDay[posto]||{};
+    html+='<div class="card" style="margin-bottom:14px">';
+    html+='<div class="card-title"><i class="ti '+postoIcon(posto)+'" style="color:var(--cyan)"></i>'+postoLabel(posto)+'</div>';
+    colabsPosto.forEach(c=>{
+      const afast=afastamentoAtivoParaData(c.nome,date);
+      const nomeJs=c.nome.replace(/'/g,"\\'");
+      if(afast){
+        html+='<div class="colab-pres-card atestado" onclick="showToast(\'Colaborador em '+afast.tipo.replace(/'/g,"\\'")+' até '+afast.dataFim.split('-').reverse().join('/')+'. Não é possível lançar presença.\',\'warn\')">';
+        html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
+        html+='<div class="colab-name">'+c.nome+'</div>';
+        html+='<span class="badge b-warn">'+afast.tipo+'</span></div></div>';
+        return;
+      }
+      const pres=presPostoData[c.nome];
+      const status=pres?pres.status:'';
+      const cardCls=status==='P'?'presente':status==='A'?'ausente':'trabalha';
+      html+='<div class="colab-pres-card '+cardCls+'">';
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
+      html+='<div class="colab-name">'+c.nome+'</div>';
+      html+='<div class="pres-btns">';
+      html+='<button class="pb'+(status==='P'?' active-p':'')+'" onclick="setStatusRetro(\''+date+'\',\''+posto+'\',\''+nomeJs+'\',\'P\')"><i class="ti ti-check" style="font-size:12px"></i> Presente</button>';
+      html+='<button class="pb'+(status==='A'?' active-a':'')+'" onclick="setStatusRetro(\''+date+'\',\''+posto+'\',\''+nomeJs+'\',\'A\')"><i class="ti ti-x" style="font-size:12px"></i> Ausente</button>';
+      html+='</div></div></div>';
+    });
+    html+='</div>';
+  });
+  if(!html)html='<div class="empty"><i class="ti ti-users"></i><h3>Nenhum colaborador escalado nesta data</h3></div>';
+  cont.innerHTML=html;
+}
+async function setStatusRetro(date,posto,nome,status){
+  if(!podeEditarPresenca()){showToast('Apenas administradores podem lançar presença retroativa.','err');return;}
+  const afast=afastamentoAtivoParaData(nome,date);
+  if(afast){showToast('Colaborador em '+afast.tipo+' até '+afast.dataFim.split('-').reverse().join('/')+'. Não é possível lançar presença.','warn');return;}
+  if(!state.presencas[date])state.presencas[date]={};
+  if(!state.presencas[date][posto])state.presencas[date][posto]={};
+  if(status===''){
+    delete state.presencas[date][posto][nome];
+    addPendingPresDelete(date,posto,nome);
+  }else{
+    state.presencas[date][posto][nome]={status,ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',lancamentoRetroativo:true};
+  }
+  saveCache();
+  renderRetroContent();
+  await pushToCloud();
+  showToast('Registro salvo!','ok');
+}
+
 // === ABSENTEÍSMO ===
 function renderAbsenteismo(){
   const cont=document.getElementById('abs-content');if(!cont)return;
   const dates=Object.keys(state.presencas).sort();
-  if(!dates.length){cont.innerHTML=buildAfastamentosCard()+'<div class="empty"><i class="ti ti-user-off"></i><h3>Nenhum dado de presença ainda</h3></div>';return;}
+  if(!dates.length){cont.innerHTML=buildAfastamentosCard()+buildSaldoPostosCard()+'<div class="empty"><i class="ti ti-user-off"></i><h3>Nenhum dado de presença ainda</h3></div>';return;}
 
   const absMap={},diasMap={};
   dates.forEach(date=>{
@@ -1644,6 +1778,7 @@ function renderAbsenteismo(){
   function _getNome(d){return sorted.find(([,dd])=>dd===d)?.[0]||'';}
 
   let html=buildAfastamentosCard();
+  html+=buildSaldoPostosCard();
   html+='<div class="sec">Histórico de absenteísmo</div>';
   html+='<div class="kpi-grid-4" style="margin-bottom:16px">';
   html+='<div class="kpi"><div class="kpi-lbl">Total faltas</div><div class="kpi-val red">'+totalFaltas+'</div><div class="kpi-sub">'+dates.length+' dia(s)</div></div>';
@@ -2533,6 +2668,91 @@ function buildAfastamentosCard(){
       todos.map(a=>linha(a,false)).join('')
     :'<div class="empty" style="padding:16px 0"><i class="ti ti-file-certificate"></i><h3>Nenhum atestado ou afastamento lançado</h3></div>')+
     '</div>';
+}
+
+// === COBERTURA DE POSTO ===
+function abrirCoberturaModal(){
+  if(!podeEditarPresenca()){showToast('Apenas administradores podem lançar cobertura de posto.','err');return;}
+  const colabSel=document.getElementById('cob-colab');
+  colabSel.innerHTML=colaboradoresAtivos().map(c=>'<option value="'+c.nome.replace(/"/g,'&quot;')+'">'+c.nome+' ('+postoLabel(c.postoId)+')</option>').join('');
+  const clienteSel=document.getElementById('cob-cliente');
+  const clientes=clientesAtivos().filter(cl=>(cl.postos||[]).length);
+  clienteSel.innerHTML=clientes.length?clientes.map(cl=>'<option value="'+cl.id+'">'+cl.nome+'</option>').join(''):'<option value="">Nenhum cliente cadastrado</option>';
+  _coberturaModalFillPostos();
+  document.getElementById('cob-data').value=today();
+  document.getElementById('cob-motivo').value='';
+  document.getElementById('cobertura-modal').style.display='flex';
+}
+function _coberturaModalFillPostos(){
+  const clienteId=document.getElementById('cob-cliente').value;
+  const cl=clientesAtivos().find(c=>c.id===clienteId);
+  const postos=(cl&&cl.postos)||[];
+  const sel=document.getElementById('cob-posto');
+  sel.innerHTML=postos.length?postos.map(p=>'<option value="'+p.id+'">'+p.nome+'</option>').join(''):'<option value="">Nenhum posto cadastrado</option>';
+}
+function closeCoberturaModal(){ document.getElementById('cobertura-modal').style.display='none'; }
+async function salvarCobertura(){
+  if(!podeEditarPresenca()){showToast('Apenas administradores podem lançar cobertura de posto.','err');return;}
+  const nome=document.getElementById('cob-colab').value;
+  const postoId=document.getElementById('cob-posto').value;
+  const data=document.getElementById('cob-data').value;
+  const motivo=document.getElementById('cob-motivo').value.trim();
+  if(!nome||!postoId){showToast('Selecione o colaborador e o posto de destino.','warn');return;}
+  if(!data){showToast('Informe a data.','warn');return;}
+  const colab=colaboradoresAtivos().find(c=>c.nome===nome);
+  if(!state.presencas[data])state.presencas[data]={};
+  if(!state.presencas[data][postoId])state.presencas[data][postoId]={};
+  state.presencas[data][postoId][nome]={status:'C',ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',cobertura:true,postoOrigemId:colab?colab.postoId:'',motivo};
+  closeCoberturaModal();
+  showToast('Cobertura lançada!','ok');
+  saveCache();
+  renderAll();
+  await pushToCloud();
+}
+async function excluirCobertura(date,posto,nome){
+  if(!podeEditarPresenca())return;
+  if(!confirm('Remover esta cobertura de '+nome+' em '+postoLabel(posto)+'?'))return;
+  if(state.presencas[date]&&state.presencas[date][posto]){
+    delete state.presencas[date][posto][nome];
+    if(!Object.keys(state.presencas[date][posto]).length) delete state.presencas[date][posto];
+  }
+  addPendingPresDelete(date,posto,nome);
+  showToast('Cobertura removida.','ok');
+  saveCache();
+  renderAll();
+  await pushToCloud();
+}
+// Saldo por posto: cada falta (status A) não coberta soma 1 dia negativo; cada cobertura
+// (status C) recebida naquele posto abate 1 desse saldo. Resultado negativo = posto está
+// devendo pessoal (faltou mais do que foi coberto); positivo = cobertura extra além das faltas.
+function calcularSaldoPostos(){
+  const saldo={};
+  Object.values(state.presencas||{}).forEach(presDay=>{
+    Object.entries(presDay).forEach(([posto,colabs])=>{
+      if(!saldo[posto])saldo[posto]={faltas:0,coberturas:0};
+      Object.values(colabs).forEach(v=>{
+        if(v.status==='A')saldo[posto].faltas++;
+        else if(v.status==='C')saldo[posto].coberturas++;
+      });
+    });
+  });
+  return Object.entries(saldo).map(([posto,d])=>({posto,faltas:d.faltas,coberturas:d.coberturas,saldo:d.coberturas-d.faltas})).sort((a,b)=>a.saldo-b.saldo);
+}
+function buildSaldoPostosCard(){
+  const lista=calcularSaldoPostos().filter(d=>d.faltas>0||d.coberturas>0);
+  if(!lista.length)return'';
+  const linha=d=>{
+    const cor=d.saldo<0?'var(--red)':d.saldo>0?'var(--green)':'var(--text2)';
+    const sinal=d.saldo>0?'+':'';
+    return'<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">'+
+      '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">'+postoLabel(d.posto)+'</div>'+
+      '<div style="font-size:11px;color:var(--text2)">'+d.faltas+' falta(s) · '+d.coberturas+' cobertura(s)</div></div>'+
+      '<div style="font-size:16px;font-weight:700;color:'+cor+';flex-shrink:0">'+sinal+d.saldo+'</div>'+
+      '</div>';
+  };
+  return'<div class="card" style="margin-bottom:12px"><div class="card-title"><i class="ti ti-scale" style="color:var(--cyan)"></i>Saldo de posto (faltas × cobertura)</div>'+
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:6px">Negativo = posto devendo pessoal (faltou mais do que foi coberto). Positivo = cobertura acima das faltas.</div>'+
+    lista.map(linha).join('')+'</div>';
 }
 </script>
 

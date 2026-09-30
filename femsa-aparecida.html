@@ -2356,6 +2356,10 @@ function renderConfig(){
     html+='<button class="btn btn-ghost btn-sm" onclick="exportarJSON()"><i class="ti ti-database"></i> Backup JSON</button>';
     html+='<button class="btn btn-ghost btn-sm" style="grid-column:1/-1" onclick="exportarProducaoIndividual()"><i class="ti ti-users"></i> Produção Individual CSV (por turno)</button>';
     html+='</div>';
+    html+='<div style="display:flex;gap:8px;align-items:center;background:var(--bg3);border-radius:9px;padding:8px;margin-bottom:8px">';
+    html+='<input type="month" id="relMensalMes" value="'+today().slice(0,7)+'" style="flex:1;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px">';
+    html+='<button class="btn btn-ghost btn-sm" onclick="exportarRelatorioMensal()" style="white-space:nowrap"><i class="ti ti-calendar-stats"></i> Relatório Mensal CSV</button>';
+    html+='</div>';
     html+='<button class="btn btn-sm" style="width:100%;background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bd)" onclick="showArchive()"><i class="ti ti-archive"></i> Arquivar mês anterior</button>';
     html+='<div id="archive-confirm" style="display:none;margin-top:12px;padding:12px;background:var(--warn-bg);border:1px solid var(--warn-bd);border-radius:9px">';
     html+='<div style="font-size:12px;color:var(--warn);margin-bottom:10px;font-weight:700">Exporta e remove dados do mês anterior. Continuar?</div>';
@@ -2694,6 +2698,53 @@ function exportarProducaoIndividual(){
   });
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='producao_individual_'+today()+'.csv';a.click();URL.revokeObjectURL(a.href);
+  showToast('CSV exportado!','ok');
+}
+function exportarRelatorioMensal(){
+  var mesEl=document.getElementById('relMensalMes');
+  var mes=mesEl?mesEl.value:'';
+  if(!mes){showToast('Selecione o m\u00EAs.','warn');return;}
+  var datesPres=Object.keys(state.presencas||{}).filter(function(d){return d.indexOf(mes)===0;});
+  var datesProd=Object.keys(state.producaoPessoas||{}).filter(function(d){return d.indexOf(mes)===0;});
+  if(!datesPres.length&&!datesProd.length){showToast('Nenhum dado de presen\u00E7a ou produ\u00E7\u00E3o nesse m\u00EAs.','warn');return;}
+  var map={};
+  function reg(turnoKey,nome){
+    var k=turnoKey+'|'+nome;
+    if(!map[k])map[k]={turno:turnoKey,nome:nome,prod:0,presencas:0,faltas:0};
+    return map[k];
+  }
+  turnosAtivos().forEach(function(t){
+    datesPres.forEach(function(d){
+      var pt=state.presencas[d]&&state.presencas[d][t.key];
+      if(!pt||!pt.presenca)return;
+      Object.entries(pt.presenca).forEach(function(e2){
+        var nome=e2[0],st=e2[1];
+        var r=reg(t.key,nome);
+        if(st==='P')r.presencas++;
+        else if(st==='A')r.faltas++;
+        // 'F' (f\u00E9rias) n\u00E3o entra em presen\u00E7a nem falta
+      });
+    });
+    datesProd.forEach(function(d){
+      var dia=state.producaoPessoas[d]&&state.producaoPessoas[d][t.key];
+      if(!dia||!dia.pessoas)return;
+      Object.entries(dia.pessoas).forEach(function(e2){
+        var nome=e2[0],pr=e2[1]||{};
+        reg(t.key,nome).prod+=(pr.prod||0);
+      });
+    });
+  });
+  var rows=Object.values(map);
+  if(!rows.length){showToast('Nenhum dado de presen\u00E7a ou produ\u00E7\u00E3o nesse m\u00EAs.','warn');return;}
+  rows.sort(function(a,b){return turnoInfo(a.turno).label.localeCompare(turnoInfo(b.turno).label)||a.nome.localeCompare(b.nome);});
+  var partes=mes.split('-');
+  var mesLabel=new Date(Number(partes[0]),Number(partes[1])-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  var csv='M\u00EAs referente;Turno;Colaborador;Produ\u00E7\u00E3o do m\u00EAs;Presen\u00E7as do m\u00EAs;Faltas do m\u00EAs\n';
+  rows.forEach(function(r){
+    csv+='"'+mesLabel+'";"'+turnoInfo(r.turno).label+'";"'+r.nome+'";'+r.prod+';'+r.presencas+';'+r.faltas+'\n';
+  });
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='relatorio_mensal_'+mes+'.csv';a.click();URL.revokeObjectURL(a.href);
   showToast('CSV exportado!','ok');
 }
 function exportarPDF(){

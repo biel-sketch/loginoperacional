@@ -268,6 +268,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
         <button class="snav-item" id="snav-absenteismo" onclick="goTo('absenteismo')"><i class="ti ti-user-off"></i>Absenteísmo</button>
         <button class="snav-item" id="snav-clientes" onclick="goTo('clientes')"><i class="ti ti-building"></i>Clientes</button>
         <button class="snav-item" id="snav-equipe" onclick="goTo('equipe')"><i class="ti ti-id-badge"></i>Equipe</button>
+        <button class="snav-item" id="snav-supervisores" onclick="goTo('supervisores')"><i class="ti ti-route"></i>Supervisores</button>
         <button class="snav-item" id="snav-config" onclick="goTo('config')"><i class="ti ti-settings"></i>Config</button>
       </nav>
       <div class="sidebar-footer">
@@ -346,6 +347,18 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
           <div id="equipe-content"></div>
         </div>
 
+        <!-- SUPERVISORES -->
+        <div class="screen" id="sc-supervisores">
+          <div class="vtoggle">
+            <button class="vtog active" id="svtog-rotas" onclick="setSupervisoresView('rotas')">Rotas</button>
+            <button class="vtog" id="svtog-checkin" onclick="setSupervisoresView('checkin')">Check-in</button>
+            <button class="vtog" id="svtog-metricas" onclick="setSupervisoresView('metricas')">Métricas</button>
+          </div>
+          <div id="sv-rotas"><div id="supervisores-content"></div></div>
+          <div id="sv-checkin" style="display:none"><div id="supervisores-checkin-content"></div></div>
+          <div id="sv-metricas" style="display:none"><div id="supervisores-metricas-content"></div></div>
+        </div>
+
         <!-- CONFIG -->
         <div class="screen" id="sc-config">
           <div id="config-content"></div>
@@ -363,6 +376,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
   <button class="bn" id="bn-absenteismo" onclick="goTo('absenteismo')"><i class="ti ti-user-off"></i><span>Ausências</span></button>
   <button class="bn" id="bn-clientes" onclick="goTo('clientes')"><i class="ti ti-building"></i><span>Clientes</span></button>
   <button class="bn" id="bn-equipe" onclick="goTo('equipe')"><i class="ti ti-id-badge"></i><span>Equipe</span></button>
+  <button class="bn" id="bn-supervisores" onclick="goTo('supervisores')"><i class="ti ti-route"></i><span>Supervisores</span></button>
   <button class="bn" id="bn-config" onclick="goTo('config')"><i class="ti ti-settings"></i><span>Config</span></button>
 </div></nav>
 
@@ -483,6 +497,27 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     </div>
   </div>
 </div>
+
+<!-- Modal Rota de Supervisor -->
+<div id="rota-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeRotaModal()">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-route"></i><span id="rota-modal-title">Posto da rota</span></div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px" id="rota-modal-sup-lbl"></div>
+    <div class="field"><label>Cliente</label>
+      <select id="rota-modal-cliente" onchange="_rotaModalFillPostos()"></select>
+    </div>
+    <div class="field"><label>Posto</label>
+      <select id="rota-modal-posto"></select>
+    </div>
+    <div class="field"><label>Visitas por semana</label>
+      <input type="number" id="rota-modal-freq" min="1" max="14" value="1">
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn-primary" onclick="salvarRotaModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
+      <button class="modal-btn-ghost" onclick="closeRotaModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 
@@ -593,7 +628,7 @@ const NOTIF_RECIPIENTS = [
 ];
 
 // === STATE ===
-let state = {colaboradores:[], presencas:{}, clientes:[]};
+let state = {colaboradores:[], presencas:{}, clientes:[], supervisores:[], checkins:{}};
 let currentUser=null, currentRole=null;
 let isSyncing=false, lastSync=null, syncTimer=null;
 function colaboradoresAtivos(){ return state.colaboradores.filter(c=>c.ativo!==false); }
@@ -614,6 +649,17 @@ function getPendingPresDeletes(){
   try{ return JSON.parse(localStorage.getItem(LS_PRES_DELETES)||'[]'); }catch(e){ return []; }
 }
 function clearPendingPresDeletes(){ try{ localStorage.removeItem(LS_PRES_DELETES); }catch(e){} }
+// Mesma lógica de tombstone, para exclusões de check-ins de supervisores
+const LS_CHECKIN_DELETES=LS_CACHE+'_checkin_deletes';
+function addPendingCheckinDelete(date,supervisorId,checkinId){
+  const list=getPendingCheckinDeletes();
+  list.push({date,supervisorId,checkinId});
+  try{ localStorage.setItem(LS_CHECKIN_DELETES, JSON.stringify(list)); }catch(e){}
+}
+function getPendingCheckinDeletes(){
+  try{ return JSON.parse(localStorage.getItem(LS_CHECKIN_DELETES)||'[]'); }catch(e){ return []; }
+}
+function clearPendingCheckinDeletes(){ try{ localStorage.removeItem(LS_CHECKIN_DELETES); }catch(e){} }
 let syncCountdown=0, countdownTimer=null;
 let selDate=null, selPosto=null, presView='hoje';
 let histMes=null, absDates=[];
@@ -691,6 +737,8 @@ function loadCache(){
       if(p.colaboradores&&p.colaboradores.length) state.colaboradores=p.colaboradores;
       if(p.presencas) state.presencas=p.presencas;
       if(p.clientes) state.clientes=p.clientes;
+      if(p.supervisores) state.supervisores=p.supervisores;
+      if(p.checkins) state.checkins=p.checkins;
     }
   }catch(e){}
 }
@@ -701,6 +749,8 @@ function mergeState(cloud){
   if(cloud.colaboradores&&cloud.colaboradores.length) state.colaboradores=cloud.colaboradores;
   if(cloud.presencas) state.presencas=cloud.presencas;
   if(cloud.clientes) state.clientes=cloud.clientes;
+  if(cloud.supervisores) state.supervisores=cloud.supervisores;
+  if(cloud.checkins) state.checkins=cloud.checkins;
 }
 
 async function syncFromCloud(){
@@ -733,7 +783,7 @@ async function syncFromCloud(){
 async function pushToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
-    let merged={colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[]};
+    let merged={colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{}};
     try{
       const cloud=await fbGet();
       if(cloud){
@@ -759,7 +809,23 @@ async function pushToCloud(){
         const localIds=new Set((state.clientes||[]).map(c=>c.id));
         const mergedClientes=[...(state.clientes||[])];
         cloudClientes.forEach(cc=>{ if(!localIds.has(cc.id)) mergedClientes.push(cc); });
-        merged={colaboradores:mergedColabs,presencas:mp,clientes:mergedClientes};
+        // Merge supervisores por id: mesma lógica dos clientes
+        const cloudSupervisores=cloud.supervisores||[];
+        const localSupIds=new Set((state.supervisores||[]).map(s=>s.id));
+        const mergedSupervisores=[...(state.supervisores||[])];
+        cloudSupervisores.forEach(cs=>{ if(!localSupIds.has(cs.id)) mergedSupervisores.push(cs); });
+        // Merge checkins: união por data+supervisor, deduplicando por id do check-in
+        const mc=JSON.parse(JSON.stringify(cloud.checkins||{}));
+        Object.entries(state.checkins||{}).forEach(([d,bySup])=>{
+          if(!mc[d])mc[d]={};
+          Object.entries(bySup).forEach(([supId,lista])=>{
+            const existentesIds=new Set((mc[d][supId]||[]).map(c=>c.id));
+            const uniao=[...(mc[d][supId]||[])];
+            (lista||[]).forEach(c=>{ if(!existentesIds.has(c.id)){uniao.push(c);existentesIds.add(c.id);} });
+            mc[d][supId]=uniao;
+          });
+        });
+        merged={colaboradores:mergedColabs,presencas:mp,clientes:mergedClientes,supervisores:mergedSupervisores,checkins:mc};
       }
     }catch(e){}
     // Reaplica exclusões locais de registros de presença que o merge acima (que só
@@ -770,12 +836,21 @@ async function pushToCloud(){
         if(!Object.keys(merged.presencas[date][posto]).length) delete merged.presencas[date][posto];
       }
     });
+    // Reaplica exclusões locais de check-ins pelo mesmo motivo
+    getPendingCheckinDeletes().forEach(({date,supervisorId,checkinId})=>{
+      if(merged.checkins[date]&&merged.checkins[date][supervisorId]){
+        merged.checkins[date][supervisorId]=merged.checkins[date][supervisorId].filter(c=>c.id!==checkinId);
+      }
+    });
     await fbPut(merged);
     state.colaboradores=merged.colaboradores;
     state.presencas=merged.presencas;
     state.clientes=merged.clientes||[];
+    state.supervisores=merged.supervisores||[];
+    state.checkins=merged.checkins||{};
     clearPending();
     clearPendingPresDeletes();
+    clearPendingCheckinDeletes();
     saveCache();
     lastSync=new Date();
     setSyncDot('ok','Salvo '+lastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
@@ -791,7 +866,7 @@ async function pushToCloud(){
 async function pushForceToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
-    await fbPut({colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[]});
+    await fbPut({colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{}});
     clearPending();
     saveCache();
     lastSync=new Date();
@@ -927,7 +1002,7 @@ window.addEventListener('DOMContentLoaded',boot);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeColabModal();closeJustifModal();}});
 
 // === NAVIGATION ===
-const SCREEN_TITLES={dashboard:'Dashboard',presenca:'Presença',historico:'Histórico',absenteismo:'Absenteísmo',clientes:'Clientes',equipe:'Equipe',config:'Config'};
+const SCREEN_TITLES={dashboard:'Dashboard',presenca:'Presença',historico:'Histórico',absenteismo:'Absenteísmo',clientes:'Clientes',equipe:'Equipe',supervisores:'Supervisores',config:'Config'};
 function goTo(sc){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.bn,.snav-item').forEach(b=>b.classList.remove('active'));
@@ -941,6 +1016,7 @@ function goTo(sc){
   if(sc==='absenteismo')renderAbsenteismo();
   if(sc==='clientes')   renderClientes();
   if(sc==='equipe')     renderEquipe();
+  if(sc==='supervisores')renderSupervisoresScreen();
   if(sc==='config')     renderConfig();
 }
 function renderAll(){
@@ -950,6 +1026,7 @@ function renderAll(){
   if(id==='presenca')   renderPresenca();
   if(id==='historico')  renderHistorico();
   if(id==='absenteismo')renderAbsenteismo();
+  if(id==='supervisores')renderSupervisoresScreen();
 }
 </script>
 
@@ -1714,6 +1791,306 @@ async function excluirCargo(clienteId,postoId,cargoId){
   p.cargos=p.cargos.filter(x=>x.id!==cargoId);
   showToast('Cargo removido.','ok');
   saveCache();await pushForceToCloud();renderClientes();
+}
+</script>
+
+<script>
+// === SUPERVISORES ===
+// state.supervisores = [{id, nome, ativo, rota:[{id, clienteId, postoId, frequenciaSemanal}]}]
+// state.checkins = { "YYYY-MM-DD": { [supervisorId]: [{id, clienteId, postoId, hora, nota}] } }
+function podeEditarSupervisores(){return currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor';}
+function supervisoresAtivos(){ return (state.supervisores||[]).filter(s=>s.ativo!==false); }
+function findSupervisor(id){ return (state.supervisores||[]).find(s=>s.id===id); }
+function fmtYMD(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function weekStart(dateStr){
+  const d=new Date(dateStr+'T12:00');
+  const dow=d.getDay();
+  const diff=(dow===0?-6:1-dow);
+  d.setDate(d.getDate()+diff);
+  return fmtYMD(d);
+}
+function weekDates(mondaySt){
+  const base=new Date(mondaySt+'T12:00');
+  const out=[];
+  for(let i=0;i<7;i++){ const d=new Date(base.getFullYear(),base.getMonth(),base.getDate()+i); out.push(fmtYMD(d)); }
+  return out;
+}
+
+let supervisoresView='rotas';
+function setSupervisoresView(v){
+  supervisoresView=v;
+  ['rotas','checkin','metricas'].forEach(k=>{
+    const tog=document.getElementById('svtog-'+k); if(tog)tog.className='vtog'+(v===k?' active':'');
+    const pane=document.getElementById('sv-'+k); if(pane)pane.style.display=(v===k?'block':'none');
+  });
+  if(v==='rotas')renderSupervisores();
+  if(v==='checkin')renderSupervisoresCheckin();
+  if(v==='metricas')renderSupervisoresMetricas();
+}
+function renderSupervisoresScreen(){ setSupervisoresView(supervisoresView); }
+
+// --- Rotas (cadastro de supervisores + postos que cada um cobre) ---
+function renderSupervisores(){
+  const cont=document.getElementById('supervisores-content');if(!cont)return;
+  const canEdit=podeEditarSupervisores();
+  const sups=supervisoresAtivos();
+  let html='<div class="card"><div class="card-title"><i class="ti ti-route" style="color:var(--cyan)"></i>Supervisores ('+sups.length+')';
+  if(canEdit)html+='<button onclick="abrirSupervisorModal(null)" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-plus"></i> Adicionar Supervisor</button>';
+  html+='</div></div>';
+
+  if(!sups.length){
+    html+='<div class="empty"><i class="ti ti-route" style="font-size:24px"></i><h3>Nenhum supervisor cadastrado</h3><p>Clique em "Adicionar Supervisor" para cadastrar o cronograma de visitas.</p></div>';
+    cont.innerHTML=html;return;
+  }
+
+  sups.forEach(sup=>{
+    const rota=sup.rota||[];
+    html+='<div class="card"><div class="card-title" style="align-items:flex-start">';
+    html+='<div style="flex:1"><i class="ti ti-user-check" style="color:var(--cyan)"></i> '+sup.nome+'<div style="font-size:11px;color:var(--text2);font-weight:400;margin-top:2px">'+rota.length+' posto(s) na rota · '+rota.reduce((a,r)=>a+(Number(r.frequenciaSemanal)||0),0)+' visita(s)/semana no total</div></div>';
+    if(canEdit){
+      html+='<div style="display:flex;gap:6px">';
+      html+='<button onclick="abrirSupervisorModal(\''+sup.id+'\')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 9px;color:var(--text2);font-size:11px;cursor:pointer"><i class="ti ti-pencil"></i></button>';
+      html+='<button onclick="excluirSupervisor(\''+sup.id+'\')" style="background:none;border:1px solid var(--red-bd);border-radius:7px;padding:5px 9px;color:var(--red);font-size:11px;cursor:pointer"><i class="ti ti-trash"></i></button>';
+      html+='</div>';
+    }
+    html+='</div>';
+
+    if(rota.length){
+      html+='<div style="margin-top:8px">';
+      rota.forEach(r=>{
+        const f=findPosto(r.postoId);
+        const label=f?(f.cliente.nome+' · '+f.posto.nome):'(posto removido)';
+        html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border)">';
+        html+='<div><div style="font-size:13px;color:var(--text)">'+label+'</div><div style="font-size:11px;color:var(--text2)">'+(Number(r.frequenciaSemanal)||0)+' visita(s)/semana</div></div>';
+        if(canEdit)html+='<div style="display:flex;gap:6px"><i class="ti ti-pencil" style="font-size:12px;color:var(--text3);cursor:pointer" onclick="abrirRotaModal(\''+sup.id+'\',\''+r.id+'\')"></i> <i class="ti ti-x" style="font-size:12px;color:var(--red);cursor:pointer" onclick="excluirRota(\''+sup.id+'\',\''+r.id+'\')"></i></div>';
+        html+='</div>';
+      });
+      html+='</div>';
+    }
+    if(canEdit)html+='<button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="abrirRotaModal(\''+sup.id+'\',null)"><i class="ti ti-plus"></i> Adicionar posto à rota</button>';
+    html+='</div>';
+  });
+
+  cont.innerHTML=html;
+}
+
+let _supModalId=null;
+function abrirSupervisorModal(id){
+  if(!podeEditarSupervisores()){showToast('Apenas administradores/gestores podem editar supervisores.','err');return;}
+  _supModalId=id;
+  const sup=id?findSupervisor(id):null;
+  const nome=prompt(sup?'Editar nome do supervisor:':'Nome do novo supervisor:', sup?sup.nome:'');
+  if(nome===null)return;
+  const nomeTrim=nome.trim();
+  if(!nomeTrim){showToast('Nome não pode ser vazio.','warn');return;}
+  salvarSupervisorModal(nomeTrim);
+}
+async function salvarSupervisorModal(nome){
+  if(_supModalId){
+    const sup=findSupervisor(_supModalId);
+    if(sup)sup.nome=nome;
+  }else{
+    if(!state.supervisores)state.supervisores=[];
+    state.supervisores.push({id:uid(),nome,ativo:true,rota:[]});
+  }
+  showToast('Supervisor salvo!','ok');
+  saveCache();await pushForceToCloud();renderSupervisores();
+}
+async function excluirSupervisor(id){
+  const sup=findSupervisor(id);
+  if(!sup)return;
+  if(!confirm('Excluir o supervisor "'+sup.nome+'"? O histórico de check-ins será mantido.'))return;
+  sup.ativo=false;
+  showToast('Supervisor removido.','ok');
+  saveCache();await pushForceToCloud();renderSupervisores();
+}
+
+let _rotaModalSupId=null,_rotaModalId=null;
+function abrirRotaModal(supervisorId,rotaId){
+  if(!podeEditarSupervisores()){showToast('Apenas administradores/gestores podem editar rotas.','err');return;}
+  const sup=findSupervisor(supervisorId);
+  if(!sup)return;
+  _rotaModalSupId=supervisorId;_rotaModalId=rotaId;
+  const r=rotaId?(sup.rota||[]).find(x=>x.id===rotaId):null;
+  document.getElementById('rota-modal-title').textContent=r?'Editar posto da rota':'Adicionar posto à rota';
+  document.getElementById('rota-modal-sup-lbl').textContent=sup.nome;
+  const selCliente=document.getElementById('rota-modal-cliente');
+  selCliente.innerHTML=clientesAtivos().map(cl=>'<option value="'+cl.id+'">'+cl.nome+'</option>').join('');
+  if(r){ const f=findPosto(r.postoId); if(f)selCliente.value=f.cliente.id; }
+  _rotaModalFillPostos();
+  if(r)document.getElementById('rota-modal-posto').value=r.postoId;
+  document.getElementById('rota-modal-freq').value=r?(r.frequenciaSemanal||1):1;
+  document.getElementById('rota-modal').style.display='flex';
+}
+function _rotaModalFillPostos(){
+  const clienteId=document.getElementById('rota-modal-cliente').value;
+  const cl=clientesAtivos().find(c=>c.id===clienteId);
+  const selPosto=document.getElementById('rota-modal-posto');
+  selPosto.innerHTML=(cl?(cl.postos||[]):[]).map(p=>'<option value="'+p.id+'">'+p.nome+'</option>').join('');
+}
+function closeRotaModal(){document.getElementById('rota-modal').style.display='none';}
+async function salvarRotaModal(){
+  const sup=findSupervisor(_rotaModalSupId);
+  if(!sup)return;
+  const postoId=document.getElementById('rota-modal-posto').value;
+  const freq=Math.max(1,parseInt(document.getElementById('rota-modal-freq').value,10)||1);
+  if(!postoId){showToast('Selecione um posto.','warn');return;}
+  if(!sup.rota)sup.rota=[];
+  if(_rotaModalId){
+    const r=sup.rota.find(x=>x.id===_rotaModalId);
+    if(r){r.postoId=postoId;r.frequenciaSemanal=freq;}
+  }else{
+    sup.rota.push({id:uid(),postoId,frequenciaSemanal:freq});
+  }
+  closeRotaModal();
+  showToast('Rota salva!','ok');
+  saveCache();await pushForceToCloud();renderSupervisores();
+}
+async function excluirRota(supervisorId,rotaId){
+  const sup=findSupervisor(supervisorId);
+  if(!sup)return;
+  if(!confirm('Remover esse posto da rota do supervisor?'))return;
+  sup.rota=(sup.rota||[]).filter(x=>x.id!==rotaId);
+  showToast('Removido.','ok');
+  saveCache();await pushForceToCloud();renderSupervisores();
+}
+
+// --- Check-in de visita ---
+let checkinSupId=null,checkinDate=null;
+function renderSupervisoresCheckin(){
+  const cont=document.getElementById('supervisores-checkin-content');if(!cont)return;
+  if(!checkinDate)checkinDate=today();
+  const sups=supervisoresAtivos();
+  if(!sups.length){
+    cont.innerHTML='<div class="empty"><i class="ti ti-route" style="font-size:24px"></i><h3>Nenhum supervisor cadastrado</h3><p>Cadastre supervisores na aba "Rotas" primeiro.</p></div>';
+    return;
+  }
+  if(!checkinSupId||!findSupervisor(checkinSupId))checkinSupId=sups[0].id;
+  const sup=findSupervisor(checkinSupId);
+
+  let html='<div class="card"><div class="card-title"><i class="ti ti-map-pin-check" style="color:var(--cyan)"></i>Registrar visita</div>';
+  html+='<div class="field"><label>Supervisor</label><select id="checkin-sup-sel" onchange="checkinSupId=this.value;renderSupervisoresCheckin()">';
+  html+=sups.map(s=>'<option value="'+s.id+'"'+(s.id===checkinSupId?' selected':'')+'>'+s.nome+'</option>').join('');
+  html+='</select></div>';
+
+  const rota=sup?(sup.rota||[]):[];
+  if(!rota.length){
+    html+='<div style="font-size:13px;color:var(--text2)">Esse supervisor ainda não tem postos na rota. Cadastre na aba "Rotas".</div>';
+  }else{
+    const hojeLista=((state.checkins||{})[today()]||{})[checkinSupId]||[];
+    rota.forEach(r=>{
+      const f=findPosto(r.postoId);
+      const label=f?(f.cliente.nome+' · '+f.posto.nome):'(posto removido)';
+      const jaHoje=hojeLista.filter(c=>c.postoId===r.postoId).length;
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border)">';
+      html+='<div><div style="font-size:13px;color:var(--text)">'+label+'</div><div style="font-size:11px;color:var(--text2)">'+(jaHoje?jaHoje+' check-in(s) hoje':'nenhum check-in hoje')+'</div></div>';
+      html+='<button class="btn btn-purple btn-sm" onclick="registrarCheckin(\''+checkinSupId+'\',\''+r.postoId+'\')"><i class="ti ti-map-pin-check"></i> Check-in agora</button>';
+      html+='</div>';
+    });
+  }
+  html+='</div>';
+
+  html+='<div class="card"><div class="card-title"><i class="ti ti-history" style="color:var(--cyan)"></i>Check-ins de hoje — '+sup.nome+'</div>';
+  const hojeLista=((state.checkins||{})[today()]||{})[checkinSupId]||[];
+  if(!hojeLista.length){
+    html+='<div style="font-size:13px;color:var(--text2)">Nenhum check-in registrado hoje.</div>';
+  }else{
+    const canDel=podeEditarSupervisores();
+    [...hojeLista].sort((a,b)=>a.hora.localeCompare(b.hora)).forEach(c=>{
+      const f=findPosto(c.postoId);
+      const label=f?(f.cliente.nome+' · '+f.posto.nome):'(posto removido)';
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);font-size:12px">';
+      html+='<span><b>'+c.hora+'</b> — '+label+'</span>';
+      if(canDel)html+='<i class="ti ti-x" style="color:var(--red);cursor:pointer" onclick="excluirCheckin(\''+today()+'\',\''+checkinSupId+'\',\''+c.id+'\')"></i>';
+      html+='</div>';
+    });
+  }
+  html+='</div>';
+
+  cont.innerHTML=html;
+}
+async function registrarCheckin(supervisorId,postoId){
+  const date=today();
+  const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  if(!state.checkins)state.checkins={};
+  if(!state.checkins[date])state.checkins[date]={};
+  if(!state.checkins[date][supervisorId])state.checkins[date][supervisorId]=[];
+  state.checkins[date][supervisorId].push({id:uid(),postoId,hora});
+  showToast('Check-in registrado!','ok');
+  saveCache();
+  renderSupervisoresCheckin();
+  await pushToCloud();
+}
+async function excluirCheckin(date,supervisorId,checkinId){
+  if(!confirm('Remover esse check-in?'))return;
+  if(state.checkins&&state.checkins[date]&&state.checkins[date][supervisorId]){
+    state.checkins[date][supervisorId]=state.checkins[date][supervisorId].filter(c=>c.id!==checkinId);
+    addPendingCheckinDelete(date,supervisorId,checkinId);
+  }
+  showToast('Check-in removido.','ok');
+  saveCache();
+  renderSupervisoresCheckin();
+  await pushToCloud();
+}
+
+// --- Métricas semanais ---
+let metricasSemanaMonday=null;
+function navMetricasSemana(delta){
+  if(!metricasSemanaMonday)metricasSemanaMonday=weekStart(today());
+  const d=new Date(metricasSemanaMonday+'T12:00');
+  d.setDate(d.getDate()+delta*7);
+  metricasSemanaMonday=fmtYMD(d);
+  renderSupervisoresMetricas();
+}
+function renderSupervisoresMetricas(){
+  const cont=document.getElementById('supervisores-metricas-content');if(!cont)return;
+  if(!metricasSemanaMonday)metricasSemanaMonday=weekStart(today());
+  const dates=weekDates(metricasSemanaMonday);
+  const domingo=dates[6];
+  const isSemanaAtual=metricasSemanaMonday===weekStart(today());
+  const fimSemana=isSemanaAtual?today():domingo;
+  const semanaPassou=domingo<today();
+
+  let html='<div class="hist-mes-header"><div class="hist-mes-nav">';
+  html+='<button onclick="navMetricasSemana(-1)"><i class="ti ti-chevron-left" style="font-size:13px"></i></button>';
+  html+='<div class="hist-mes-label">'+dateFmt(metricasSemanaMonday)+' a '+dateFmt(domingo)+'</div>';
+  html+='<button onclick="navMetricasSemana(1)"'+(isSemanaAtual?' disabled style="opacity:.4"':'')+'><i class="ti ti-chevron-right" style="font-size:13px"></i></button></div></div>';
+
+  const sups=supervisoresAtivos();
+  if(!sups.length){
+    html+='<div class="empty"><i class="ti ti-route" style="font-size:24px"></i><h3>Nenhum supervisor cadastrado</h3></div>';
+    cont.innerHTML=html;return;
+  }
+
+  sups.forEach(sup=>{
+    const rota=sup.rota||[];
+    let previstoTotal=0,realizadoTotal=0;
+    let linhas='';
+    rota.forEach(r=>{
+      const f=findPosto(r.postoId);
+      const label=f?(f.cliente.nome+' · '+f.posto.nome):'(posto removido)';
+      const previsto=Number(r.frequenciaSemanal)||0;
+      let realizado=0;
+      dates.forEach(d=>{
+        const lista=((state.checkins||{})[d]||{})[sup.id]||[];
+        realizado+=lista.filter(c=>c.postoId===r.postoId).length;
+      });
+      previstoTotal+=previsto;realizadoTotal+=realizado;
+      const pct=previsto?Math.min(100,Math.round(realizado/previsto*100)):100;
+      const atrasado=semanaPassou&&realizado<previsto;
+      const cor=atrasado?'var(--red)':(pct>=100?'var(--green)':'var(--warn)');
+      linhas+='<div style="padding:8px 0;border-top:1px solid var(--border)">';
+      linhas+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>'+label+'</span><span style="color:'+cor+';font-weight:700">'+realizado+' / '+previsto+(atrasado?' · em atraso':'')+'</span></div>';
+      linhas+='<div style="background:var(--bg3);border-radius:6px;height:6px;overflow:hidden"><div style="background:'+cor+';width:'+pct+'%;height:100%"></div></div>';
+      linhas+='</div>';
+    });
+    const pctTotal=previstoTotal?Math.round(realizadoTotal/previstoTotal*100):100;
+    html+='<div class="card"><div class="card-title"><i class="ti ti-user-check" style="color:var(--cyan)"></i>'+sup.nome+'<span style="margin-left:auto;font-size:13px;font-weight:700;color:'+(pctTotal>=100?'var(--green)':pctTotal>=60?'var(--warn)':'var(--red)')+'">'+pctTotal+'% cumprido</span></div>';
+    html+=rota.length?linhas:'<div style="font-size:13px;color:var(--text2)">Sem postos cadastrados na rota.</div>';
+    html+='</div>';
+  });
+
+  cont.innerHTML=html;
 }
 </script>
 

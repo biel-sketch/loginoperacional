@@ -322,7 +322,10 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
           <div id="pv-hoje">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
               <div style="font-size:13px;color:var(--text2)" id="pres-date-lbl"></div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap" id="posto-filter-btns"></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                <button id="pres-btn-afast" onclick="abrirAfastModal()" style="display:none;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;align-items:center;gap:5px"><i class="ti ti-file-certificate" style="font-size:13px"></i> Atestado / Afastamento / Férias</button>
+                <div style="display:flex;gap:6px;flex-wrap:wrap" id="posto-filter-btns"></div>
+              </div>
             </div>
             <div id="pres-content"></div>
           </div>
@@ -579,6 +582,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
       <select id="afast-tipo">
         <option>Atestado Médico</option>
         <option>Afastamento</option>
+        <option>Férias</option>
       </select>
     </div>
     <div class="field"><label>Data início</label><input type="date" id="afast-inicio"></div>
@@ -598,7 +602,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-09-30-21:45';
+const BUILD_VERSION='2026-09-30-22:05';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -1234,6 +1238,8 @@ function setPresView(v){
 
 function renderPresenca(){
   document.getElementById('pres-date-lbl').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  const afastBtn=document.getElementById('pres-btn-afast');
+  if(afastBtn)afastBtn.style.display=podeEditarPresenca()?'flex':'none';
   // Posto filter buttons
   const fbtns=document.getElementById('posto-filter-btns');
   if(fbtns){
@@ -2506,7 +2512,7 @@ function buildAfastamentosCard(){
   const ativos=afastamentosAtivosHoje();
   const todos=(state.afastamentos||[]).slice().sort((a,b)=>b.dataInicio.localeCompare(a.dataInicio));
   const linha=(a,destaque)=>'<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'+
-    '<div style="width:8px;height:8px;border-radius:50%;background:'+(a.tipo==='Atestado Médico'?'var(--warn)':'var(--purple,#a78bfa)')+';flex-shrink:0"></div>'+
+    '<div style="width:8px;height:8px;border-radius:50%;background:'+(a.tipo==='Atestado Médico'?'var(--warn)':a.tipo==='Férias'?'var(--green)':'var(--purple,#a78bfa)')+';flex-shrink:0"></div>'+
     '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">'+a.nome+'</div>'+
     '<div style="font-size:11px;color:var(--text2)">'+a.tipo+' · '+a.dataInicio.split('-').reverse().join('/')+' a '+a.dataFim.split('-').reverse().join('/')+(a.motivo?' · '+a.motivo:'')+'</div></div>'+
     (destaque?'<span class="badge b-warn" style="flex-shrink:0">ATIVO HOJE</span>':'')+

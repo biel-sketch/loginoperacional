@@ -592,7 +592,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-09-30-20:45';
+const BUILD_VERSION='2026-09-30-21:30';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -697,38 +697,57 @@ const NOTIF_RECIPIENTS = [
 ];
 
 // === STATE ===
-let state = {colaboradores:[], presencas:{}, clientes:[], supervisores:[], checkins:{}, afastamentos:[]};
+let state = {colaboradores:[], presencas:{}, clientes:[], supervisores:[], checkins:{}, afastamentos:[], presDeletes:[], checkinDeletes:[]};
 let currentUser=null, currentRole=null;
 let isSyncing=false, lastSync=null, syncTimer=null;
 function colaboradoresAtivos(){ return state.colaboradores.filter(c=>c.ativo!==false); }
 function markPending(){ try{ localStorage.setItem(LS_CACHE+'_pending','1'); }catch(e){} }
 function clearPending(){ try{ localStorage.removeItem(LS_CACHE+'_pending'); }catch(e){} }
 function hasPending(){ try{ return localStorage.getItem(LS_CACHE+'_pending')==='1'; }catch(e){ return false; } }
-// Registros de presença removidos localmente (ex: botão "Remover registro") que ainda
-// não foram confirmados no Firebase. O merge de pushToCloud() só ADICIONA entradas —
-// sem isso, uma exclusão local era sobrescrita de volta pela cópia da nuvem no próximo
-// envio/sincronização, fazendo o registro "voltar sozinho".
-const LS_PRES_DELETES=LS_CACHE+'_pres_deletes';
+// Registros de presença/check-in removidos (ex: botão "Remover registro"). Guardados como
+// "tombstones" (lápides) DENTRO do state, sincronizados na nuvem junto com o resto —
+// porque o merge de pushToCloud() só ADICIONA entradas: sem um tombstone que viaja pela
+// nuvem, um OUTRO dispositivo/aba com dados antigos em memória (que nunca soube da exclusão)
+// podia reintroduzir o registro apagado no próximo envio dele, fazendo o registro "voltar
+// sozinho" mesmo depois de já ter sumido na tela de quem apagou.
 function addPendingPresDelete(date,posto,nome){
-  const list=getPendingPresDeletes();
-  list.push({date,posto,nome});
-  try{ localStorage.setItem(LS_PRES_DELETES, JSON.stringify(list)); }catch(e){}
+  if(!state.presDeletes)state.presDeletes=[];
+  state.presDeletes.push({date,posto,nome,ts:Date.now()});
 }
-function getPendingPresDeletes(){
-  try{ return JSON.parse(localStorage.getItem(LS_PRES_DELETES)||'[]'); }catch(e){ return []; }
+function mergeTombstoneLists(a,b,keyFn){
+  const map={};
+  (a||[]).concat(b||[]).forEach(d=>{
+    const k=keyFn(d);
+    if(!map[k]||map[k].ts<d.ts) map[k]=d;
+  });
+  return Object.values(map);
 }
-function clearPendingPresDeletes(){ try{ localStorage.removeItem(LS_PRES_DELETES); }catch(e){} }
-// Mesma lógica de tombstone, para exclusões de check-ins de supervisores
-const LS_CHECKIN_DELETES=LS_CACHE+'_checkin_deletes';
+function mergePresDeleteLists(a,b){ return mergeTombstoneLists(a,b,d=>d.date+'|'+d.posto+'|'+d.nome); }
+function applyPresDeletesToMap(mp,deletes){
+  (deletes||[]).forEach(d=>{
+    const rec=mp[d.date]&&mp[d.date][d.posto]&&mp[d.date][d.posto][d.nome];
+    if(rec){
+      const recTs=rec.ts?new Date(rec.ts).getTime():0;
+      if(recTs<=d.ts){
+        delete mp[d.date][d.posto][d.nome];
+        if(!Object.keys(mp[d.date][d.posto]).length) delete mp[d.date][d.posto];
+      }
+    }
+  });
+}
+// Mesma lógica de tombstone sincronizado, para exclusões de check-ins de supervisores
 function addPendingCheckinDelete(date,supervisorId,checkinId){
-  const list=getPendingCheckinDeletes();
-  list.push({date,supervisorId,checkinId});
-  try{ localStorage.setItem(LS_CHECKIN_DELETES, JSON.stringify(list)); }catch(e){}
+  if(!state.checkinDeletes)state.checkinDeletes=[];
+  state.checkinDeletes.push({date,supervisorId,checkinId,ts:Date.now()});
 }
-function getPendingCheckinDeletes(){
-  try{ return JSON.parse(localStorage.getItem(LS_CHECKIN_DELETES)||'[]'); }catch(e){ return []; }
+function mergeCheckinDeleteLists(a,b){ return mergeTombstoneLists(a,b,d=>d.date+'|'+d.supervisorId+'|'+d.checkinId); }
+function applyCheckinDeletesToMap(mc,deletes){
+  (deletes||[]).forEach(d=>{
+    if(mc[d.date]&&mc[d.date][d.supervisorId]){
+      mc[d.date][d.supervisorId]=mc[d.date][d.supervisorId].filter(c=>c.id!==d.checkinId);
+    }
+  });
 }
-function clearPendingCheckinDeletes(){ try{ localStorage.removeItem(LS_CHECKIN_DELETES); }catch(e){} }
 let syncCountdown=0, countdownTimer=null;
 let selDate=null, selPosto=null, presView='hoje';
 let histMes=null, absDates=[];
@@ -809,6 +828,8 @@ function loadCache(){
       if(p.supervisores) state.supervisores=p.supervisores;
       if(p.checkins) state.checkins=p.checkins;
       if(p.afastamentos) state.afastamentos=p.afastamentos;
+      if(p.presDeletes) state.presDeletes=p.presDeletes;
+      if(p.checkinDeletes) state.checkinDeletes=p.checkinDeletes;
     }
   }catch(e){}
 }
@@ -817,10 +838,25 @@ function loadCache(){
 function mergeState(cloud){
   if(!cloud)return;
   if(cloud.colaboradores&&cloud.colaboradores.length) state.colaboradores=cloud.colaboradores;
-  if(cloud.presencas) state.presencas=cloud.presencas;
+  // Tombstones primeiro: preserva os que ainda não foram enviados (pendentes localmente)
+  // e aplica TODOS (nuvem + locais) sobre a cópia da nuvem antes de adotá-la — proteção
+  // extra caso outro dispositivo tenha reintroduzido um registro já apagado.
+  const presDeletesMerged=mergePresDeleteLists(cloud.presDeletes,state.presDeletes);
+  const checkinDeletesMerged=mergeCheckinDeleteLists(cloud.checkinDeletes,state.checkinDeletes);
+  state.presDeletes=presDeletesMerged;
+  state.checkinDeletes=checkinDeletesMerged;
+  if(cloud.presencas){
+    const mp=cloud.presencas;
+    applyPresDeletesToMap(mp,presDeletesMerged);
+    state.presencas=mp;
+  }
   if(cloud.clientes) state.clientes=cloud.clientes;
   if(cloud.supervisores) state.supervisores=cloud.supervisores;
-  if(cloud.checkins) state.checkins=cloud.checkins;
+  if(cloud.checkins){
+    const mc=cloud.checkins;
+    applyCheckinDeletesToMap(mc,checkinDeletesMerged);
+    state.checkins=mc;
+  }
   if(cloud.afastamentos) state.afastamentos=cloud.afastamentos;
 }
 
@@ -854,7 +890,7 @@ async function syncFromCloud(){
 async function pushToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
-    let merged={colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{},afastamentos:state.afastamentos||[]};
+    let merged={colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{},afastamentos:state.afastamentos||[],presDeletes:state.presDeletes||[],checkinDeletes:state.checkinDeletes||[]};
     try{
       const cloud=await fbGet();
       if(cloud){
@@ -901,23 +937,22 @@ async function pushToCloud(){
         const localAfastIds=new Set((state.afastamentos||[]).map(a=>a.id));
         const mergedAfast=[...(state.afastamentos||[])];
         cloudAfast.forEach(ca=>{ if(!localAfastIds.has(ca.id)) mergedAfast.push(ca); });
-        merged={colaboradores:mergedColabs,presencas:mp,clientes:mergedClientes,supervisores:mergedSupervisores,checkins:mc,afastamentos:mergedAfast};
+        // Merge dos tombstones de exclusão: união nuvem+local (mantendo o mais recente
+        // por chave), e SÓ DEPOIS aplicados sobre mp/mc — isso é o que torna a exclusão
+        // definitiva mesmo se outro dispositivo, com dados antigos, reintroduziu o
+        // registro na nuvem entre a exclusão e este envio.
+        const mergedPresDeletes=mergePresDeleteLists(cloud.presDeletes,state.presDeletes);
+        const mergedCheckinDeletes=mergeCheckinDeleteLists(cloud.checkinDeletes,state.checkinDeletes);
+        applyPresDeletesToMap(mp,mergedPresDeletes);
+        applyCheckinDeletesToMap(mc,mergedCheckinDeletes);
+        merged={colaboradores:mergedColabs,presencas:mp,clientes:mergedClientes,supervisores:mergedSupervisores,checkins:mc,afastamentos:mergedAfast,presDeletes:mergedPresDeletes,checkinDeletes:mergedCheckinDeletes};
       }
     }catch(e){}
-    // Reaplica exclusões locais de registros de presença que o merge acima (que só
-    // adiciona/atualiza) traria de volta a partir da cópia da nuvem.
-    getPendingPresDeletes().forEach(({date,posto,nome})=>{
-      if(merged.presencas[date]&&merged.presencas[date][posto]){
-        delete merged.presencas[date][posto][nome];
-        if(!Object.keys(merged.presencas[date][posto]).length) delete merged.presencas[date][posto];
-      }
-    });
-    // Reaplica exclusões locais de check-ins pelo mesmo motivo
-    getPendingCheckinDeletes().forEach(({date,supervisorId,checkinId})=>{
-      if(merged.checkins[date]&&merged.checkins[date][supervisorId]){
-        merged.checkins[date][supervisorId]=merged.checkins[date][supervisorId].filter(c=>c.id!==checkinId);
-      }
-    });
+    // Reaplica os tombstones mais uma vez (cobre o caso de fbGet acima ter falhado e
+    // 'merged' ainda ser só o estado local — sem isso, uma exclusão feita antes de outra
+    // ação local no mesmo ciclo offline poderia não ter sido aplicada ao objeto final).
+    applyPresDeletesToMap(merged.presencas,merged.presDeletes);
+    applyCheckinDeletesToMap(merged.checkins,merged.checkinDeletes);
     await fbPut(merged);
     state.colaboradores=merged.colaboradores;
     state.presencas=merged.presencas;
@@ -925,9 +960,9 @@ async function pushToCloud(){
     state.supervisores=merged.supervisores||[];
     state.checkins=merged.checkins||{};
     state.afastamentos=merged.afastamentos||[];
+    state.presDeletes=merged.presDeletes||[];
+    state.checkinDeletes=merged.checkinDeletes||[];
     clearPending();
-    clearPendingPresDeletes();
-    clearPendingCheckinDeletes();
     saveCache();
     lastSync=new Date();
     setSyncDot('ok','Salvo '+lastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
@@ -943,7 +978,7 @@ async function pushToCloud(){
 async function pushForceToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
-    await fbPut({colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{},afastamentos:state.afastamentos||[]});
+    await fbPut({colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{},afastamentos:state.afastamentos||[],presDeletes:state.presDeletes||[],checkinDeletes:state.checkinDeletes||[]});
     clearPending();
     saveCache();
     lastSync=new Date();

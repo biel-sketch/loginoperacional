@@ -638,7 +638,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-09-30-22:50';
+const BUILD_VERSION='2026-09-30-23:10';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -1753,7 +1753,7 @@ async function setStatusRetro(date,posto,nome,status){
 function renderAbsenteismo(){
   const cont=document.getElementById('abs-content');if(!cont)return;
   const dates=Object.keys(state.presencas).sort();
-  if(!dates.length){cont.innerHTML=buildAfastamentosCard()+buildSaldoPostosCard()+'<div class="empty"><i class="ti ti-user-off"></i><h3>Nenhum dado de presença ainda</h3></div>';return;}
+  if(!dates.length){cont.innerHTML=buildAfastamentosCard()+'<div class="empty"><i class="ti ti-user-off"></i><h3>Nenhum dado de presença ainda</h3></div>';return;}
 
   const absMap={},diasMap={};
   dates.forEach(date=>{
@@ -1778,7 +1778,6 @@ function renderAbsenteismo(){
   function _getNome(d){return sorted.find(([,dd])=>dd===d)?.[0]||'';}
 
   let html=buildAfastamentosCard();
-  html+=buildSaldoPostosCard();
   html+='<div class="sec">Histórico de absenteísmo</div>';
   html+='<div class="kpi-grid-4" style="margin-bottom:16px">';
   html+='<div class="kpi"><div class="kpi-lbl">Total faltas</div><div class="kpi-val red">'+totalFaltas+'</div><div class="kpi-sub">'+dates.length+' dia(s)</div></div>';
@@ -1789,13 +1788,17 @@ function renderAbsenteismo(){
   html+='<div class="kpi"><div class="kpi-lbl">Atenção ≥8%</div><div class="kpi-val warn">'+atencao+'</div></div>';
   html+='</div>';
 
-  // By posto
-  html+='<div class="card" style="margin-bottom:12px"><div class="card-title"><i class="ti ti-map-pin" style="color:var(--cyan)"></i>Faltas por posto</div>';
+  // By posto: saldo de faltas x cobertura (negativo = posto devendo pessoal, positivo = cobertura acima das faltas)
+  const saldoPorPosto={};
+  calcularSaldoPostos().forEach(d=>{saldoPorPosto[d.posto]=d;});
+  html+='<div class="card" style="margin-bottom:12px"><div class="card-title"><i class="ti ti-scale" style="color:var(--cyan)"></i>Saldo por posto (faltas × cobertura)</div>';
+  html+='<div style="font-size:11px;color:var(--text2);margin-bottom:10px">Negativo = posto devendo pessoal (faltou mais do que foi coberto). Positivo = cobertura acima das faltas.</div>';
   html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">';
   postosAtivos().forEach(posto=>{
-    let faltasP=0;
-    Object.entries(absMap).forEach(([,d])=>{if(d.posto===posto)faltasP+=d.faltas;});
-    html+='<div style="background:var(--bg3);border-radius:9px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">'+postoLabel(posto)+'</div><div style="font-size:20px;font-weight:700;color:'+(faltasP>0?'var(--red)':'var(--green)')+'">'+faltasP+'</div></div>';
+    const d=saldoPorPosto[posto]||{faltas:0,coberturas:0,saldo:0};
+    const cor=d.saldo<0?'var(--red)':d.saldo>0?'var(--green)':'var(--text2)';
+    const sinal=d.saldo>0?'+':'';
+    html+='<div style="background:var(--bg3);border-radius:9px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">'+postoLabel(posto)+'</div><div style="font-size:20px;font-weight:700;color:'+cor+'">'+sinal+d.saldo+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+d.faltas+' falta(s) · '+d.coberturas+' cobertura(s)</div></div>';
   });
   html+='</div></div>';
 
@@ -2583,33 +2586,44 @@ function afastamentosAtivosHoje(){
   const hoje=today();
   return (state.afastamentos||[]).filter(a=>a.dataInicio<=hoje&&a.dataFim>=hoje);
 }
-function abrirAfastModal(){
+let _editAfastId=null;
+function abrirAfastModal(id){
   if(!podeEditarPresenca()){showToast('Apenas administradores podem lançar atestados/afastamentos.','err');return;}
+  _editAfastId=id||null;
+  const reg=_editAfastId?(state.afastamentos||[]).find(a=>a.id===_editAfastId):null;
   const clienteSel=document.getElementById('afast-cliente');
   const clientesComGente=clientesAtivos().filter(cl=>(cl.postos||[]).some(p=>colaboradoresAtivos().some(c=>c.postoId===p.id)));
   clienteSel.innerHTML=clientesComGente.length?clientesComGente.map(cl=>'<option value="'+cl.id+'">'+cl.nome+'</option>').join(''):'<option value="">Nenhum cliente com colaboradores</option>';
-  _afastModalFillPostos();
-  document.getElementById('afast-tipo').value='Atestado Médico';
-  document.getElementById('afast-inicio').value=today();
-  document.getElementById('afast-fim').value=today();
-  document.getElementById('afast-motivo').value='';
+  let clienteIdPre='';
+  if(reg&&reg.postoId){ const f=findPosto(reg.postoId); clienteIdPre=f?f.cliente.id:''; }
+  if(clienteIdPre&&clientesComGente.some(cl=>cl.id===clienteIdPre))clienteSel.value=clienteIdPre;
+  _afastModalFillPostos(reg?reg.postoId:null);
+  _afastModalFillColabs(reg?reg.nome:null);
+  document.getElementById('afast-tipo').value=reg?reg.tipo:'Atestado Médico';
+  document.getElementById('afast-inicio').value=reg?reg.dataInicio:today();
+  document.getElementById('afast-fim').value=reg?reg.dataFim:today();
+  document.getElementById('afast-motivo').value=reg?(reg.motivo||''):'';
+  const titleEl=document.querySelector('#afast-modal .modal-title');
+  if(titleEl)titleEl.innerHTML='<i class="ti ti-file-certificate" style="color:var(--cyan)"></i>'+(reg?'Editar Atestado / Afastamento':'Novo Atestado / Afastamento');
   document.getElementById('afast-modal').style.display='flex';
 }
-function _afastModalFillPostos(){
+function _afastModalFillPostos(selPostoId){
   const clienteId=document.getElementById('afast-cliente').value;
   const cl=clientesAtivos().find(c=>c.id===clienteId);
   const postos=((cl&&cl.postos)||[]).filter(p=>colaboradoresAtivos().some(c=>c.postoId===p.id));
   const sel=document.getElementById('afast-posto');
   sel.innerHTML=postos.length?postos.map(p=>'<option value="'+p.id+'">'+p.nome+'</option>').join(''):'<option value="">Nenhum posto com colaboradores</option>';
+  if(selPostoId&&postos.some(p=>p.id===selPostoId))sel.value=selPostoId;
   _afastModalFillColabs();
 }
-function _afastModalFillColabs(){
+function _afastModalFillColabs(selNome){
   const postoId=document.getElementById('afast-posto').value;
   const colabs=colaboradoresAtivos().filter(c=>c.postoId===postoId);
   const sel=document.getElementById('afast-nome');
   sel.innerHTML=colabs.length?colabs.map(c=>'<option value="'+c.nome.replace(/"/g,'&quot;')+'">'+c.nome+'</option>').join(''):'<option value="">Nenhum colaborador neste posto</option>';
+  if(selNome&&colabs.some(c=>c.nome===selNome))sel.value=selNome;
 }
-function closeAfastModal(){ document.getElementById('afast-modal').style.display='none'; }
+function closeAfastModal(){ document.getElementById('afast-modal').style.display='none'; _editAfastId=null; }
 async function salvarAfastamento(){
   const nome=document.getElementById('afast-nome').value;
   const tipo=document.getElementById('afast-tipo').value;
@@ -2620,6 +2634,15 @@ async function salvarAfastamento(){
   if(!dataInicio||!dataFim){showToast('Informe as duas datas.','warn');return;}
   if(dataFim<dataInicio){showToast('Data fim deve ser igual ou depois da data início.','warn');return;}
   const c=colaboradoresAtivos().find(x=>x.nome===nome);
+  if(_editAfastId){
+    const reg=(state.afastamentos||[]).find(a=>a.id===_editAfastId);
+    if(reg)Object.assign(reg,{nome,postoId:c?c.postoId:reg.postoId,cargoId:c?c.cargoId:reg.cargoId,tipo,dataInicio,dataFim,motivo,editadoPor:currentUser?currentUser.user:'?',editadoEm:new Date().toISOString()});
+    _editAfastId=null;
+    closeAfastModal();
+    showToast(tipo+' atualizado!','ok');
+    saveCache();await pushForceToCloud();renderAll();
+    return;
+  }
   const registro={
     id:uid(), nome, postoId:c?c.postoId:'', cargoId:c?c.cargoId:'',
     tipo, dataInicio, dataFim, motivo,
@@ -2657,6 +2680,7 @@ function buildAfastamentosCard(){
     '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">'+a.nome+'</div>'+
     '<div style="font-size:11px;color:var(--text2)">'+a.tipo+' · '+a.dataInicio.split('-').reverse().join('/')+' a '+a.dataFim.split('-').reverse().join('/')+(a.motivo?' · '+a.motivo:'')+'</div></div>'+
     (destaque?'<span class="badge b-warn" style="flex-shrink:0">ATIVO HOJE</span>':'')+
+    (isAdmin?'<button onclick="abrirAfastModal(\''+a.id+'\')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text2);font-size:11px;cursor:pointer;flex-shrink:0"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')+
     (isAdmin?'<button onclick="excluirAfastamento(\''+a.id+'\')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text2);font-size:11px;cursor:pointer;flex-shrink:0"><i class="ti ti-trash" style="font-size:12px"></i></button>':'')+
     '</div>';
   return'<div class="card" style="margin-bottom:12px"><div class="card-title"><i class="ti ti-file-certificate" style="color:var(--cyan)"></i>Atestados e Afastamentos'+
@@ -2737,22 +2761,6 @@ function calcularSaldoPostos(){
     });
   });
   return Object.entries(saldo).map(([posto,d])=>({posto,faltas:d.faltas,coberturas:d.coberturas,saldo:d.coberturas-d.faltas})).sort((a,b)=>a.saldo-b.saldo);
-}
-function buildSaldoPostosCard(){
-  const lista=calcularSaldoPostos().filter(d=>d.faltas>0||d.coberturas>0);
-  if(!lista.length)return'';
-  const linha=d=>{
-    const cor=d.saldo<0?'var(--red)':d.saldo>0?'var(--green)':'var(--text2)';
-    const sinal=d.saldo>0?'+':'';
-    return'<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">'+
-      '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">'+postoLabel(d.posto)+'</div>'+
-      '<div style="font-size:11px;color:var(--text2)">'+d.faltas+' falta(s) · '+d.coberturas+' cobertura(s)</div></div>'+
-      '<div style="font-size:16px;font-weight:700;color:'+cor+';flex-shrink:0">'+sinal+d.saldo+'</div>'+
-      '</div>';
-  };
-  return'<div class="card" style="margin-bottom:12px"><div class="card-title"><i class="ti ti-scale" style="color:var(--cyan)"></i>Saldo de posto (faltas × cobertura)</div>'+
-    '<div style="font-size:11px;color:var(--text2);margin-bottom:6px">Negativo = posto devendo pessoal (faltou mais do que foi coberto). Positivo = cobertura acima das faltas.</div>'+
-    lista.map(linha).join('')+'</div>';
 }
 </script>
 

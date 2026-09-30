@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Marília Ops — Painel de Presença</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -467,7 +470,21 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
         <button class="btn btn-ghost btn-sm" type="button" onclick="buscarEnderecoModal()"><i class="ti ti-search"></i> Buscar endereço</button>
       </div>
     </div>
-    <div id="cliente-modal-endereco-info" style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5"></div>
+    <div id="cliente-modal-endereco-info" style="font-size:12px;color:var(--text2);margin-bottom:6px;line-height:1.5"></div>
+    <div id="cliente-modal-endereco-manual" style="display:none;margin-bottom:10px">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:6px">Preencher endereço manualmente:</div>
+      <div class="field" style="margin-bottom:6px"><input type="text" id="end-manual-logradouro" placeholder="Rua/Av e número"></div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <input type="text" id="end-manual-bairro" placeholder="Bairro" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px">
+        <input type="text" id="end-manual-cep" placeholder="CEP" style="width:100px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px">
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <input type="text" id="end-manual-municipio" placeholder="Cidade" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px">
+        <input type="text" id="end-manual-uf" placeholder="UF" maxlength="2" style="width:60px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-transform:uppercase">
+      </div>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="salvarEnderecoManual()"><i class="ti ti-check"></i> Usar este endereço</button>
+    </div>
+    <button class="btn btn-ghost btn-sm" type="button" style="margin-bottom:10px" onclick="toggleEnderecoManual()"><i class="ti ti-edit"></i> Preencher endereço manualmente</button>
     <div class="modal-btns">
       <button class="modal-btn-primary" onclick="salvarClienteModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
       <button class="modal-btn-ghost" onclick="closeClienteModal()">Cancelar</button>
@@ -531,6 +548,9 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 <script>
 // === CONFIG ===
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
+// Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
+// se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
+const BUILD_VERSION='2026-09-30-18:40';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -1656,23 +1676,52 @@ function enderecoResumo(e){
 // Busca o endereço oficial de um CNPJ (BrasilAPI, gratuita e sem chave) e depois
 // geocodifica esse endereço (Nominatim/OpenStreetMap, também gratuita) pra ter lat/lng
 // e poder futuramente calcular distância entre clientes na hora de montar rotas.
+async function _fetchJson(url){
+  const r=await fetch(url);
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
+// Tenta 3 fontes públicas de CNPJ em sequência — cada provedor tem sua própria
+// política de CORS/disponibilidade, então se uma falhar (bloqueio de CORS, fora do ar,
+// CNPJ não cadastrado ali) tentamos a próxima antes de desistir. A 3ª usa um proxy CORS
+// genérico (allorigins) que busca no servidor dele e devolve com CORS liberado — isso
+// contorna qualquer bloqueio de CORS específico da ReceitaWS.
 async function buscarCnpjInfo(cnpj){
   const digits=(cnpj||'').replace(/\D/g,'');
   if(digits.length!==14)throw new Error('CNPJ precisa ter 14 dígitos');
-  const r=await fetch('https://brasilapi.com.br/api/cnpj/v1/'+digits);
-  if(!r.ok)throw new Error('CNPJ não encontrado (HTTP '+r.status+')');
-  const d=await r.json();
-  return{
-    razaoSocial:d.razao_social||'',
-    nomeFantasia:d.nome_fantasia||'',
-    logradouro:[d.descricao_tipo_de_logradouro,d.logradouro].filter(Boolean).join(' ')||d.logradouro||'',
-    numero:d.numero||'',
-    complemento:d.complemento||'',
-    bairro:d.bairro||'',
-    municipio:d.municipio||'',
-    uf:d.uf||'',
-    cep:d.cep||''
-  };
+  const erros=[];
+  try{
+    const d=await _fetchJson('https://brasilapi.com.br/api/cnpj/v1/'+digits);
+    return{
+      razaoSocial:d.razao_social||'',
+      nomeFantasia:d.nome_fantasia||'',
+      logradouro:[d.descricao_tipo_de_logradouro,d.logradouro].filter(Boolean).join(' ')||d.logradouro||'',
+      numero:d.numero||'', complemento:d.complemento||'', bairro:d.bairro||'',
+      municipio:d.municipio||'', uf:d.uf||'', cep:d.cep||''
+    };
+  }catch(e){ erros.push('BrasilAPI: '+e.message); }
+  try{
+    const d=await _fetchJson('https://publica.cnpj.ws/cnpj/'+digits);
+    const est=d.estabelecimento||{};
+    if(!est.logradouro&&!d.razao_social)throw new Error('sem dados');
+    return{
+      razaoSocial:d.razao_social||'', nomeFantasia:(est.nome_fantasia)||'',
+      logradouro:[est.tipo_logradouro,est.logradouro].filter(Boolean).join(' '),
+      numero:est.numero||'', complemento:est.complemento||'', bairro:est.bairro||'',
+      municipio:(est.cidade&&est.cidade.nome)||'', uf:(est.estado&&est.estado.sigla)||'', cep:est.cep||''
+    };
+  }catch(e){ erros.push('CNPJ.ws: '+e.message); }
+  try{
+    const proxied='https://api.allorigins.win/raw?url='+encodeURIComponent('https://www.receitaws.com.br/v1/cnpj/'+digits);
+    const d=await _fetchJson(proxied);
+    if(d.status==='ERROR')throw new Error(d.message||'não encontrado');
+    return{
+      razaoSocial:d.nome||'', nomeFantasia:d.fantasia||'',
+      logradouro:d.logradouro||'', numero:d.numero||'', complemento:d.complemento||'',
+      bairro:d.bairro||'', municipio:d.municipio||'', uf:d.uf||'', cep:d.cep||''
+    };
+  }catch(e){ erros.push('ReceitaWS: '+e.message); }
+  throw new Error('Todas as fontes falharam ('+erros.join(' · ')+'). Preencha o endereço manualmente abaixo.');
 }
 async function geocodeEndereco(end){
   try{
@@ -1701,7 +1750,27 @@ async function buscarEnderecoModal(){
   }catch(e){
     _clienteModalEndereco=null;
     info.innerHTML='<span style="color:var(--red)">Não foi possível buscar: '+e.message+'</span>';
+    document.getElementById('cliente-modal-endereco-manual').style.display='block';
   }
+}
+function toggleEnderecoManual(){
+  const el=document.getElementById('cliente-modal-endereco-manual');
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+function salvarEnderecoManual(){
+  const dados={
+    logradouro:document.getElementById('end-manual-logradouro').value.trim(),
+    bairro:document.getElementById('end-manual-bairro').value.trim(),
+    cep:document.getElementById('end-manual-cep').value.trim(),
+    municipio:document.getElementById('end-manual-municipio').value.trim(),
+    uf:document.getElementById('end-manual-uf').value.trim().toUpperCase()
+  };
+  if(!dados.logradouro&&!dados.municipio){showToast('Preencha ao menos rua e cidade.','warn');return;}
+  _clienteModalEndereco=dados;
+  document.getElementById('cliente-modal-endereco-info').innerHTML='<i class="ti ti-map-pin" style="color:var(--green)"></i> '+enderecoResumo(dados);
+  document.getElementById('cliente-modal-endereco-manual').style.display='none';
+  showToast('Endereço preenchido manualmente. Tentando localizar no mapa...','ok');
+  geocodeEndereco(dados).then(geo=>{ if(geo&&_clienteModalEndereco){ _clienteModalEndereco.lat=geo.lat; _clienteModalEndereco.lng=geo.lng; } });
 }
 function abrirClienteModal(clienteId){
   if(!podeEditarClientes()){showToast('Apenas administradores/gestores podem editar clientes.','err');return;}
@@ -1712,6 +1781,8 @@ function abrirClienteModal(clienteId){
   document.getElementById('cliente-modal-cnpj').value=cl&&cl.cnpj?cl.cnpj:'';
   _clienteModalEndereco=cl&&cl.endereco?{...cl.endereco}:null;
   document.getElementById('cliente-modal-endereco-info').innerHTML=_clienteModalEndereco?('<i class="ti ti-map-pin" style="color:var(--green)"></i> '+enderecoResumo(_clienteModalEndereco)):'';
+  document.getElementById('cliente-modal-endereco-manual').style.display='none';
+  ['end-manual-logradouro','end-manual-bairro','end-manual-cep','end-manual-municipio','end-manual-uf'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('cliente-modal').style.display='flex';
   setTimeout(()=>document.getElementById('cliente-modal-nome').focus(),50);
 }
@@ -2414,6 +2485,7 @@ function renderConfig(){
   let html='';
 
   html+='<div class="card"><div class="card-title"><i class="ti ti-wifi" style="color:var(--cyan)"></i>Sincronização</div>';
+  html+='<div class="cfg-row"><div><div class="cfg-lbl">Versão do painel</div><div class="cfg-sub" style="font-family:monospace;font-size:11px;color:var(--warn)">'+BUILD_VERSION+'</div></div></div>';
   html+='<div class="cfg-row"><div><div class="cfg-lbl">Firebase URL</div><div class="cfg-sub" style="font-family:monospace;font-size:10px;color:var(--green);word-break:break-all">'+FB_URL_MARILIA_OPS+'</div></div></div>';
   html+='<div class="cfg-row"><div><div class="cfg-lbl">Última sincronização</div><div class="cfg-sub">'+ls+'</div></div></div>';
   html+='<button class="btn btn-purple btn-sm" style="margin-top:10px" onclick="manualSync()"><i class="ti ti-refresh"></i> Sincronizar agora</button></div>';

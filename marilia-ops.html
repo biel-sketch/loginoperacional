@@ -461,6 +461,13 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
   <div class="modal-box">
     <div class="modal-title"><i class="ti ti-building"></i><span id="cliente-modal-title">Cliente</span></div>
     <div class="field"><label>Nome do cliente</label><input type="text" id="cliente-modal-nome" placeholder="Nome do cliente..."></div>
+    <div class="field"><label>CNPJ</label>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="cliente-modal-cnpj" placeholder="00.000.000/0000-00" style="flex:1">
+        <button class="btn btn-ghost btn-sm" type="button" onclick="buscarEnderecoModal()"><i class="ti ti-search"></i> Buscar endereço</button>
+      </div>
+    </div>
+    <div id="cliente-modal-endereco-info" style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5"></div>
     <div class="modal-btns">
       <button class="modal-btn-primary" onclick="salvarClienteModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
       <button class="modal-btn-ghost" onclick="closeClienteModal()">Cancelar</button>
@@ -1578,7 +1585,9 @@ function renderClientes(){
   const clientes=state.clientes||[];
   let html='<div class="card"><div class="card-title"><i class="ti ti-building" style="color:var(--cyan)"></i>Clientes ('+clientes.filter(c=>c.ativo!==false).length+')';
   if(canEdit)html+='<button onclick="abrirClienteModal(null)" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-plus"></i> Adicionar Cliente</button>';
-  html+='</div></div>';
+  html+='</div>';
+  if(canEdit)html+='<button class="btn btn-ghost btn-sm" onclick="atualizarEnderecosEmLote()"><i class="ti ti-map-pin-search"></i> Atualizar endereços pendentes (CNPJ)</button>';
+  html+='</div>';
 
   const ativos=clientes.filter(c=>c.ativo!==false);
   if(!ativos.length){
@@ -1597,6 +1606,12 @@ function renderClientes(){
       html+='</div>';
     }
     html+='</div>';
+    if(cl.cnpj||cl.endereco){
+      html+='<div style="font-size:11px;color:var(--text2);margin:-4px 0 8px;line-height:1.5">';
+      if(cl.cnpj)html+='<i class="ti ti-id" style="font-size:11px"></i> '+cl.cnpj;
+      if(cl.endereco)html+=(cl.cnpj?' · ':'')+'<i class="ti ti-map-pin" style="font-size:11px"></i> '+enderecoResumo(cl.endereco);
+      html+='</div>';
+    }
     const postos=cl.postos||[];
     if(!postos.length){
       html+='<div style="font-size:12px;color:var(--text3);padding:6px 0 2px">Nenhum posto cadastrado para este cliente ainda.</div>';
@@ -1631,13 +1646,72 @@ function renderClientes(){
   cont.innerHTML=html;
 }
 
-let _clienteModalId=null;
+let _clienteModalId=null,_clienteModalEndereco=null;
+function enderecoResumo(e){
+  if(!e)return'';
+  const linha1=(e.logradouro||'')+(e.numero?', '+e.numero:'');
+  const cidadeUf=e.municipio&&e.uf?(e.municipio+'/'+e.uf):(e.municipio||e.uf||'');
+  return[linha1,e.bairro,cidadeUf,e.cep].filter(Boolean).join(' — ');
+}
+// Busca o endereço oficial de um CNPJ (BrasilAPI, gratuita e sem chave) e depois
+// geocodifica esse endereço (Nominatim/OpenStreetMap, também gratuita) pra ter lat/lng
+// e poder futuramente calcular distância entre clientes na hora de montar rotas.
+async function buscarCnpjInfo(cnpj){
+  const digits=(cnpj||'').replace(/\D/g,'');
+  if(digits.length!==14)throw new Error('CNPJ precisa ter 14 dígitos');
+  const r=await fetch('https://brasilapi.com.br/api/cnpj/v1/'+digits);
+  if(!r.ok)throw new Error('CNPJ não encontrado (HTTP '+r.status+')');
+  const d=await r.json();
+  return{
+    razaoSocial:d.razao_social||'',
+    nomeFantasia:d.nome_fantasia||'',
+    logradouro:[d.descricao_tipo_de_logradouro,d.logradouro].filter(Boolean).join(' ')||d.logradouro||'',
+    numero:d.numero||'',
+    complemento:d.complemento||'',
+    bairro:d.bairro||'',
+    municipio:d.municipio||'',
+    uf:d.uf||'',
+    cep:d.cep||''
+  };
+}
+async function geocodeEndereco(end){
+  try{
+    const q=[end.logradouro,end.numero,end.bairro,end.municipio,end.uf,'Brasil'].filter(Boolean).join(', ');
+    if(!q)return null;
+    const url='https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q);
+    const r=await fetch(url);
+    if(!r.ok)return null;
+    const arr=await r.json();
+    if(!arr||!arr.length)return null;
+    return{lat:parseFloat(arr[0].lat),lng:parseFloat(arr[0].lon)};
+  }catch(e){ return null; }
+}
+async function buscarEnderecoModal(){
+  const cnpj=document.getElementById('cliente-modal-cnpj').value.trim();
+  const info=document.getElementById('cliente-modal-endereco-info');
+  if(!cnpj){showToast('Digite o CNPJ primeiro.','warn');return;}
+  info.innerHTML='Buscando...';
+  try{
+    const dados=await buscarCnpjInfo(cnpj);
+    _clienteModalEndereco=dados;
+    info.innerHTML='<i class="ti ti-map-pin" style="color:var(--green)"></i> '+enderecoResumo(dados);
+    const geo=await geocodeEndereco(dados);
+    if(geo){ _clienteModalEndereco.lat=geo.lat; _clienteModalEndereco.lng=geo.lng; }
+    showToast('Endereço encontrado!','ok');
+  }catch(e){
+    _clienteModalEndereco=null;
+    info.innerHTML='<span style="color:var(--red)">Não foi possível buscar: '+e.message+'</span>';
+  }
+}
 function abrirClienteModal(clienteId){
   if(!podeEditarClientes()){showToast('Apenas administradores/gestores podem editar clientes.','err');return;}
   _clienteModalId=clienteId;
   const cl=clienteId?(state.clientes||[]).find(c=>c.id===clienteId):null;
   document.getElementById('cliente-modal-title').textContent=cl?'Editar cliente':'Novo cliente';
   document.getElementById('cliente-modal-nome').value=cl?cl.nome:'';
+  document.getElementById('cliente-modal-cnpj').value=cl&&cl.cnpj?cl.cnpj:'';
+  _clienteModalEndereco=cl&&cl.endereco?{...cl.endereco}:null;
+  document.getElementById('cliente-modal-endereco-info').innerHTML=_clienteModalEndereco?('<i class="ti ti-map-pin" style="color:var(--green)"></i> '+enderecoResumo(_clienteModalEndereco)):'';
   document.getElementById('cliente-modal').style.display='flex';
   setTimeout(()=>document.getElementById('cliente-modal-nome').focus(),50);
 }
@@ -1646,16 +1720,37 @@ async function salvarClienteModal(){
   const nome=document.getElementById('cliente-modal-nome').value.trim();
   if(!nome){document.getElementById('cliente-modal-nome').style.borderColor='var(--red)';return;}
   document.getElementById('cliente-modal-nome').style.borderColor='';
+  const cnpj=document.getElementById('cliente-modal-cnpj').value.trim();
   if(!state.clientes)state.clientes=[];
   if(_clienteModalId){
     const cl=state.clientes.find(c=>c.id===_clienteModalId);
-    if(cl)cl.nome=nome;
+    if(cl){ cl.nome=nome; cl.cnpj=cnpj; if(_clienteModalEndereco)cl.endereco=_clienteModalEndereco; }
   }else{
-    state.clientes.push({id:uid(),nome,ativo:true,postos:[]});
+    state.clientes.push({id:uid(),nome,ativo:true,postos:[],cnpj,endereco:_clienteModalEndereco||null});
   }
   closeClienteModal();
   showToast('Cliente salvo!','ok');
   saveCache();await pushForceToCloud();renderClientes();
+}
+// Roda a busca de CNPJ/endereço em lote pra todos os clientes que já têm CNPJ
+// cadastrado mas ainda não têm endereço resolvido (ex: depois de importar via planilha).
+async function atualizarEnderecosEmLote(){
+  const alvos=clientesAtivos().filter(c=>c.cnpj&&!c.endereco);
+  if(!alvos.length){showToast('Nenhum cliente com CNPJ pendente de endereço.','ok');return;}
+  if(!confirm('Buscar endereço de '+alvos.length+' cliente(s) via CNPJ agora? Pode levar alguns segundos.'))return;
+  showToast('Buscando endereços...','ok');
+  let ok=0,falhas=0;
+  for(const cl of alvos){
+    try{
+      const dados=await buscarCnpjInfo(cl.cnpj);
+      const geo=await geocodeEndereco(dados);
+      cl.endereco=geo?{...dados,...geo}:dados;
+      ok++;
+    }catch(e){ falhas++; }
+    await new Promise(res=>setTimeout(res,700));
+  }
+  saveCache();await pushForceToCloud();renderClientes();
+  showToast(ok+' endereço(s) atualizados'+(falhas?', '+falhas+' falharam':'')+'.', falhas?'warn':'ok');
 }
 async function excluirCliente(clienteId){
   const cl=(state.clientes||[]).find(c=>c.id===clienteId);

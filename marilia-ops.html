@@ -640,7 +640,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-01-10:05';
+const BUILD_VERSION='2026-10-01-10:15';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -1212,14 +1212,15 @@ function renderDashboard(){
     });
     const todosColabsPosto=[...new Set([...colabsPostoHoje,...colabsExtra])];
     const presPostoData=presDay[posto]||{};
-    let presentes=0,ausentes=0,escalados=todosColabsPosto.length;
+    let presentes=0,ausentes=0,folgaManual=0;
     todosColabsPosto.forEach(c=>{
       const pres=presPostoData[c.nome];
-      if(pres){if(pres.status==='P'||pres.status==='E')presentes++;else if(pres.status==='A')ausentes++;}
+      if(pres){if(pres.status==='P'||pres.status==='E')presentes++;else if(pres.status==='A')ausentes++;else if(pres.status==='F')folgaManual++;}
     });
+    const escalados=todosColabsPosto.length-folgaManual;
     const feriasPosto=feriasHoje.filter(a=>a.postoId===posto).length;
     totalEscalados+=escalados;totalPresentes+=presentes;totalAusentes+=ausentes;totalFerias+=feriasPosto;
-    totalFolga+=colaboradoresAtivos().filter(c=>c.postoId===posto&&!deveTrabalharHoje(c,todayD)).length;
+    totalFolga+=colaboradoresAtivos().filter(c=>c.postoId===posto&&!deveTrabalharHoje(c,todayD)).length+folgaManual;
     const pctPres=escalados>0?Math.round(presentes/escalados*100):0;
     const pctColor=pctPres===100?'var(--green)':pctPres>=70?'var(--warn)':'var(--red)';
     gridHtml+='<div class="posto-card" onclick="irParaPostoPresenca(\''+posto+'\')">';
@@ -1326,12 +1327,12 @@ function renderPresContent(){
     const escalados=colabsPosto.filter(c=>deveTrabalharHoje(c,todayD));
     const folga=colabsPosto.filter(c=>!deveTrabalharHoje(c,todayD));
 
-    let presentes=0,ausentes=0;
-    escalados.forEach(c=>{const p=presPostoData[c.nome];if(p){if(p.status==='P')presentes++;else if(p.status==='A')ausentes++;}});
+    let presentes=0,ausentes=0,folgaManual=0;
+    escalados.forEach(c=>{const p=presPostoData[c.nome];if(p){if(p.status==='P')presentes++;else if(p.status==='A')ausentes++;else if(p.status==='F')folgaManual++;}});
 
     html+='<div class="card" style="margin-bottom:14px">';
     html+='<div class="card-title"><i class="ti '+postoIcon(posto)+'" style="color:var(--cyan)"></i>'+postoLabel(posto);
-    html+='<span style="margin-left:auto;font-size:11px;color:var(--text2);font-weight:400">'+escalados.length+' escalados · <span style="color:var(--green)">'+presentes+' pres.</span>'+(ausentes>0?' · <span style="color:var(--red)">'+ausentes+' aus.</span>':'')+'</span></div>';
+    html+='<span style="margin-left:auto;font-size:11px;color:var(--text2);font-weight:400">'+(escalados.length-folgaManual)+' escalados · <span style="color:var(--green)">'+presentes+' pres.</span>'+(ausentes>0?' · <span style="color:var(--red)">'+ausentes+' aus.</span>':'')+'</span></div>';
 
     // Escalados section
     if(escalados.length){

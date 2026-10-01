@@ -640,7 +640,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-01-11:20';
+const BUILD_VERSION='2026-10-01-11:35';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -883,6 +883,32 @@ function loadCache(){
 }
 
 // === SYNC ===
+// Mescla dois mapas de presença (data -> posto -> nome -> registro) comparando o campo
+// 'ts' de CADA registro individualmente, em vez de um overwrite em bloco do objeto
+// inteiro. É a mesma lógica usada no painel de Aparecida (lá chamada mergeDatedTurnos):
+// o registro com o timestamp mais recente sempre vence, não importa se ele veio da
+// nuvem ou do que está em memória local, e não importa a ordem de chegada entre um
+// syncFromCloud() e um pushToCloud() concorrentes. Isso resolve a corrida de verdade
+// (ao contrário de só travar o sync enquanto um push está em andamento, que ainda
+// deixava uma janela entre o fetch da nuvem terminar e o push local começar).
+function mergePresencasSafe(cloudMp,localMp){
+  const out=JSON.parse(JSON.stringify(cloudMp||{}));
+  Object.entries(localMp||{}).forEach(([d,postos])=>{
+    Object.entries(postos||{}).forEach(([posto,colabs])=>{
+      Object.entries(colabs||{}).forEach(([nome,v])=>{
+        const cloudV=cloudMp&&cloudMp[d]&&cloudMp[d][posto]&&cloudMp[d][posto][nome];
+        const localTs=(v&&v.ts)||'';
+        const cloudTs=(cloudV&&cloudV.ts)||'';
+        if(!cloudV||localTs>=cloudTs){
+          if(!out[d])out[d]={};
+          if(!out[d][posto])out[d][posto]={};
+          out[d][posto][nome]=v;
+        }
+      });
+    });
+  });
+  return out;
+}
 function mergeState(cloud){
   if(!cloud)return;
   if(cloud.colaboradores&&cloud.colaboradores.length) state.colaboradores=cloud.colaboradores;
@@ -894,7 +920,7 @@ function mergeState(cloud){
   state.presDeletes=presDeletesMerged;
   state.checkinDeletes=checkinDeletesMerged;
   if(cloud.presencas){
-    const mp=cloud.presencas;
+    const mp=mergePresencasSafe(cloud.presencas,state.presencas);
     applyPresDeletesToMap(mp,presDeletesMerged);
     state.presencas=mp;
   }
@@ -952,16 +978,7 @@ async function pushToCloud(){
     try{
       const cloud=await fbGet();
       if(cloud){
-        const mp=JSON.parse(JSON.stringify(cloud.presencas||{}));
-        Object.entries(state.presencas).forEach(([d,postos])=>{
-          if(!mp[d])mp[d]={};
-          Object.entries(postos).forEach(([posto,colabs])=>{
-            if(!mp[d][posto])mp[d][posto]={};
-            Object.entries(colabs).forEach(([nome,v])=>{
-              mp[d][posto][nome]=v;
-            });
-          });
-        });
+        const mp=mergePresencasSafe(cloud.presencas,state.presencas);
         // Merge colaboradores por nome: mantém edições/adições locais, mas
         // preserva quem outro usuário cadastrou na nuvem entre o último sync e agora
         const cloudColabs=cloud.colaboradores||[];
@@ -1498,6 +1515,7 @@ async function setBatida(posto,nome,campo,valor){
   if(!state.presencas[todayD][posto])state.presencas[todayD][posto]={};
   if(!state.presencas[todayD][posto][nome])return;
   state.presencas[todayD][posto][nome][campo]=valor;
+  state.presencas[todayD][posto][nome].ts=new Date().toISOString();
   saveCache();
   await pushToCloud();
   showToast('Horário registrado!','ok');

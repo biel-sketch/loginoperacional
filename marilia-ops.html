@@ -313,6 +313,11 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 
         <!-- DASHBOARD -->
         <div class="screen active" id="sc-dashboard">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+            <label style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Ver dados de</label>
+            <input type="date" id="dash-date-input" onchange="setDashDate(this.value)" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px">
+            <button id="dash-date-today-btn" onclick="setDashDate(null)" style="display:none;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer">Voltar para hoje</button>
+          </div>
           <div id="dash-content"></div>
         </div>
 
@@ -640,7 +645,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-01-11:35';
+const BUILD_VERSION='2026-10-01-11:45';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -1229,6 +1234,17 @@ function renderDashboard(){
   if(!dashDate)dashDate=today();
   const todayD=dashDate;
   const ehHoje=todayD===today();
+  // O input de data e o botão "Voltar para hoje" ficam FORA do innerHTML que é
+  // reconstruído aqui embaixo — eles são elementos fixos no HTML da tela, atualizados só
+  // pelo valor/estilo (nunca recriados). Antes, o <input type="date"> era desenhado junto
+  // com o resto do dashboard via innerHTML; como renderDashboard() roda de novo a cada
+  // troca de data (e também pelo auto-sync em segundo plano), o próprio campo de data era
+  // destruído e recriado no meio da edição, perdendo o foco e tornando impossível digitar
+  // a data corretamente. Atualizando só o value via JS, o elemento nunca é recriado.
+  const dateInp=document.getElementById('dash-date-input');
+  if(dateInp&&document.activeElement!==dateInp){dateInp.max=today();dateInp.value=todayD;}
+  const todayBtn=document.getElementById('dash-date-today-btn');
+  if(todayBtn)todayBtn.style.display=ehHoje?'none':'block';
   const presDay=state.presencas[todayD]||{};
   const isFDS=isFimSemanaOuFeriado(todayD);
 
@@ -1275,13 +1291,9 @@ function renderDashboard(){
 
   gridHtml+='</div>';
 
-  // Montagem final em ordem linear: seletor de data > alerta atestados > KPIs > título > grid de postos
-  let html='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">';
-  html+='<label style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Ver dados de</label>';
-  html+='<input type="date" id="dash-date-input" value="'+todayD+'" max="'+today()+'" onchange="setDashDate(this.value)" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px">';
-  if(!ehHoje)html+='<button onclick="setDashDate(null)" style="background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer">Voltar para hoje</button>';
-  html+='</div>';
-  html+=buildAfastamentosHojeAlertCard(todayD);
+  // Montagem final em ordem linear: alerta atestados > KPIs > título > grid de postos
+  // (o seletor de data fica fora deste bloco — ver comentário no topo da função)
+  let html=buildAfastamentosHojeAlertCard(todayD);
   html+='<div style="font-size:13px;color:var(--text2);margin-bottom:16px">'+dateFull(todayD)+(isFDS?' <span class="badge" style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bd);margin-left:6px">Fim de semana</span>':'')+(!ehHoje?' <span class="badge" style="background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-bd);margin-left:6px">Visualizando outra data</span>':'')+'</div>';
   html+='<div class="kpi-grid-5" style="margin-bottom:16px">'+
     '<div class="kpi"><div class="kpi-lbl">'+(ehHoje?'Escalados hoje':'Escalados')+'</div><div class="kpi-val purple">'+totalEscalados+'</div></div>'+

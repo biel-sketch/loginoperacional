@@ -640,7 +640,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-01-10:15';
+const BUILD_VERSION='2026-10-01-11:20';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -747,7 +747,7 @@ const NOTIF_RECIPIENTS = [
 // === STATE ===
 let state = {colaboradores:[], presencas:{}, clientes:[], supervisores:[], checkins:{}, afastamentos:[], presDeletes:[], checkinDeletes:[]};
 let currentUser=null, currentRole=null;
-let isSyncing=false, lastSync=null, syncTimer=null;
+let isSyncing=false, lastSync=null, syncTimer=null, pushInFlight=0;
 function colaboradoresAtivos(){ return state.colaboradores.filter(c=>c.ativo!==false); }
 function markPending(){ try{ localStorage.setItem(LS_CACHE+'_pending','1'); }catch(e){} }
 function clearPending(){ try{ localStorage.removeItem(LS_CACHE+'_pending'); }catch(e){} }
@@ -797,7 +797,7 @@ function applyCheckinDeletesToMap(mc,deletes){
   });
 }
 let syncCountdown=0, countdownTimer=null;
-let selDate=null, selPosto=null, presView='hoje';
+let selDate=null, selPosto=null, presView='hoje', dashDate=null;
 let histMes=null, absDates=[];
 let _modalEditIdx=-1, _justifPendente=null;
 
@@ -910,6 +910,15 @@ function mergeState(cloud){
 
 async function syncFromCloud(){
   if(isSyncing)return;
+  // Se há um pushToCloud() em andamento (ex: ela acabou de lançar presença/retroativo
+  // e o clique disparou o envio), NÃO sincroniza agora: mergeState() abaixo SOBRESCREVE
+  // state.presencas inteiro com o que veio da nuvem, e se isso rodar entre o momento em
+  // que a pessoa foi lançada localmente e o momento em que o pushToCloud() terminou de
+  // gravar na nuvem, o lançamento comes a sumir da tela e nunca chega a ser salvo (o
+  // auto-sync roda a cada poucos segundos, então era fácil essa corrida acontecer ao
+  // lançar vários colaboradores em sequência). Simplesmente pula este ciclo — o próximo
+  // auto-sync, 8s depois, já vai pegar os dados certos.
+  if(pushInFlight>0)return;
   isSyncing=true;
   // Se há alterações locais que ainda não foram enviadas (ex: feitas offline),
   // envia-las primeiro com merge seguro, em vez de sobrescrever o estado local
@@ -936,6 +945,7 @@ async function syncFromCloud(){
 }
 
 async function pushToCloud(){
+  pushInFlight++;
   setSyncDot('syncing','Salvando...');
   try{
     let merged={colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{},afastamentos:state.afastamentos||[],presDeletes:state.presDeletes||[],checkinDeletes:state.checkinDeletes||[]};
@@ -1020,10 +1030,13 @@ async function pushToCloud(){
     saveCache();
     setSyncDot('err','Alterações pendentes — sem conexão');
     console.error('Push:',e);
+  }finally{
+    pushInFlight--;
   }
 }
 
 async function pushForceToCloud(){
+  pushInFlight++;
   setSyncDot('syncing','Salvando...');
   try{
     await fbPut({colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{},afastamentos:state.afastamentos||[],presDeletes:state.presDeletes||[],checkinDeletes:state.checkinDeletes||[]});
@@ -1035,6 +1048,8 @@ async function pushForceToCloud(){
     markPending();
     saveCache();
     setSyncDot('err','Alterações pendentes — sem conexão');
+  }finally{
+    pushInFlight--;
   }
 }
 
@@ -1194,14 +1209,16 @@ function renderAll(){
 // === DASHBOARD ===
 function renderDashboard(){
   const cont=document.getElementById('dash-content');if(!cont)return;
-  const todayD=today();
+  if(!dashDate)dashDate=today();
+  const todayD=dashDate;
+  const ehHoje=todayD===today();
   const presDay=state.presencas[todayD]||{};
   const isFDS=isFimSemanaOuFeriado(todayD);
 
   let totalEscalados=0,totalPresentes=0,totalAusentes=0,totalFolga=0,totalFerias=0;
   let gridHtml='<div class="posto-grid">';
 
-  const feriasHoje=afastamentosAtivosHoje().filter(a=>a.tipo==='Férias');
+  const feriasHoje=afastamentosAtivosHoje(todayD).filter(a=>a.tipo==='Férias');
   const postosComGente=new Set(colaboradoresAtivos().map(c=>c.postoId).filter(Boolean));
   postosAtivos().filter(pid=>postosComGente.has(pid)).forEach(posto=>{
     const colabsPostoHoje=colaboradoresAtivos().filter(c=>c.postoId===posto&&deveTrabalharHoje(c,todayD));
@@ -1241,11 +1258,16 @@ function renderDashboard(){
 
   gridHtml+='</div>';
 
-  // Montagem final em ordem linear: data > alerta atestados > KPIs > título > grid de postos
-  let html=buildAfastamentosHojeAlertCard();
-  html+='<div style="font-size:13px;color:var(--text2);margin-bottom:16px">'+dateFull(todayD)+(isFDS?' <span class="badge" style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bd);margin-left:6px">Fim de semana</span>':'')+'</div>';
+  // Montagem final em ordem linear: seletor de data > alerta atestados > KPIs > título > grid de postos
+  let html='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">';
+  html+='<label style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Ver dados de</label>';
+  html+='<input type="date" id="dash-date-input" value="'+todayD+'" max="'+today()+'" onchange="setDashDate(this.value)" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px">';
+  if(!ehHoje)html+='<button onclick="setDashDate(null)" style="background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer">Voltar para hoje</button>';
+  html+='</div>';
+  html+=buildAfastamentosHojeAlertCard(todayD);
+  html+='<div style="font-size:13px;color:var(--text2);margin-bottom:16px">'+dateFull(todayD)+(isFDS?' <span class="badge" style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bd);margin-left:6px">Fim de semana</span>':'')+(!ehHoje?' <span class="badge" style="background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-bd);margin-left:6px">Visualizando outra data</span>':'')+'</div>';
   html+='<div class="kpi-grid-5" style="margin-bottom:16px">'+
-    '<div class="kpi"><div class="kpi-lbl">Escalados hoje</div><div class="kpi-val purple">'+totalEscalados+'</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl">'+(ehHoje?'Escalados hoje':'Escalados')+'</div><div class="kpi-val purple">'+totalEscalados+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Presentes</div><div class="kpi-val green">'+totalPresentes+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Ausentes</div><div class="kpi-val red">'+totalAusentes+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Em férias</div><div class="kpi-val" style="color:var(--green)">'+totalFerias+'</div></div>'+
@@ -1255,6 +1277,11 @@ function renderDashboard(){
     (postosComGente.size?gridHtml:'<div class="empty"><i class="ti ti-building-store" style="font-size:24px"></i><h3>Nenhum posto com colaborador ainda</h3><p>Cadastre Clientes/Postos/Cargos em <strong>Clientes</strong> e depois os colaboradores em <strong>Equipe</strong>.</p></div>');
 
   cont.innerHTML=html;
+}
+
+function setDashDate(v){
+  dashDate=v||today();
+  renderDashboard();
 }
 
 function irParaPostoPresenca(posto){
@@ -1297,6 +1324,8 @@ function renderPresenca(){
     fbtns.innerHTML=html;
   }
   renderPresContent();
+  if(presView==='retro')renderRetroContent();
+  if(presView==='historico')renderPresHist();
 }
 
 function selPostoFiltro(posto){
@@ -2591,8 +2620,8 @@ function renderSupervisoresMetricas(){
 function afastamentoAtivoParaData(nome,data){
   return (state.afastamentos||[]).find(a=>a.nome===nome&&a.dataInicio<=data&&a.dataFim>=data)||null;
 }
-function afastamentosAtivosHoje(){
-  const hoje=today();
+function afastamentosAtivosHoje(dataRef){
+  const hoje=dataRef||today();
   return (state.afastamentos||[]).filter(a=>a.dataInicio<=hoje&&a.dataFim>=hoje);
 }
 let _editAfastId=null;
@@ -2672,12 +2701,13 @@ async function excluirAfastamento(id){
   showToast('Registro removido.','ok');
   saveCache();await pushForceToCloud();renderAll();
 }
-function buildAfastamentosHojeAlertCard(){
-  const ativos=afastamentosAtivosHoje();
+function buildAfastamentosHojeAlertCard(dataRef){
+  const ativos=afastamentosAtivosHoje(dataRef);
   if(!ativos.length)return'';
+  const ehHoje=!dataRef||dataRef===today();
   const item=a=>'<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><i class="ti ti-file-certificate" style="font-size:14px;color:var(--warn);flex-shrink:0"></i><span style="font-size:13px;color:var(--text)"><strong>'+a.nome+'</strong> · '+a.tipo+' até '+dateFull(a.dataFim).split(' de ').slice(0,2).join(' de ')+'</span></div>';
   return'<div class="card" style="border-color:var(--warn-bd);background:var(--warn-bg);margin-bottom:16px">'+
-    '<div class="card-title" style="color:var(--warn)"><i class="ti ti-alert-triangle"></i>'+ativos.length+' colaborador(es) de atestado/afastamento hoje</div>'+
+    '<div class="card-title" style="color:var(--warn)"><i class="ti ti-alert-triangle"></i>'+ativos.length+' colaborador(es) de atestado/afastamento'+(ehHoje?' hoje':' nesta data')+'</div>'+
     ativos.map(item).join('')+'</div>';
 }
 function buildAfastamentosCard(){

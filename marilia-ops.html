@@ -95,6 +95,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .pb:hover{opacity:.85}
 .pb.active-p{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}
 .pb.active-a{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}
+.pb.active-f{background:rgba(255,255,255,.08);border-color:var(--border);color:var(--text2)}
 .pb.active-e{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}
 .justif-box{margin-top:8px;display:none}
 .justif-box input{width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--warn-bd);background:var(--warn-bg);color:var(--text);font-size:12px;font-family:inherit}
@@ -145,7 +146,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .hist-turno-row:last-child{border-bottom:none}
 .hist-turno-lbl{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;width:80px;flex-shrink:0;padding-top:2px}
 .hist-ausentes{display:flex;flex-wrap:wrap;gap:4px;flex:1}
-.hist-ausente-tag{font-size:11px;padding:2px 8px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:6px;color:var(--red);font-weight:600}.hist-chip{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin:2px 4px 2px 0;border:1px solid transparent}.hist-chip.editable{cursor:pointer}.hist-chip.editable:hover{filter:brightness(1.25);transform:translateY(-1px)}.hist-chip-p{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}.hist-chip-a{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}.hist-chip-e{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}.hist-chip-c{background:rgba(167,139,250,.12);border-color:rgba(167,139,250,.35);color:#a78bfa}.hist-chips-wrap{display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+.hist-ausente-tag{font-size:11px;padding:2px 8px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:6px;color:var(--red);font-weight:600}.hist-chip{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin:2px 4px 2px 0;border:1px solid transparent}.hist-chip.editable{cursor:pointer}.hist-chip.editable:hover{filter:brightness(1.25);transform:translateY(-1px)}.hist-chip-p{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}.hist-chip-a{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}.hist-chip-e{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}.hist-chip-c{background:rgba(167,139,250,.12);border-color:rgba(167,139,250,.35);color:#a78bfa}.hist-chip-f{background:rgba(255,255,255,.06);border-color:var(--border);color:var(--text2)}.hist-chips-wrap{display:flex;flex-wrap:wrap;align-items:center;gap:2px}
 .hist-ok{font-size:11px;color:var(--green);font-weight:600}
 .hist-sem-reg{font-size:11px;color:var(--text3);font-style:italic}
 
@@ -412,6 +413,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
   <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
   <button class="pb" style="justify-content:center;padding:10px" onclick="salvarEditPresenca('P')"><i class="ti ti-check" style="font-size:13px"></i> Presente</button>
   <button class="pb" style="justify-content:center;padding:10px" onclick="salvarEditPresenca('A')"><i class="ti ti-x" style="font-size:13px"></i> Ausente</button>
+  <button class="pb" style="justify-content:center;padding:10px" onclick="salvarEditPresenca('F')"><i class="ti ti-moon" style="font-size:13px"></i> Folga</button>
   </div>
   <div class="modal-btns">
   <button class="modal-btn-ghost" onclick="closeEditPresencaModal()">Cancelar</button>
@@ -638,7 +640,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-09-30-23:10';
+const BUILD_VERSION='2026-10-01-10:05';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -1348,7 +1350,7 @@ function renderPresContent(){
         }
         const pres=presPostoData[c.nome];
         const status=pres?pres.status:'';
-        const cardCls=status==='P'?'presente':status==='A'?'ausente':status==='E'?'extra':'trabalha';
+        const cardCls=status==='P'?'presente':status==='A'?'ausente':status==='E'?'extra':status==='F'?'folga':'trabalha';
         const nomeJs=c.nome.replace(/'/g,"\\'");
         const horarioCargo=cargoHorarioFmt(c.cargoId,c.turnoId);
         html+='<div class="colab-pres-card '+cardCls+'">';
@@ -1358,6 +1360,7 @@ function renderPresContent(){
         html+='<div class="pres-btns">';
         html+='<button class="pb'+(status==='P'?' active-p':'')+'" onclick="setStatus(\''+posto+'\',\''+nomeJs+'\',\'P\')"><i class="ti ti-check" style="font-size:12px"></i> Presente</button>';
         html+='<button class="pb'+(status==='A'?' active-a':'')+'" onclick="setStatus(\''+posto+'\',\''+nomeJs+'\',\'A\')"><i class="ti ti-x" style="font-size:12px"></i> Ausente</button>';
+        html+='<button class="pb'+(status==='F'?' active-f':'')+'" onclick="setStatus(\''+posto+'\',\''+nomeJs+'\',\'F\')"><i class="ti ti-moon" style="font-size:12px"></i> Folga</button>';
         html+='</div></div>';
         if(status==='P'||status==='E'){
           const ft=findTurno(c.cargoId,c.turnoId);
@@ -1572,7 +1575,7 @@ function podeEditarPresenca(){return currentRole==='admin'||currentRole==='super
 
 function _renderHistTurnoRow(posto,presPostoData,date,canEdit){
   const entries=Object.entries(presPostoData).sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
-  let presentes=0,ausentes=0,extras=0,coberturas=0;
+  let presentes=0,ausentes=0,extras=0,coberturas=0,folgas=0;
   let row='<div class="hist-turno-row">';
   row+='<span class="hist-turno-lbl">'+postoLabel(posto)+'</span>';
   row+='<div class="hist-chips-wrap">';
@@ -1582,6 +1585,7 @@ function _renderHistTurnoRow(posto,presPostoData,date,canEdit){
     if(v.status==='A'){cls='hist-chip-a';icon='ti-x';ausentes++;}
     else if(v.status==='E'){cls='hist-chip-e';icon='ti-plus';extras++;}
     else if(v.status==='C'){cls='hist-chip-c';icon='ti-replace';coberturas++;}
+    else if(v.status==='F'){cls='hist-chip-f';icon='ti-moon';folgas++;}
     else{presentes++;}
     const nomeEsc=nome.replace(/'/g,"\\'");
     const clickAttr=canEdit?(v.status==='C'?' onclick="excluirCobertura(\''+date+'\',\''+posto+'\',\''+nomeEsc+'\')"':' onclick="abrirEditPresenca(\''+date+'\',\''+posto+'\',\''+nomeEsc+'\')"'):'';
@@ -1592,6 +1596,7 @@ function _renderHistTurnoRow(posto,presPostoData,date,canEdit){
   if(presentes)summary.push('<span class="hist-ok"><i class="ti ti-check" style="font-size:11px"></i> '+presentes+' pres.</span>');
   if(ausentes)summary.push('<span style="color:var(--red);font-weight:600">'+ausentes+' aus.</span>');
   if(extras)summary.push('<span style="color:var(--warn);font-weight:600">'+extras+' extra</span>');
+  if(folgas)summary.push('<span style="color:var(--text3);font-weight:600">'+folgas+' folga</span>');
   if(coberturas)summary.push('<span style="color:#a78bfa;font-weight:600">'+coberturas+' cobertura</span>');
   row+='<span class="hist-summary">'+summary.join(' · ')+'</span>';
   row+='</div></div>';
@@ -1603,7 +1608,7 @@ function abrirEditPresenca(date,posto,nome){
   if(!podeEditarPresenca()){showToast('Apenas administradores podem editar registros.','err');return;}
   _editDate=date;_editPosto=posto;_editNome=nome;
   const v=(state.presencas[date]&&state.presencas[date][posto]&&state.presencas[date][posto][nome])||null;
-  const statusLbl=v?(v.status==='A'?'Ausente':v.status==='E'?'Trabalho extra':'Presente'):'Sem registro';
+  const statusLbl=v?(v.status==='A'?'Ausente':v.status==='E'?'Trabalho extra':v.status==='F'?'Folga':v.status==='C'?'Cobertura':'Presente'):'Sem registro';
   document.getElementById('edit-pres-nome').textContent=nome;
   document.getElementById('edit-pres-info').textContent=postoLabel(posto)+' · '+date.split('-').reverse().join('/')+' · Atual: '+statusLbl;
   document.getElementById('edit-pres-modal').style.display='flex';
@@ -1717,13 +1722,14 @@ function renderRetroContent(){
       }
       const pres=presPostoData[c.nome];
       const status=pres?pres.status:'';
-      const cardCls=status==='P'?'presente':status==='A'?'ausente':'trabalha';
+      const cardCls=status==='P'?'presente':status==='A'?'ausente':status==='F'?'folga':'trabalha';
       html+='<div class="colab-pres-card '+cardCls+'">';
       html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
       html+='<div class="colab-name">'+c.nome+'</div>';
       html+='<div class="pres-btns">';
       html+='<button class="pb'+(status==='P'?' active-p':'')+'" onclick="setStatusRetro(\''+date+'\',\''+posto+'\',\''+nomeJs+'\',\'P\')"><i class="ti ti-check" style="font-size:12px"></i> Presente</button>';
       html+='<button class="pb'+(status==='A'?' active-a':'')+'" onclick="setStatusRetro(\''+date+'\',\''+posto+'\',\''+nomeJs+'\',\'A\')"><i class="ti ti-x" style="font-size:12px"></i> Ausente</button>';
+      html+='<button class="pb'+(status==='F'?' active-f':'')+'" onclick="setStatusRetro(\''+date+'\',\''+posto+'\',\''+nomeJs+'\',\'F\')"><i class="ti ti-moon" style="font-size:12px"></i> Folga</button>';
       html+='</div></div></div>';
     });
     html+='</div>';
@@ -1761,6 +1767,7 @@ function renderAbsenteismo(){
     postosAtivos().forEach(posto=>{
       const pd=presDay[posto]||{};
       Object.entries(pd).forEach(([nome,v])=>{
+        if(v.status==='F'||v.status==='C')return; // folga e cobertura não contam no absenteísmo do colaborador
         if(!absMap[nome])absMap[nome]={faltas:0,presencas:0,extras:0,posto};
         if(!diasMap[nome])diasMap[nome]=0;
         diasMap[nome]++;
@@ -1831,6 +1838,7 @@ function exportarAbsLins(){
     const presDay=state.presencas[date]||{};
     postosAtivos().forEach(posto=>{
       Object.entries(presDay[posto]||{}).forEach(([nome,v])=>{
+        if(v.status==='F'||v.status==='C')return;
         if(!absMap[nome])absMap[nome]={faltas:0,presencas:0,extras:0,posto};
         if(!diasMap[nome])diasMap[nome]=0;
         diasMap[nome]++;

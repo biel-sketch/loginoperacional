@@ -207,9 +207,21 @@ html,body{
           <div class="op-stat-lbl">Ausentes</div>
           <div class="op-stat-val red" id="ap-ausentes">—</div>
         </div>
-        <div class="op-stat">
+        <div class="op-stat" style="flex-basis:100%">
           <div class="op-stat-lbl">Buffer pallets</div>
           <div class="op-stat-val cyan" id="ap-buffer">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Produzido hoje</div>
+          <div class="op-stat-val green" id="ap-prod-dia">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Enviado hoje</div>
+          <div class="op-stat-val cyan" id="ap-env-dia">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Descartado hoje</div>
+          <div class="op-stat-val red" id="ap-desc-dia">—</div>
         </div>
       </div>
       <div id="ap-absence-alert" style="display:none" class="absence-alert">
@@ -250,9 +262,21 @@ html,body{
           <div class="op-stat-lbl">Ausentes</div>
           <div class="op-stat-val red" id="mg-ausentes">—</div>
         </div>
-        <div class="op-stat">
+        <div class="op-stat" style="flex-basis:100%">
           <div class="op-stat-lbl">Buffer pallets</div>
           <div class="op-stat-val cyan" id="mg-buffer">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Produzido hoje</div>
+          <div class="op-stat-val green" id="mg-prod-dia">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Enviado hoje</div>
+          <div class="op-stat-val cyan" id="mg-env-dia">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Descartado hoje</div>
+          <div class="op-stat-val red" id="mg-desc-dia">—</div>
         </div>
       </div>
       <div id="mg-absence-alert" style="display:none" class="absence-alert">
@@ -468,7 +492,12 @@ async function hubCarregarUnidade(u){
       });
     });
     let totP=0,totE=0;
-    Object.values(data.movimentos||{}).forEach(ms=>{(ms||[]).forEach(m=>{totP+=(m.prod||0);totE+=(m.env||0);});});
+    Object.values(data.movimentos||{}).forEach(ms=>{(ms||[]).forEach(m=>{if(!m)return;totP+=(m.prod||0);totE+=(m.env||0);});});
+    let dP=0,dE=0,dD=0;
+    ((data.movimentos&&data.movimentos[todayD])||[]).forEach(m=>{ if(!m)return; dP+=(m.prod||0); dE+=(m.env||0); dD+=(m.desc||0); });
+    hubSetTxt(u.prefix+'-prod-dia',dP);
+    hubSetTxt(u.prefix+'-env-dia',dE);
+    hubSetTxt(u.prefix+'-desc-dia',dD);
     const buffer=(data.bufferSaldoInicial||0)+totP-totE+(data.bufferAjuste||0);
     hubSetTxt(u.prefix+'-quadro',quadro);
     hubSetTxt(u.prefix+'-presentes',presentes);
@@ -483,7 +512,7 @@ async function hubCarregarUnidade(u){
       }else alertEl.style.display='none';
     }
     let latest=null;
-    Object.values(data.movimentos||{}).forEach(ms=>{(ms||[]).forEach(m=>{if(m.ts&&(!latest||m.ts>latest))latest=m.ts;});});
+    Object.values(data.movimentos||{}).forEach(ms=>{(ms||[]).forEach(m=>{if(m&&m.ts&&(!latest||m.ts>latest))latest=m.ts;});});
     Object.values(data.presencas||{}).forEach(pd=>{Object.values(pd||{}).forEach(pt=>{if(pt&&pt.savedAt&&(!latest||pt.savedAt>latest))latest=pt.savedAt;});});
     const ago=hubTimeAgo(latest);
     hubSetTxt(u.prefix+'-freshness-lbl',ago?('Atualizado '+ago):'Sem lançamentos ainda');

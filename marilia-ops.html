@@ -641,8 +641,12 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
         <select id="rota-modal-cliente" onchange="_rotaModalFillPostos()"></select>
       </div>
       <div class="field"><label>Posto</label>
-        <select id="rota-modal-posto"></select>
+        <select id="rota-modal-posto" onchange="_rotaTurnosReset()"></select>
       </div>
+    </div>
+    <div class="field" id="rota-turnos-field" style="display:none"><label>Turnos que o supervisor visita neste cliente</label>
+      <div id="rota-turnos-lista"></div>
+      <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-top:4px">O cronograma automático alterna as visitas entre os turnos marcados. Desmarque os que não precisam de visita.</div>
     </div>
     <div id="rota-bloco-avulso" style="display:none">
       <div class="field"><label>Nome do cliente</label>
@@ -753,7 +757,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-05-13:05';
+const BUILD_VERSION='2026-10-05-13:30';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -2785,7 +2789,14 @@ function rotaCoords(r){
   return null;
 }
 // Turnos distintos do posto (união dos turnos de todos os cargos), em ordem de horário de entrada.
+function turnoKey(t){ return (t.horaEntrada||'')+'-'+(t.horaSaida||''); }
+// Turnos que o supervisor deve cobrir nesse cliente (todos, ou só os marcados no cadastro da rota)
 function rotaTurnos(r){
+  const t=rotaTurnosTodos(r);
+  if(r.turnosVisita&&r.turnosVisita.length){ const f=t.filter(x=>r.turnosVisita.includes(turnoKey(x))); if(f.length)return f; }
+  return t;
+}
+function rotaTurnosTodos(r){
   if(r.avulso)return [];
   const f=findPosto(r.postoId); if(!f)return [];
   const seen={},out=[];
@@ -3194,7 +3205,7 @@ function renderSupervisores(){
         const semEnd=!r.avulso&&!end&&findPosto(r.postoId);
         html+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--border)">';
         html+='<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+supEsc(rotaLabel(r))+(r.avulso?' <span class="badge b-warn" style="margin-left:4px">não cadastrado</span>':'')+'</div>';
-        html+='<div style="font-size:11px;color:var(--text2)">'+supEsc(rotaDiasTxt(r,sup))+(end?' · '+supEsc(end):'')+(semEnd?' · <span style="color:var(--warn)">sem endereço cadastrado</span>':'')+'</div></div>';
+        html+='<div style="font-size:11px;color:var(--text2)">'+supEsc(rotaDiasTxt(r,sup))+(end?' · '+supEsc(end):'')+(semEnd?' · <span style="color:var(--warn)">sem endereço cadastrado</span>':'')+(rotaTurnosTodos(r).length>1?' · turnos: '+supEsc(rotaTurnos(r).map(x=>x.nome).join(', ')):'')+'</div></div>';
         if(canEdit)html+='<div style="display:flex;gap:10px;flex-shrink:0"><i class="ti ti-pencil" style="font-size:14px;color:var(--text3);cursor:pointer" onclick="abrirRotaModal(\''+sup.id+'\',\''+r.id+'\')"></i> <i class="ti ti-x" style="font-size:14px;color:var(--red);cursor:pointer" onclick="excluirRota(\''+sup.id+'\',\''+r.id+'\')"></i></div>';
         html+='</div>';
       });
@@ -3271,9 +3282,31 @@ function abrirRotaModal(supervisorId,rotaId){
   document.getElementById('rota-avulso-end').value=r&&r.avulso?(r.endereco||''):'';
   document.getElementById('rota-modal-freq').value=r?(Number(r.frequenciaSemanal)||1):1;
   _rotaDias=r&&r.dias?[...r.dias]:[];
+  _rotaTurnosReset(r&&!r.avulso?r:null);
   _rotaSetTipo(r?!!r.avulso:!clientesAtivos().length);
   _rotaRenderDias();
   document.getElementById('rota-modal').style.display='flex';
+}
+let _rotaTurnosSel=[];
+function _rotaTurnosReset(r){
+  const postoId=document.getElementById('rota-modal-posto').value;
+  const todos=rotaTurnosTodos({postoId});
+  _rotaTurnosSel=(r&&r.turnosVisita&&r.turnosVisita.length)?todos.map(turnoKey).filter(k=>r.turnosVisita.includes(k)):todos.map(turnoKey);
+  _rotaRenderTurnos();
+}
+function _rotaToggleTurno(k){
+  const i=_rotaTurnosSel.indexOf(k);
+  if(i>=0)_rotaTurnosSel.splice(i,1);else _rotaTurnosSel.push(k);
+  _rotaRenderTurnos();
+}
+function _rotaRenderTurnos(){
+  const postoId=document.getElementById('rota-modal-posto').value;
+  const todos=rotaTurnosTodos({postoId});
+  document.getElementById('rota-turnos-field').style.display=(!_rotaAvulso&&todos.length)?'block':'none';
+  document.getElementById('rota-turnos-lista').innerHTML=todos.map(x=>{
+    const k=turnoKey(x);
+    return '<button type="button" class="ds-btn'+(_rotaTurnosSel.includes(k)?' active':'')+'" style="margin:0 6px 6px 0" onclick="_rotaToggleTurno(\''+k+'\')">'+supEsc(turnoTxt(x))+'</button>';
+  }).join('');
 }
 function _rotaSetTipo(avulso){
   _rotaAvulso=!!avulso;
@@ -3281,6 +3314,7 @@ function _rotaSetTipo(avulso){
   document.getElementById('rota-tipo-avulso').className='ds-btn'+(_rotaAvulso?' active':'');
   document.getElementById('rota-bloco-cad').style.display=_rotaAvulso?'none':'block';
   document.getElementById('rota-bloco-avulso').style.display=_rotaAvulso?'block':'none';
+  _rotaRenderTurnos();
 }
 function _rotaRenderDias(){
   document.getElementById('rota-dias-btns').innerHTML=DIAS_ORDEM.map(d=>'<button type="button" class="ds-btn'+(_rotaDias.includes(d)?' active':'')+'" onclick="_rotaToggleDia('+d+')">'+DIAS_CURTO[d]+'</button>').join('');
@@ -3296,6 +3330,7 @@ function _rotaModalFillPostos(){
   const cl=clientesAtivos().find(c=>c.id===clienteId);
   const selPosto=document.getElementById('rota-modal-posto');
   selPosto.innerHTML=(cl?(cl.postos||[]):[]).map(p=>'<option value="'+p.id+'">'+supEsc(p.nome)+'</option>').join('');
+  if(typeof _rotaTurnosReset==='function')_rotaTurnosReset();
 }
 function closeRotaModal(){document.getElementById('rota-modal').style.display='none';}
 async function salvarRotaModal(){
@@ -3306,11 +3341,14 @@ async function salvarRotaModal(){
   if(_rotaAvulso){
     const clienteNome=document.getElementById('rota-avulso-cliente').value.trim();
     if(!clienteNome){showToast('Informe o nome do cliente.','warn');return;}
-    dados={avulso:true,postoId:'',clienteNome,localNome:document.getElementById('rota-avulso-local').value.trim(),endereco:document.getElementById('rota-avulso-end').value.trim()};
+    dados={avulso:true,postoId:'',turnosVisita:[],clienteNome,localNome:document.getElementById('rota-avulso-local').value.trim(),endereco:document.getElementById('rota-avulso-end').value.trim()};
   }else{
     const postoId=document.getElementById('rota-modal-posto').value;
     if(!postoId){showToast('Selecione um posto (ou use "Não cadastrado").','warn');return;}
-    dados={avulso:false,postoId,clienteNome:'',localNome:'',endereco:''};
+    const todos=rotaTurnosTodos({postoId}).map(turnoKey);
+    if(todos.length&&!_rotaTurnosSel.length){showToast('Marque pelo menos um turno para visitar.','warn');return;}
+    const sel=todos.filter(k=>_rotaTurnosSel.includes(k));
+    dados={avulso:false,postoId,clienteNome:'',localNome:'',endereco:'',turnosVisita:(sel.length&&sel.length<todos.length)?sel:[]};
   }
   const dias=[..._rotaDias].sort((a,b)=>DIAS_ORDEM.indexOf(a)-DIAS_ORDEM.indexOf(b));
   const freq=dias.length?dias.length:Math.max(1,parseInt(document.getElementById('rota-modal-freq').value,10)||1);

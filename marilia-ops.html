@@ -757,7 +757,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-05-13:30';
+const BUILD_VERSION='2026-10-05-14:10';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -2745,6 +2745,68 @@ async function cronNucleo(cfg){
 }
 
 
+// Agrupa os turnos de um cliente em o MENOR número de horários de visita: cada visita cai numa
+// janela em que dois ou mais turnos estão ativos ao mesmo tempo (ex.: 05:00–13:25 e 08:00–17:00 → uma
+// visita às 09:30 cobre os dois). Margem de 30 min após a entrada / antes da saída de cada turno.
+function _min(h){ const a=String(h||'0:0').split(':'); return (parseInt(a[0],10)||0)*60+(parseInt(a[1],10)||0); }
+function _fmtMin(m){ m=((Math.round(m)%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+function _minNoite(m){ return m>=1080||m<360; }
+function planVisitas(turnos,margem){
+  const n=turnos.length; if(!n)return [];
+  margem=margem==null?30:margem;
+  const wins=turnos.map(t=>{
+    const s=_min(t.horaEntrada); let e=t.horaSaida?_min(t.horaSaida):s+480;
+    if(e<=s)e+=1440;
+    const dur=e-s, m=dur>=2*margem+30?margem:Math.floor(dur/4);
+    return {s:s+m,e:e-m};
+  });
+  const step=5, L=1440/step, cov=[];
+  for(let x=0;x<1440;x+=step){
+    let mk=0;
+    wins.forEach((w,i)=>{ if((x>=w.s&&x<=w.e)||(x+1440>=w.s&&x+1440<=w.e))mk|=(1<<i); });
+    cov.push(mk);
+  }
+  const runs=[]; let st=-1;
+  for(let i=0;i<L;i++)if(cov[i]!==cov[(i+L-1)%L]){st=i;break;}
+  if(st<0)runs.push({mk:cov[0],ini:0,len:L});
+  else{ let i=0; while(i<L){ const a=(st+i)%L, mk=cov[a]; let len=1; while(i+len<L&&cov[(st+i+len)%L]===mk)len++; runs.push({mk,ini:a,len}); i+=len; } }
+  const porMask={};
+  runs.forEach(r=>{ if(r.mk&&(!porMask[r.mk]||porMask[r.mk].len<r.len))porMask[r.mk]=r; });
+  const cands=Object.values(porMask).map(r=>{
+    let min=((r.ini+Math.floor(r.len/2))*step)%1440;
+    if(min<300||min>=1380){
+      for(let j=0;j<r.len;j++){ const m=((r.ini+j)*step)%1440; if(m>=1200){min=m;break;} }
+    }
+    return {mk:r.mk,len:r.len,min};
+  });
+  const full=(1<<n)-1;
+  let best=null;
+  for(let k=1;k<=Math.min(n,cands.length)&&!best;k++){
+    (function rec(from,pick,uni){
+      if(pick.length===k){
+        if(uni!==full)return;
+        const noite=pick.filter(c=>_minNoite(c.min)).length, tot=pick.reduce((a,c)=>a+c.len,0);
+        const sc=noite*100000-tot;
+        if(!best||sc<best.sc)best={sc,pick:pick.slice()};
+        return;
+      }
+      for(let i=from;i<cands.length;i++){ pick.push(cands[i]); rec(i+1,pick,uni|cands[i].mk); pick.pop(); }
+    })(0,[],0);
+  }
+  let visitas=best?best.pick.map(c=>({min:c.min,mk:c.mk})):[];
+  // turnos que nenhuma janela alcançou (turno muito curto): visita própria na entrada
+  let uni=0; visitas.forEach(v=>{uni|=v.mk;});
+  for(let i=0;i<n;i++)if(!(uni&(1<<i)))visitas.push({min:_min(turnos[i].horaEntrada),mk:1<<i});
+  return visitas.map(v=>({min:v.min,hora:_fmtMin(v.min),turnos:turnos.filter((_,i)=>v.mk&(1<<i))})).sort((a,b)=>a.min-b.min);
+}
+function visitaTxt(it){
+  if(it&&it.turnos&&it.turnos.length)return 'horário sugerido '+it.hora+' · '+it.turnos.map(turnoTxt).join(' + ');
+  return it&&it.turno?turnoTxt(it.turno):'';
+}
+function visitaCurto(it){
+  if(it&&it.turnos&&it.turnos.length)return '~'+it.hora+' · '+it.turnos.map(x=>x.nome+' '+x.horaEntrada).join(' + ');
+  return it&&it.turno?turnoTxt(it.turno):'';
+}
 const CRON_DOW_PADRAO={1:[3],2:[2,4],3:[1,3,5],4:[1,2,4,5],5:[1,2,3,4,5],6:[1,2,3,4,5,6]};
 function cronAtivo(sup){return !!(sup&&sup.cronograma&&sup.cronograma.itens&&sup.cronograma.itens.length);}
 function rotaNoCron(sup,r){return cronAtivo(sup)&&sup.cronograma.itens.some(i=>i.rotaId===r.id);}
@@ -2858,20 +2920,21 @@ async function _cronGerar(sup,o,seed,onMsg){
   }
   const coords=rotas.map(rotaCoords);
   const dist=rotas.map((_,i)=>rotas.map((_,j)=>(i===j||!coords[i]||!coords[j])?0:kmEntre(coords[i],coords[j])));
-  const turnos=rotas.map(r=>{
+  // Cada cliente → horários de visita que cobrem todos os turnos dele com o mínimo de visitas
+  const grupos=rotas.map(r=>{
     if(!o.alt)return [];
-    let t=rotaTurnos(r);
-    if(!o.noite){ const f=t.filter(x=>turnoBucket(x)!==2); if(f.length)t=f; }
-    return t;
+    let g=planVisitas(rotaTurnos(r));
+    if(!o.noite){ const f=g.filter(x=>!_minNoite(x.min)); if(f.length)g=f; }
+    return g;
   });
-  // Cada cliente recebe T/N visitas; as que sobram vão para quem tem mais turnos a cobrir.
+  // Cada cliente recebe T/N visitas; as que sobram vão para quem tem mais horários a cobrir.
   const base=Math.floor(T/N), extra=T-base*N;
-  const prio=[...Array(N).keys()].sort((a,b)=>(turnos[b].length-turnos[a].length)||(((a+seed)%N)-((b+seed)%N)));
+  const prio=[...Array(N).keys()].sort((a,b)=>(grupos[b].length-grupos[a].length)||(((a+seed)%N)-((b+seed)%N)));
   const cont=new Array(N).fill(base); prio.slice(0,extra).forEach(i=>{cont[i]++;});
   const inst=[];
   for(let i=0;i<N;i++)for(let k=0;k<cont[i];k++){
-    const tl=turnos[i], t=tl.length?tl[(k+seed+i)%tl.length]:null;
-    inst.push({cli:i,bucket:t?turnoBucket(t):-1,turno:t});
+    const gl=grupos[i], g=gl.length?gl[(k+seed+i)%gl.length]:null;
+    inst.push({cli:i,bucket:g?Math.floor(g.min/90):-1,grupo:g});
   }
   let res=null;
   for(let a=0;a<3;a++){
@@ -2881,7 +2944,7 @@ async function _cronGerar(sup,o,seed,onMsg){
   const dowL=CRON_DOW_PADRAO[D], itens=[];
   res.dias.forEach(dia=>dia.ordem.forEach((id,k)=>{
     const x=inst[id];
-    itens.push({w:dia.w,d:dia.d,dow:dowL[dia.d],ordem:k+1,rotaId:rotas[x.cli].id,turno:x.turno?{nome:x.turno.nome,horaEntrada:x.turno.horaEntrada,horaSaida:x.turno.horaSaida}:null});
+    itens.push({w:dia.w,d:dia.d,dow:dowL[dia.d],ordem:k+1,rotaId:rotas[x.cli].id,turno:null,hora:x.grupo?x.grupo.hora:null,turnos:x.grupo?x.grupo.turnos.map(q=>({nome:q.nome,horaEntrada:q.horaEntrada,horaSaida:q.horaSaida})):null});
   }));
   const hoje=today(), seg=weekStart(hoje);
   let inicio=seg;
@@ -2890,7 +2953,8 @@ async function _cronGerar(sup,o,seed,onMsg){
   return {
     cron:{versao:1,geradoEm:hoje,inicio,semanas:W,D,V,consumo:o.consumo,seed,itens,
       resumo:{kmCiclo:Math.round(res.kmCiclo*10)/10,kmSemana:Math.round(res.kmCiclo/W*10)/10,economiaPct:economia,
-        semCoord:rotas.filter((r,i)=>!coords[i]).map(rotaLabel)}},
+        semCoord:rotas.filter((r,i)=>!coords[i]).map(rotaLabel),
+        grupos:rotas.map((r,i)=>({nome:rotaLabel(r),turnos:rotaTurnos(r).length,horarios:grupos[i].map(g=>g.hora)})).filter(x=>x.turnos>1&&x.horarios.length)}},
     dias:res.dias
   };
 }
@@ -2968,6 +3032,7 @@ function _cronMostra(sup,r){
   h+='Deslocamento entre clientes: <b>'+fmtNum(rs.kmCiclo)+' km</b> no ciclo (<b>'+fmtNum(rs.kmSemana)+' km/semana</b>) · ≈ '+fmtNum(rs.kmSemana/c.consumo)+' L de combustível por semana';
   h+='<br>'+(rs.economiaPct>0?'<b>'+rs.economiaPct+'% menos</b> deslocamento que um rodízio sem otimização.':'Sem ganho de deslocamento sobre um rodízio simples (clientes muito próximos ou sem localização).');
   h+='<br><span style="color:var(--text2)">Começa na semana de '+dateFmt(c.inicio)+'. Distâncias estimadas (linha reta × 1,3), sem contar a saída de/para a base.</span>';
+  if(rs.grupos&&rs.grupos.length)h+='<div style="margin-top:6px"><b>Turnos agrupados por visita:</b>'+rs.grupos.map(g=>'<div style="padding-left:12px">'+supEsc(g.nome)+': '+g.turnos+' turnos cobertos com '+g.horarios.length+' horário(s) de visita ('+g.horarios.join(', ')+')</div>').join('')+'</div>';
   if(rs.semCoord.length)h+='<div style="color:var(--warn);margin-top:4px"><i class="ti ti-alert-triangle"></i> Sem localização (tratados como "perto de todos"): '+supEsc(rs.semCoord.join(', '))+'. Cadastre o endereço no cliente para melhorar o resultado.</div>';
   h+='</div>';
   for(let w=0;w<c.semanas;w++){
@@ -2976,7 +3041,7 @@ function _cronMostra(sup,r){
       const its=c.itens.filter(i=>i.w===w&&i.d===d).sort((a,b)=>a.ordem-b.ordem);
       const km=r.dias.find(x=>x.w===w&&x.d===d);
       h+='<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12px"><b>'+DIAS_CURTO[its[0]?its[0].dow:CRON_DOW_PADRAO[c.D][d]]+'</b> <span style="color:var(--text3)">· '+(km?fmtNum(km.km):'0')+' km</span>';
-      its.forEach(i=>{ const rr=porId[i.rotaId]; h+='<div style="padding-left:12px;color:var(--text)">'+i.ordem+'. '+supEsc(rr?rotaLabel(rr):'?')+(i.turno?' <span style="color:var(--text2)">· '+supEsc(turnoTxt(i.turno))+'</span>':'')+'</div>'; });
+      its.forEach(i=>{ const rr=porId[i.rotaId]; h+='<div style="padding-left:12px;color:var(--text)">'+i.ordem+'. '+supEsc(rr?rotaLabel(rr):'?')+(visitaTxt(i)?' <span style="color:var(--text2)">· '+supEsc(visitaTxt(i))+'</span>':'')+'</div>'; });
       h+='</div>';
     }
     h+='</div>';
@@ -3069,7 +3134,7 @@ const CRONO_ICONE={feito:'ti-circle-check',hoje:'ti-clock',perdida:'ti-circle-x'
 function cronoChip(it){
   const r=it.r;
   const sub=[];
-  if(it.ag&&it.ag.turno)sub.push(turnoTxt(it.ag.turno));
+  if(it.ag&&!it.ag.legacy){const v=visitaCurto(it.ag);if(v)sub.push(v);}
   if(it.st==='feito')sub.push(it.hora?'visitado '+it.hora:'visitado');
   else if(it.st==='hoje')sub.push('pendente hoje');
   else if(it.st==='perdida')sub.push('não visitado');
@@ -3439,7 +3504,7 @@ function renderSupervisoresCheckin(){
     let h='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--border)">';
     h+='<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+supEsc(rotaLabel(r))+(r.avulso?' <span class="badge b-warn" style="margin-left:4px">não cadastrado</span>':'')+'</div>';
     const ag=agItem(r);
-    const agTxt=ag&&!ag.legacy?(ag.ordem+'ª visita do dia'+(ag.turno?' · '+turnoTxt(ag.turno):'')):'';
+    const agTxt=ag&&!ag.legacy?(ag.ordem+'ª visita do dia'+(visitaTxt(ag)?' · '+visitaTxt(ag):'')):'';
     h+='<div style="font-size:11px;color:var(--text2)">'+(agTxt?'<b style="color:var(--cyan)">'+supEsc(agTxt)+'</b>':supEsc(rotaDiasTxt(r,sup)))+(end?' · '+supEsc(end):'')+'</div></div>';
     if(f){
       h+='<div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><span class="badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)"><i class="ti ti-check" style="font-size:11px"></i> '+(f.hora?supEsc(f.hora):'visitado')+'</span>';

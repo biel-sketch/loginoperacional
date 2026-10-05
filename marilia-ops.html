@@ -669,6 +669,31 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
   </div>
 </div>
 
+<!-- Modal Gerar Cronograma -->
+<div id="cron-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeCronModal()">
+  <div class="modal-box" style="max-height:92vh;overflow-y:auto;max-width:560px">
+    <div class="modal-title"><i class="ti ti-wand" style="color:var(--cyan)"></i>Gerar cronograma automático</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Supervisor: <b id="cron-modal-sup-lbl" style="color:var(--text)"></b> · rodízio de 4 semanas, clientes próximos agrupados no mesmo dia e trajeto de menor deslocamento.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>Dias de visita por semana</label><input type="number" id="cron-dias" min="1" max="6" value="3" oninput="_cronInvalida()"></div>
+      <div class="field"><label>Visitas por dia</label><input type="number" id="cron-vis" min="1" max="6" value="2" oninput="_cronInvalida()"></div>
+      <div class="field"><label>Consumo do veículo (km/l)</label><input type="number" id="cron-consumo" min="1" step="0.5" value="10" oninput="_cronInvalida()"></div>
+      <div class="field"><label>Início do rodízio</label><select id="cron-inicio" onchange="_cronInvalida()"><option value="atual">Esta semana</option><option value="proxima">Próxima semana</option></select></div>
+    </div>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0;cursor:pointer"><input type="checkbox" id="cron-alt" checked onchange="_cronInvalida()" style="margin-top:2px"> <span>Visitar cada cliente nos turnos dele (1º, 2º, 3º), alternando o turno a cada visita</span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0;cursor:pointer"><input type="checkbox" id="cron-noite" checked onchange="_cronInvalida()" style="margin-top:2px"> <span>Incluir turnos da noite</span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0;cursor:pointer"><input type="checkbox" id="cron-geo" checked onchange="_cronInvalida()" style="margin-top:2px"> <span>Buscar no mapa a localização dos clientes que ainda não têm coordenadas (pode levar alguns segundos)</span></label>
+    <div id="cron-resumo-form" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6"></div>
+    <div id="cron-progresso" style="font-size:12px;color:var(--cyan);margin-top:8px"></div>
+    <div id="cron-resultado"></div>
+    <div class="modal-btns">
+      <button class="modal-btn-primary" id="cron-btn-gerar" onclick="cronGerarClick()"><i class="ti ti-wand" style="font-size:14px"></i> Gerar cronograma</button>
+      <button class="modal-btn-primary" id="cron-btn-salvar" style="display:none;background:var(--green)" onclick="salvarCronograma()"><i class="ti ti-check" style="font-size:14px"></i> Salvar cronograma</button>
+      <button class="modal-btn-ghost" onclick="closeCronModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Atestado / Afastamento -->
 <div id="afast-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeAfastModal()">
   <div class="modal-box">
@@ -728,7 +753,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-05-11:20';
+const BUILD_VERSION='2026-10-05-13:05';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -2536,7 +2561,11 @@ function rotaLabel(r){
 function rotaPrevistoSemana(r){ return (r.dias&&r.dias.length)?r.dias.length:(Number(r.frequenciaSemanal)||0); }
 // Check-ins novos guardam rotaId; os antigos só tinham postoId.
 function rotaMatchCheckin(r,c){ return c.rotaId?c.rotaId===r.id:(!r.avulso&&c.postoId===r.postoId); }
-function rotaDiasTxt(r){
+function rotaDiasTxt(r,sup){
+  if(sup&&rotaNoCron(sup,r)){
+    const n=sup.cronograma.itens.filter(i=>i.rotaId===r.id).length;
+    return 'Cronograma automático · '+n+' visita(s) a cada '+sup.cronograma.semanas+' semanas';
+  }
   if(r.dias&&r.dias.length)return DIAS_ORDEM.filter(d=>r.dias.includes(d)).map(d=>DIAS_CURTO[d]).join(', ');
   return (Number(r.frequenciaSemanal)||0)+' visita(s)/semana · sem dia fixo';
 }
@@ -2583,6 +2612,397 @@ function renderSupervisoresScreen(){
   setSupervisoresView(supervisoresView);
 }
 
+// --- Gerador automático de cronograma ---
+// sup.cronograma = {versao,geradoEm,inicio(segunda),semanas,D,V,consumo,itens:[{w,d,dow,ordem,rotaId,turno}],resumo}
+// O supervisor/gestor informa só a quantidade de dias/semana e visitas/dia; o sistema monta um rodízio
+// de 4 semanas (clientes trocam de dia e de companhia a cada semana), agrupando clientes próximos e
+// ordenando as visitas do dia pelo menor trajeto, respeitando a ordem dos turnos de cada cliente.
+// === GERADOR DE CRONOGRAMA — NÚCLEO (puro, sem DOM/estado) ===
+// Monta um rodízio de W semanas (D dias/semana × V visitas/dia) distribuindo as visitas dos
+// clientes pelos dias de modo que (1) o deslocamento total seja o menor possível (cada dia
+// agrupa clientes próximos e a ordem das visitas é o menor caminho), (2) todos os clientes
+// recebam a mesma frequência, (3) as semanas não se repitam (clientes trocam de dia e de
+// companhia a cada semana) e (4) as visitas respeitem a ordem dos turnos do cliente
+// (manhã → tarde → noite) dentro do dia.
+// Metaheurística: recozimento simulado (simulated annealing) sobre a troca de visitas entre
+// posições do ciclo; o custo de cada dia é o caminho mínimo exato (≤ 6 pontos).
+function _rng(seed){
+  let a=(seed>>>0)||1;
+  return function(){ a|=0;a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
+}
+async function cronNucleo(cfg){
+  const {nCli,dist,inst,W,D,V}=cfg;
+  const rnd=_rng(cfg.seed||1);
+  const nDias=W*D, nSlots=nDias*V;
+  const cnt=new Array(nCli).fill(0); inst.forEach(x=>{cnt[x.cli]++;});
+  const cap=cnt.map(c=>Math.ceil(c/W));
+  // escala das distâncias: pesos de "variedade" proporcionais ao tamanho típico de um deslocamento
+  let soma=0,n=0;
+  for(let i=0;i<nCli;i++)for(let j=i+1;j<nCli;j++){ if(dist[i][j]>0){soma+=dist[i][j];n++;} }
+  const escala=n?soma/n:5;
+  const DUP=1000, CAP=300, REP=0.5*escala, SAME=1.5*escala;
+
+  const memo=new Map();
+  function pathDia(ids){
+    const key=ids.slice().sort((a,b)=>a-b).join(',');
+    const m0=memo.get(key); if(m0)return m0;
+    const k=ids.length;
+    let res;
+    if(k<=1){ res={km:0,ordem:ids.slice()}; }
+    else{
+      let best=Infinity,bestOrd=null;
+      const used=new Array(k).fill(false), ord=[];
+      (function rec(lastK,lastB,acc){
+        if(acc>=best)return;
+        if(ord.length===k){best=acc;bestOrd=ord.slice();return;}
+        for(let x=0;x<k;x++){
+          if(used[x])continue;
+          const b=inst[ids[x]].bucket;
+          if(b>=0&&b<lastB)continue;
+          used[x]=true;ord.push(ids[x]);
+          const add=lastK<0?0:dist[inst[ids[lastK]].cli][inst[ids[x]].cli];
+          rec(x,b>=0?b:lastB,acc+add);
+          ord.pop();used[x]=false;
+        }
+      })(-1,-1,0);
+      res={km:best,ordem:bestOrd};
+    }
+    memo.set(key,res);
+    return res;
+  }
+  const wk=new Int32Array(nCli*W), mask=new Int32Array(nCli*W);
+  function custo(slots){
+    wk.fill(0);mask.fill(0);
+    let km=0,pen=0,viol=0;
+    const keys=new Array(nDias);
+    for(let dI=0;dI<nDias;dI++){
+      const w=(dI/D)|0, d=dI%D;
+      const ids=slots.slice(dI*V,dI*V+V);
+      km+=pathDia(ids).km;
+      const cl=ids.map(id=>inst[id].cli);
+      for(let a=0;a<V;a++)for(let b=a+1;b<V;b++) if(cl[a]===cl[b]){pen+=DUP;viol++;}
+      for(const c of cl){ wk[c*W+w]++; mask[c*W+w]|=(1<<d); }
+      keys[dI]=cl.slice().sort((a,b)=>a-b).join(',');
+    }
+    for(let c=0;c<nCli;c++){
+      for(let w=0;w<W;w++){ const ex=wk[c*W+w]-cap[c]; if(ex>0){pen+=CAP*ex;viol+=ex;} }
+      if(W>1&&cnt[c]>1){
+        for(let w=0;w<W;w++){
+          const nx=(w+1)%W; if(nx===w)continue;
+          let s=mask[c*W+w]&mask[c*W+nx], pc=0; while(s){pc+=s&1;s>>=1;}
+          pen+=REP*pc;
+        }
+      }
+    }
+    for(let d=0;d<D;d++)for(let w1=0;w1<W;w1++)for(let w2=w1+1;w2<W;w2++){
+      if(keys[w1*D+d]===keys[w2*D+d])pen+=SAME;
+    }
+    return {km,pen,viol,total:km+pen};
+  }
+
+  // Solução inicial: rodadas (1ª visita de cada cliente, depois 2ª...) preenchendo os dias em ordem
+  const porCli=[]; for(let c=0;c<nCli;c++)porCli.push([]);
+  inst.forEach((x,id)=>porCli[x.cli].push(id));
+  const ordemCli=[...Array(nCli).keys()];
+  for(let i=nCli-1;i>0;i--){const j=(rnd()*(i+1))|0;[ordemCli[i],ordemCli[j]]=[ordemCli[j],ordemCli[i]];}
+  const fila=[]; const maxc=Math.max(...cnt);
+  for(let k=0;k<maxc;k++)ordemCli.forEach(c=>{ if(porCli[c][k]!==undefined)fila.push(porCli[c][k]); });
+  let cur=fila.slice();
+  // baseline: média de distribuições aleatórias (sem otimização)
+  let base=0; const B=60;
+  for(let b=0;b<B;b++){
+    const s=cur.slice();
+    for(let i=s.length-1;i>0;i--){const j=(rnd()*(i+1))|0;[s[i],s[j]]=[s[j],s[i]];}
+    base+=custo(s).km;
+  }
+  base/=B;
+
+  let curC=custo(cur).total, best=cur.slice(), bestC=curC;
+  const iters=cfg.iter||Math.min(60000,8000+nSlots*600);
+  const T0=Math.max(1,escala*1.5), Tend=0.02;
+  for(let it=0;it<iters;it++){
+    const t=T0*Math.pow(Tend/T0,it/iters);
+    const p=(rnd()*nSlots)|0, q=(rnd()*nSlots)|0;
+    if(((p/V)|0)===((q/V)|0))continue;
+    const tmp=cur[p];cur[p]=cur[q];cur[q]=tmp;
+    const c=custo(cur).total, delta=c-curC;
+    if(delta<=0||rnd()<Math.exp(-delta/t)){
+      curC=c; if(c<bestC){bestC=c;best=cur.slice();}
+    }else{ cur[q]=cur[p];cur[p]=tmp; }
+    if(cfg.onProgress&&it%1500===0){ cfg.onProgress(it/iters); await new Promise(r=>setTimeout(r,0)); }
+  }
+  const fin=custo(best);
+  const dias=[];
+  for(let dI=0;dI<nDias;dI++){
+    const ids=best.slice(dI*V,dI*V+V), pd=pathDia(ids);
+    dias.push({w:(dI/D)|0,d:dI%D,ordem:pd.ordem,km:pd.km});
+  }
+  return {slots:best,kmCiclo:fin.km,kmBase:base,viol:fin.viol,dias};
+}
+
+
+const CRON_DOW_PADRAO={1:[3],2:[2,4],3:[1,3,5],4:[1,2,4,5],5:[1,2,3,4,5],6:[1,2,3,4,5,6]};
+function cronAtivo(sup){return !!(sup&&sup.cronograma&&sup.cronograma.itens&&sup.cronograma.itens.length);}
+function rotaNoCron(sup,r){return cronAtivo(sup)&&sup.cronograma.itens.some(i=>i.rotaId===r.id);}
+function rotaProgramada(sup,r){return rotaNoCron(sup,r)||!!(r.dias&&r.dias.length);}
+function cronSemanaIdx(sup,date){
+  const c=sup.cronograma;
+  const diff=Math.round((new Date(weekStart(date)+'T12:00')-new Date(c.inicio+'T12:00'))/(7*86400000));
+  return diff<0?-1:diff%(c.semanas||4);
+}
+// O que está previsto para esse cliente nesse dia: item do cronograma automático ou, se o cliente
+// tem dias fixos antigos (ou o rodízio ainda não começou), o dia fixo.
+function agendaItem(sup,r,date){
+  const dow=new Date(date+'T12:00').getDay();
+  if(rotaNoCron(sup,r)){
+    const w=cronSemanaIdx(sup,date);
+    if(w>=0)return sup.cronograma.itens.find(i=>i.rotaId===r.id&&i.w===w&&i.dow===dow)||null;
+  }
+  return (r.dias&&r.dias.includes(dow))?{legacy:true,ordem:99,turno:null}:null;
+}
+function previstoSemanaRota(sup,r,dates){
+  return rotaProgramada(sup,r)?dates.filter(d=>!!agendaItem(sup,r,d)).length:(Number(r.frequenciaSemanal)||0);
+}
+function rotaPrevistoMedio(sup,r){
+  if(rotaNoCron(sup,r))return sup.cronograma.itens.filter(i=>i.rotaId===r.id).length/(sup.cronograma.semanas||4);
+  return rotaPrevistoSemana(r);
+}
+function fmtNum(n){ return String(Math.round(n*10)/10).replace('.',','); }
+function cronDesatualizado(sup){
+  return cronAtivo(sup)?(sup.rota||[]).filter(r=>!rotaNoCron(sup,r)):[];
+}
+function turnoTxt(t){ return t?(t.nome+(t.horaEntrada?' ('+t.horaEntrada+(t.horaSaida?'–'+t.horaSaida:'')+')':'')):''; }
+function turnoBucket(t){
+  const h=parseInt(String(t.horaEntrada||'0').slice(0,2),10)||0;
+  return h<6?2:(h<12?0:(h<18?1:2));
+}
+function _coordOk(o){return !!o&&typeof o.lat==='number'&&typeof o.lng==='number'&&isFinite(o.lat)&&isFinite(o.lng);}
+function rotaCoords(r){
+  if(r.avulso)return _coordOk(r)?{lat:r.lat,lng:r.lng}:null;
+  const f=findPosto(r.postoId); if(!f)return null;
+  if(_coordOk(f.posto.endereco))return f.posto.endereco;
+  if(_coordOk(f.cliente.endereco))return f.cliente.endereco;
+  return null;
+}
+// Turnos distintos do posto (união dos turnos de todos os cargos), em ordem de horário de entrada.
+function rotaTurnos(r){
+  if(r.avulso)return [];
+  const f=findPosto(r.postoId); if(!f)return [];
+  const seen={},out=[];
+  (f.posto.cargos||[]).forEach(cg=>cargoTurnos(cg).forEach(t=>{
+    if(!t.horaEntrada)return;
+    const k=t.horaEntrada+'-'+(t.horaSaida||'');
+    if(seen[k])return; seen[k]=1;
+    out.push({nome:t.nome||'Turno',horaEntrada:t.horaEntrada,horaSaida:t.horaSaida||''});
+  }));
+  out.sort((a,b)=>a.horaEntrada<b.horaEntrada?-1:(a.horaEntrada>b.horaEntrada?1:0));
+  return out;
+}
+// Distância estimada por estrada: linha reta (haversine) × 1,3
+function kmEntre(a,b){
+  const R=6371,rad=x=>x*Math.PI/180;
+  const dLa=rad(b.lat-a.lat),dLo=rad(b.lng-a.lng);
+  const h=Math.sin(dLa/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h))*1.3;
+}
+const _sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function _nominatim(q){
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q='+encodeURIComponent(q));
+    if(!r.ok)return null;
+    const arr=await r.json();
+    if(!arr||!arr.length)return null;
+    return{lat:parseFloat(arr[0].lat),lng:parseFloat(arr[0].lon)};
+  }catch(e){return null;}
+}
+// Localiza o cliente no mapa: endereço completo → sem número → bairro/cidade → CEP.
+// As coordenadas ficam salvas no próprio endereço (não precisa buscar de novo).
+async function geocodeRota(r){
+  let alvo,qs=[];
+  if(r.avulso){ alvo=r; if(r.endereco)qs.push(r.endereco+', Brasil'); }
+  else{
+    const f=findPosto(r.postoId); if(!f)return false;
+    const e=(f.posto.endereco&&(f.posto.endereco.logradouro||f.posto.endereco.municipio))?f.posto.endereco:f.cliente.endereco;
+    if(!e)return false;
+    alvo=e;
+    qs.push([e.logradouro,e.numero,e.bairro,e.municipio,e.uf,'Brasil'].filter(Boolean).join(', '));
+    qs.push([e.logradouro,e.municipio,e.uf,'Brasil'].filter(Boolean).join(', '));
+    qs.push([e.bairro,e.municipio,e.uf,'Brasil'].filter(Boolean).join(', '));
+    if(e.cep)qs.push(e.cep+', Brasil');
+  }
+  const vistos=new Set();
+  for(const q of qs){
+    if(!q||vistos.has(q))continue; vistos.add(q);
+    const g=await _nominatim(q); await _sleep(1100);
+    if(g){alvo.lat=g.lat;alvo.lng=g.lng;return true;}
+  }
+  return false;
+}
+async function _cronGerar(sup,o,seed,onMsg){
+  const rotas=sup.rota||[], N=rotas.length, W=o.W, D=o.D, V=o.V, T=W*D*V;
+  if(o.geo){
+    const faltam=rotas.filter(r=>!rotaCoords(r));
+    let i=0;
+    for(const r of faltam){ i++; onMsg('Localizando clientes no mapa ('+i+'/'+faltam.length+')…'); await geocodeRota(r); }
+  }
+  const coords=rotas.map(rotaCoords);
+  const dist=rotas.map((_,i)=>rotas.map((_,j)=>(i===j||!coords[i]||!coords[j])?0:kmEntre(coords[i],coords[j])));
+  const turnos=rotas.map(r=>{
+    if(!o.alt)return [];
+    let t=rotaTurnos(r);
+    if(!o.noite){ const f=t.filter(x=>turnoBucket(x)!==2); if(f.length)t=f; }
+    return t;
+  });
+  // Cada cliente recebe T/N visitas; as que sobram vão para quem tem mais turnos a cobrir.
+  const base=Math.floor(T/N), extra=T-base*N;
+  const prio=[...Array(N).keys()].sort((a,b)=>(turnos[b].length-turnos[a].length)||(((a+seed)%N)-((b+seed)%N)));
+  const cont=new Array(N).fill(base); prio.slice(0,extra).forEach(i=>{cont[i]++;});
+  const inst=[];
+  for(let i=0;i<N;i++)for(let k=0;k<cont[i];k++){
+    const tl=turnos[i], t=tl.length?tl[(k+seed+i)%tl.length]:null;
+    inst.push({cli:i,bucket:t?turnoBucket(t):-1,turno:t});
+  }
+  let res=null;
+  for(let a=0;a<3;a++){
+    res=await cronNucleo({nCli:N,dist,inst,W,D,V,seed:seed+a*7919,onProgress:p=>onMsg('Otimizando trajetos… '+Math.round(p*100)+'%')});
+    if(res.viol===0)break;
+  }
+  const dowL=CRON_DOW_PADRAO[D], itens=[];
+  res.dias.forEach(dia=>dia.ordem.forEach((id,k)=>{
+    const x=inst[id];
+    itens.push({w:dia.w,d:dia.d,dow:dowL[dia.d],ordem:k+1,rotaId:rotas[x.cli].id,turno:x.turno?{nome:x.turno.nome,horaEntrada:x.turno.horaEntrada,horaSaida:x.turno.horaSaida}:null});
+  }));
+  const hoje=today(), seg=weekStart(hoje);
+  let inicio=seg;
+  if(o.proxima){ const d=new Date(seg+'T12:00'); d.setDate(d.getDate()+7); inicio=fmtYMD(d); }
+  const economia=res.kmBase>0?Math.max(0,Math.round((res.kmBase-res.kmCiclo)/res.kmBase*100)):0;
+  return {
+    cron:{versao:1,geradoEm:hoje,inicio,semanas:W,D,V,consumo:o.consumo,seed,itens,
+      resumo:{kmCiclo:Math.round(res.kmCiclo*10)/10,kmSemana:Math.round(res.kmCiclo/W*10)/10,economiaPct:economia,
+        semCoord:rotas.filter((r,i)=>!coords[i]).map(rotaLabel)}},
+    dias:res.dias
+  };
+}
+
+let _cronSupId=null,_cronSeed=1,_cronPrev=null,_cronBusy=false;
+function abrirCronModal(supId){
+  if(!podeEditarSupervisores()){showToast('Apenas administradores/gestores podem gerar cronogramas.','err');return;}
+  const sup=findSupervisor(supId); if(!sup)return;
+  if(!(sup.rota||[]).length){showToast('Adicione clientes à rota antes de gerar o cronograma.','warn');return;}
+  _cronSupId=supId;_cronSeed=1;_cronPrev=null;_cronBusy=false;
+  const c=sup.cronograma;
+  const N=sup.rota.length;
+  document.getElementById('cron-modal-sup-lbl').textContent=sup.nome;
+  document.getElementById('cron-dias').value=c?c.D:Math.min(5,Math.max(1,Math.ceil(N/2)));
+  document.getElementById('cron-vis').value=c?c.V:Math.min(N,2);
+  document.getElementById('cron-consumo').value=c&&c.consumo?c.consumo:10;
+  document.getElementById('cron-alt').checked=true;
+  document.getElementById('cron-noite').checked=true;
+  document.getElementById('cron-geo').checked=true;
+  document.getElementById('cron-inicio').value=(new Date().getDay()===0||new Date().getDay()>=4)?'proxima':'atual';
+  document.getElementById('cron-modal').style.display='flex';
+  _cronInvalida();
+}
+function closeCronModal(){ if(_cronBusy)return; document.getElementById('cron-modal').style.display='none'; }
+function _cronOpts(sup){
+  const N=(sup.rota||[]).length;
+  const D=Math.min(6,Math.max(1,parseInt(document.getElementById('cron-dias').value,10)||1));
+  const V=Math.min(6,N,Math.max(1,parseInt(document.getElementById('cron-vis').value,10)||1));
+  return {W:4,D,V,N,T:4*D*V,consumo:Math.max(1,parseFloat(String(document.getElementById('cron-consumo').value).replace(',','.'))||10),
+    alt:document.getElementById('cron-alt').checked,noite:document.getElementById('cron-noite').checked,
+    geo:document.getElementById('cron-geo').checked,proxima:document.getElementById('cron-inicio').value==='proxima'};
+}
+// Qualquer mudança nos campos invalida o resultado já mostrado
+function _cronInvalida(){
+  _cronPrev=null;
+  const sup=findSupervisor(_cronSupId); if(!sup)return;
+  const o=_cronOpts(sup);
+  const el=document.getElementById('cron-resumo-form');
+  const falta=o.T<o.N;
+  el.innerHTML='<b>'+o.N+'</b> cliente(s) · <b>'+o.T+'</b> visitas no ciclo de 4 semanas'+(falta?'':' · cada cliente é visitado cerca de <b>'+fmtNum(o.T/o.N)+'</b>× no ciclo ('+fmtNum(o.T/o.N/4)+'×/semana)')+
+    (falta?'<div style="color:var(--red);margin-top:4px">Poucas visitas para cobrir todos os clientes: aumente os dias por semana ou as visitas por dia (mínimo '+o.N+' visitas no ciclo).</div>':'');
+  document.getElementById('cron-resultado').innerHTML='';
+  document.getElementById('cron-progresso').textContent='';
+  document.getElementById('cron-btn-gerar').innerHTML='<i class="ti ti-wand" style="font-size:14px"></i> Gerar cronograma';
+  document.getElementById('cron-btn-gerar').disabled=falta;
+  document.getElementById('cron-btn-salvar').style.display='none';
+}
+async function cronGerarClick(){
+  if(_cronBusy)return;
+  const sup=findSupervisor(_cronSupId); if(!sup)return;
+  const o=_cronOpts(sup);
+  if(o.T<o.N)return;
+  _cronBusy=true;
+  const bG=document.getElementById('cron-btn-gerar'), bS=document.getElementById('cron-btn-salvar');
+  const prog=document.getElementById('cron-progresso');
+  bG.disabled=true;bS.style.display='none';
+  const variacao=!!_cronPrev; if(variacao)_cronSeed++;
+  try{
+    const r=await _cronGerar(sup,o,_cronSeed,m=>{prog.textContent=m;});
+    _cronPrev=r;
+    prog.textContent='';
+    _cronMostra(sup,r);
+    bS.style.display='';
+    bG.innerHTML='<i class="ti ti-refresh" style="font-size:14px"></i> Gerar outra variação';
+  }catch(e){
+    prog.innerHTML='<span style="color:var(--red)">Não foi possível gerar: '+supEsc(e.message||e)+'</span>';
+  }
+  _cronBusy=false;bG.disabled=false;
+}
+function _cronMostra(sup,r){
+  const c=r.cron, rs=c.resumo, rotas=sup.rota;
+  const porId={}; rotas.forEach(x=>{porId[x.id]=x;});
+  let h='<div style="padding:10px 12px;border:1px solid var(--green-bd);background:var(--green-bg);border-radius:8px;font-size:12px;line-height:1.7;margin-top:12px">';
+  h+='<b style="color:var(--green)"><i class="ti ti-route"></i> Resultado</b><br>';
+  h+='Deslocamento entre clientes: <b>'+fmtNum(rs.kmCiclo)+' km</b> no ciclo (<b>'+fmtNum(rs.kmSemana)+' km/semana</b>) · ≈ '+fmtNum(rs.kmSemana/c.consumo)+' L de combustível por semana';
+  h+='<br>'+(rs.economiaPct>0?'<b>'+rs.economiaPct+'% menos</b> deslocamento que um rodízio sem otimização.':'Sem ganho de deslocamento sobre um rodízio simples (clientes muito próximos ou sem localização).');
+  h+='<br><span style="color:var(--text2)">Começa na semana de '+dateFmt(c.inicio)+'. Distâncias estimadas (linha reta × 1,3), sem contar a saída de/para a base.</span>';
+  if(rs.semCoord.length)h+='<div style="color:var(--warn);margin-top:4px"><i class="ti ti-alert-triangle"></i> Sem localização (tratados como "perto de todos"): '+supEsc(rs.semCoord.join(', '))+'. Cadastre o endereço no cliente para melhorar o resultado.</div>';
+  h+='</div>';
+  for(let w=0;w<c.semanas;w++){
+    h+='<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Semana '+(w+1)+'</div>';
+    for(let d=0;d<c.D;d++){
+      const its=c.itens.filter(i=>i.w===w&&i.d===d).sort((a,b)=>a.ordem-b.ordem);
+      const km=r.dias.find(x=>x.w===w&&x.d===d);
+      h+='<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12px"><b>'+DIAS_CURTO[its[0]?its[0].dow:CRON_DOW_PADRAO[c.D][d]]+'</b> <span style="color:var(--text3)">· '+(km?fmtNum(km.km):'0')+' km</span>';
+      its.forEach(i=>{ const rr=porId[i.rotaId]; h+='<div style="padding-left:12px;color:var(--text)">'+i.ordem+'. '+supEsc(rr?rotaLabel(rr):'?')+(i.turno?' <span style="color:var(--text2)">· '+supEsc(turnoTxt(i.turno))+'</span>':'')+'</div>'; });
+      h+='</div>';
+    }
+    h+='</div>';
+  }
+  document.getElementById('cron-resultado').innerHTML=h;
+}
+async function salvarCronograma(){
+  if(!podeEditarSupervisores()||!_cronPrev||_cronBusy)return;
+  const sup=findSupervisor(_cronSupId); if(!sup)return;
+  sup.cronograma=_cronPrev.cron;
+  _cronPrev=null;
+  document.getElementById('cron-modal').style.display='none';
+  showToast('Cronograma salvo!','ok');
+  saveCache();await pushToCloud();
+  renderSupervisoresScreen();
+}
+async function removerCronograma(supId){
+  if(!podeEditarSupervisores())return;
+  const sup=findSupervisor(supId); if(!sup)return;
+  if(!confirm('Remover o cronograma automático de '+sup.nome+'? Os clientes voltam aos dias fixos cadastrados (se houver).'))return;
+  delete sup.cronograma;
+  showToast('Cronograma removido.','ok');
+  saveCache();await pushToCloud();renderSupervisores();
+}
+function _cronResumoHtml(sup,canEdit){
+  if(!cronAtivo(sup))return '';
+  const c=sup.cronograma, rs=c.resumo||{}, fora=cronDesatualizado(sup);
+  let h='<div style="margin-top:10px;padding:10px 12px;border:1px solid var(--cyan-bd);background:var(--cyan-bg);border-radius:8px;font-size:12px;line-height:1.6">';
+  h+='<b style="color:var(--cyan)"><i class="ti ti-calendar-repeat"></i> Cronograma automático</b> · rodízio de '+c.semanas+' semanas · '+c.D+' dia(s)/semana · '+c.V+' visita(s)/dia';
+  if(rs.kmSemana!=null)h+='<br>Deslocamento estimado: <b>'+fmtNum(rs.kmSemana)+' km/semana</b>'+(c.consumo?' (≈ '+fmtNum(rs.kmSemana/c.consumo)+' L)':'')+(rs.economiaPct>0?' · '+rs.economiaPct+'% menos que um rodízio sem otimização':'');
+  h+='<br><span style="color:var(--text2)">Gerado em '+dateFmt(c.geradoEm)+' · começa na semana de '+dateFmt(c.inicio)+'</span>';
+  if(fora.length)h+='<div style="color:var(--warn);margin-top:4px"><i class="ti ti-alert-triangle"></i> Fora do rodízio (adicionados depois): '+supEsc(fora.map(rotaLabel).join(', '))+'. Gere o cronograma novamente para incluí-los.</div>';
+  if(canEdit)h+='<div style="margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="removerCronograma(\''+sup.id+'\')"><i class="ti ti-trash"></i> Remover cronograma</button></div>';
+  h+='</div>';
+  return h;
+}
+
 // --- Cronograma (visão semanal de cada supervisor) ---
 let cronoSemanaMonday=null, cronoSupFiltro='todos';
 function navCronoSemana(delta){
@@ -2603,21 +3023,21 @@ function cronoCalc(sup,dates,hoje){
   let previstas=0,cumpridas=0,perdidas=0,hojePend=0;
   const semFixo=[];
   (sup.rota||[]).forEach(r=>{
-    const previsto=rotaPrevistoSemana(r);
-    const fixo=!!(r.dias&&r.dias.length);
+    const fixo=rotaProgramada(sup,r);
+    const previsto=previstoSemanaRota(sup,r,dates);
     let realizado=0,perdidasItem=0,extrasItem=0;
     dates.forEach(d=>{
       const feitos=checkinsDoDia(d,sup.id).filter(c=>rotaMatchCheckin(r,c));
       realizado+=feitos.length;
-      const dow=new Date(d+'T12:00').getDay();
-      if(fixo&&r.dias.includes(dow)){
+      const ag=fixo?agendaItem(sup,r,d):null;
+      if(ag){
         const st=feitos.length?'feito':(d>hoje?'futuro':(d===hoje?'hoje':'perdida'));
         if(st==='perdida')perdidasItem++;
         if(st==='hoje')hojePend++;
-        porDia[d].push({r,st,hora:feitos.length?feitos[0].hora:''});
+        porDia[d].push({r,st,ag,hora:feitos.length?feitos[0].hora:''});
       }else if(feitos.length){
         if(fixo)extrasItem+=feitos.length;
-        porDia[d].push({r,st:fixo?'extra':'feito',hora:feitos[0].hora});
+        porDia[d].push({r,st:fixo?'extra':'feito',ag:null,hora:feitos[0].hora});
       }
     });
     previstas+=previsto;
@@ -2630,6 +3050,7 @@ function cronoCalc(sup,dates,hoje){
       if(dates[6]<hoje&&realizado<previsto)perdidas+=previsto-realizado;
     }
   });
+  dates.forEach(d=>porDia[d].sort((x,y)=>(x.ag?x.ag.ordem:100)-(y.ag?y.ag.ordem:100)));
   return {previstas,cumpridas,perdidas,hojePend,porDia,semFixo};
 }
 
@@ -2637,13 +3058,14 @@ const CRONO_ICONE={feito:'ti-circle-check',hoje:'ti-clock',perdida:'ti-circle-x'
 function cronoChip(it){
   const r=it.r;
   const sub=[];
+  if(it.ag&&it.ag.turno)sub.push(turnoTxt(it.ag.turno));
   if(it.st==='feito')sub.push(it.hora?'visitado '+it.hora:'visitado');
   else if(it.st==='hoje')sub.push('pendente hoje');
   else if(it.st==='perdida')sub.push('não visitado');
   else if(it.st==='extra')sub.push(it.hora?'fora do dia · '+it.hora:'fora do dia previsto');
   if(r.avulso)sub.push('não cadastrado');
   const end=rotaEnderecoTxt(r);
-  return '<div class="crono-chip '+it.st+'" title="'+supEsc(rotaLabel(r)+(end?' — '+end:''))+'"><i class="ti '+CRONO_ICONE[it.st]+'"></i><div><div>'+supEsc(rotaLabel(r))+'</div>'+(sub.length?'<small>'+supEsc(sub.join(' · '))+'</small>':'')+'</div></div>';
+  return '<div class="crono-chip '+it.st+'" title="'+supEsc(rotaLabel(r)+(end?' — '+end:''))+'"><i class="ti '+CRONO_ICONE[it.st]+'"></i><div><div>'+(it.ag&&!it.ag.legacy?it.ag.ordem+'. ':'')+supEsc(rotaLabel(r))+'</div>'+(sub.length?'<small>'+supEsc(sub.join(' · '))+'</small>':'')+'</div></div>';
 }
 function renderSupervisoresCrono(){
   const cont=document.getElementById('supervisores-crono-content');if(!cont)return;
@@ -2699,7 +3121,7 @@ function renderSupervisoresCrono(){
     const pctCor=pct===null?'var(--text2)':(pct>=100?'var(--green)':pct>=60?'var(--warn)':'var(--red)');
     html+='<div class="card crono-sup" style="--sup-cor:'+cor+'">';
     html+='<div class="card-title" style="flex-wrap:wrap;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:'+cor+';display:inline-block"></span>'+supEsc(sup.nome);
-    html+='<span style="margin-left:auto;font-size:12px;font-weight:700;color:'+pctCor+'">'+c.cumpridas+' / '+c.previstas+' visitas'+(pct===null?'':' · '+pct+'%')+'</span></div>';
+    html+=''+(cronAtivo(sup)?'<span class="badge b-warn" style="margin-left:6px;background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-bd)">'+(cronSemanaIdx(sup,dates[0])<0?'rodízio começa em '+dateFmt(sup.cronograma.inicio):'semana '+(cronSemanaIdx(sup,dates[0])+1)+'/'+sup.cronograma.semanas+' do rodízio')+'</span>':'')+'<span style="margin-left:auto;font-size:12px;font-weight:700;color:'+pctCor+'">'+c.cumpridas+' / '+c.previstas+' visitas'+(pct===null?'':' · '+pct+'%')+'</span></div>';
     if(!(sup.rota||[]).length){
       html+='<div style="font-size:13px;color:var(--text2)">Nenhum cliente na rota deste supervisor.</div></div>';
       return;
@@ -2749,7 +3171,7 @@ function renderSupervisores(){
     const rota=sup.rota||[];
     const cor=supCor(sup);
     html+='<div class="card crono-sup" style="--sup-cor:'+cor+'"><div class="card-title" style="align-items:flex-start">';
-    html+='<div style="flex:1"><i class="ti ti-user-check" style="color:'+cor+'"></i> '+supEsc(sup.nome)+'<div style="font-size:11px;color:var(--text2);font-weight:400;margin-top:2px">'+rota.length+' cliente(s) na rota · '+rota.reduce((a,r)=>a+rotaPrevistoSemana(r),0)+' visita(s)/semana no total</div>';
+    html+='<div style="flex:1"><i class="ti ti-user-check" style="color:'+cor+'"></i> '+supEsc(sup.nome)+'<div style="font-size:11px;color:var(--text2);font-weight:400;margin-top:2px">'+rota.length+' cliente(s) na rota · '+fmtNum(rota.reduce((a,r)=>a+rotaPrevistoMedio(sup,r),0))+' visita(s)/semana no total</div>';
     if(admin){
       html+=sup.usuario
         ?'<div style="font-size:11px;color:var(--text2);font-weight:400;margin-top:2px"><i class="ti ti-key" style="font-size:11px"></i> Acesso: <b style="color:var(--text)">'+supEsc(sup.usuario)+'</b></div>'
@@ -2764,6 +3186,7 @@ function renderSupervisores(){
     }
     html+='</div>';
 
+    html+=_cronResumoHtml(sup,canEdit);
     if(rota.length){
       html+='<div style="margin-top:8px">';
       rota.forEach(r=>{
@@ -2771,13 +3194,13 @@ function renderSupervisores(){
         const semEnd=!r.avulso&&!end&&findPosto(r.postoId);
         html+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--border)">';
         html+='<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+supEsc(rotaLabel(r))+(r.avulso?' <span class="badge b-warn" style="margin-left:4px">não cadastrado</span>':'')+'</div>';
-        html+='<div style="font-size:11px;color:var(--text2)">'+supEsc(rotaDiasTxt(r))+(end?' · '+supEsc(end):'')+(semEnd?' · <span style="color:var(--warn)">sem endereço cadastrado</span>':'')+'</div></div>';
+        html+='<div style="font-size:11px;color:var(--text2)">'+supEsc(rotaDiasTxt(r,sup))+(end?' · '+supEsc(end):'')+(semEnd?' · <span style="color:var(--warn)">sem endereço cadastrado</span>':'')+'</div></div>';
         if(canEdit)html+='<div style="display:flex;gap:10px;flex-shrink:0"><i class="ti ti-pencil" style="font-size:14px;color:var(--text3);cursor:pointer" onclick="abrirRotaModal(\''+sup.id+'\',\''+r.id+'\')"></i> <i class="ti ti-x" style="font-size:14px;color:var(--red);cursor:pointer" onclick="excluirRota(\''+sup.id+'\',\''+r.id+'\')"></i></div>';
         html+='</div>';
       });
       html+='</div>';
     }
-    if(canEdit)html+='<button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="abrirRotaModal(\''+sup.id+'\',null)"><i class="ti ti-plus"></i> Adicionar cliente à rota</button>';
+    if(canEdit)html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost btn-sm" onclick="abrirRotaModal(\''+sup.id+'\',null)"><i class="ti ti-plus"></i> Adicionar cliente à rota</button>'+(rota.length?'<button class="btn btn-purple btn-sm" onclick="abrirCronModal(\''+sup.id+'\')"><i class="ti ti-wand"></i> '+(cronAtivo(sup)?'Gerar novo cronograma':'Gerar cronograma')+'</button>':'')+'</div>';
     html+='</div>';
   });
 
@@ -2967,16 +3390,19 @@ function renderSupervisoresCheckin(){
     cont.innerHTML=html;return;
   }
 
-  const agendadas=rota.filter(r=>r.dias&&r.dias.includes(dow));
-  const semFixo=rota.filter(r=>!(r.dias&&r.dias.length));
-  const outras=rota.filter(r=>r.dias&&r.dias.length&&!r.dias.includes(dow));
+  const agItem=r=>agendaItem(sup,r,date);
+  const agendadas=rota.filter(r=>agItem(r)).sort((x,y)=>agItem(x).ordem-agItem(y).ordem);
+  const semFixo=rota.filter(r=>!rotaProgramada(sup,r));
+  const outras=rota.filter(r=>rotaProgramada(sup,r)&&!agItem(r));
   const feitoDe=r=>lista.find(c=>rotaMatchCheckin(r,c));
   const linha=r=>{
     const f=feitoDe(r);
     const end=rotaEnderecoTxt(r);
     let h='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--border)">';
     h+='<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+supEsc(rotaLabel(r))+(r.avulso?' <span class="badge b-warn" style="margin-left:4px">não cadastrado</span>':'')+'</div>';
-    h+='<div style="font-size:11px;color:var(--text2)">'+supEsc(rotaDiasTxt(r))+(end?' · '+supEsc(end):'')+'</div></div>';
+    const ag=agItem(r);
+    const agTxt=ag&&!ag.legacy?(ag.ordem+'ª visita do dia'+(ag.turno?' · '+turnoTxt(ag.turno):'')):'';
+    h+='<div style="font-size:11px;color:var(--text2)">'+(agTxt?'<b style="color:var(--cyan)">'+supEsc(agTxt)+'</b>':supEsc(rotaDiasTxt(r,sup)))+(end?' · '+supEsc(end):'')+'</div></div>';
     if(f){
       h+='<div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><span class="badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)"><i class="ti ti-check" style="font-size:11px"></i> '+(f.hora?supEsc(f.hora):'visitado')+'</span>';
       if(pode)h+='<i class="ti ti-x" title="Desfazer" style="color:var(--red);cursor:pointer;font-size:15px" onclick="excluirCheckin(\''+date+'\',\''+sup.id+'\',\''+f.id+'\')"></i>';
@@ -3080,7 +3506,7 @@ function renderSupervisoresMetricas(){
     let linhas='';
     rota.forEach(r=>{
       const label=rotaLabel(r);
-      const previsto=rotaPrevistoSemana(r);
+      const previsto=previstoSemanaRota(sup,r,dates);
       let realizado=0;
       dates.forEach(d=>{ realizado+=checkinsDoDia(d,sup.id).filter(c=>rotaMatchCheckin(r,c)).length; });
       previstoTotal+=previsto;realizadoTotal+=Math.min(realizado,previsto);

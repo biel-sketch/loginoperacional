@@ -687,6 +687,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0;cursor:pointer"><input type="checkbox" id="cron-alt" checked onchange="_cronInvalida()" style="margin-top:2px"> <span>Visitar cada cliente nos turnos dele (1º, 2º, 3º), alternando o turno a cada visita</span></label>
     <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0;cursor:pointer"><input type="checkbox" id="cron-noite" checked onchange="_cronInvalida()" style="margin-top:2px"> <span>Incluir turnos da noite</span></label>
     <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0;cursor:pointer"><input type="checkbox" id="cron-geo" checked onchange="_cronInvalida()" style="margin-top:2px"> <span>Buscar no mapa a localização dos clientes que ainda não têm coordenadas (pode levar alguns segundos)</span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0;cursor:pointer"><input type="checkbox" id="cron-fds" checked onchange="_cronInvalida()" style="margin-top:2px"> <span>Incluir visitas de sábado para os turnos que só trabalham em fim de semana/feriado (os dias úteis visitam apenas os demais turnos)</span></label>
     <div id="cron-resumo-form" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6"></div>
     <div id="cron-progresso" style="font-size:12px;color:var(--cyan);margin-top:8px"></div>
     <div id="cron-resultado"></div>
@@ -757,7 +758,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-05-14:10';
+const BUILD_VERSION='2026-10-05-14:40';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -821,7 +822,7 @@ function turnoUsa12x36(cargoId,turnoId){
 }
 function _turnoFmtOne(t){
   if(!t.horaEntrada)return t.escala12x36?'(12x36)':'';
-  return t.horaEntrada+'–'+(t.horaSaida||'?')+(t.escala12x36?' (12x36)':'');
+  return t.horaEntrada+'–'+(t.horaSaida||'?')+(t.escala12x36?' (12x36)':'')+(t.soFds?' (fim de semana/feriado)':'');
 }
 // Se turnoId for informado, mostra o horário desse turno específico;
 // caso contrário, resume todos os turnos cadastrados no cargo.
@@ -2453,7 +2454,8 @@ function _cargoModalRenderTurnos(){
     nome:row.querySelector('.ct-nome').value,
     horaEntrada:row.querySelector('.ct-entrada').value,
     horaSaida:row.querySelector('.ct-saida').value,
-    escala12x36:row.querySelector('.ct-12x36').checked
+    escala12x36:row.querySelector('.ct-12x36').checked,
+    soFds:row.querySelector('.ct-fds').checked
   }));
   const base=atuais.length?atuais:_cargoModalTurnos;
   let html='';
@@ -2468,6 +2470,7 @@ function _cargoModalRenderTurnos(){
     html+='<div class="field" style="flex:1;margin-bottom:0"><label>Saída</label><input type="time" class="ct-saida" value="'+(t.horaSaida||'')+'"></div>';
     html+='</div>';
     html+='<label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--text2);cursor:pointer;text-transform:none;letter-spacing:normal;font-weight:400"><input type="checkbox" class="ct-12x36" style="width:auto"'+(t.escala12x36?' checked':'')+'> Escala 12x36 (trabalha um dia, folga no dia seguinte)</label>';
+    html+='<label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--text2);cursor:pointer;text-transform:none;letter-spacing:normal;font-weight:400"><input type="checkbox" class="ct-fds" style="width:auto"'+(t.soFds?' checked':'')+'> Trabalha só aos finais de semana e feriados</label>';
     html+='</div>';
   }
   cont.innerHTML=html;
@@ -2504,7 +2507,8 @@ async function salvarCargoModal(){
     nome:(row.querySelector('.ct-nome').value||('Turno '+(i+1))).trim(),
     horaEntrada:row.querySelector('.ct-entrada').value||'',
     horaSaida:row.querySelector('.ct-saida').value||'',
-    escala12x36:row.querySelector('.ct-12x36').checked
+    escala12x36:row.querySelector('.ct-12x36').checked,
+    soFds:row.querySelector('.ct-fds').checked
   }));
   if(existente){
     existente.nome=nome;
@@ -2837,7 +2841,7 @@ function fmtNum(n){ return String(Math.round(n*10)/10).replace('.',','); }
 function cronDesatualizado(sup){
   return cronAtivo(sup)?(sup.rota||[]).filter(r=>!rotaNoCron(sup,r)):[];
 }
-function turnoTxt(t){ return t?(t.nome+(t.horaEntrada?' ('+t.horaEntrada+(t.horaSaida?'–'+t.horaSaida:'')+')':'')):''; }
+function turnoTxt(t){ return t?(t.nome+(t.horaEntrada?' ('+t.horaEntrada+(t.horaSaida?'–'+t.horaSaida:'')+')':'')+(t.soFds?' · fim de semana':'')):''; }
 function turnoBucket(t){
   const h=parseInt(String(t.horaEntrada||'0').slice(0,2),10)||0;
   return h<6?2:(h<12?0:(h<18?1:2));
@@ -2851,7 +2855,8 @@ function rotaCoords(r){
   return null;
 }
 // Turnos distintos do posto (união dos turnos de todos os cargos), em ordem de horário de entrada.
-function turnoKey(t){ return (t.horaEntrada||'')+'-'+(t.horaSaida||''); }
+function turnoKey(t){ return (t.horaEntrada||'')+'-'+(t.horaSaida||'')+(t.soFds?'-fds':''); }
+function rotaSoFds(r){ const l=rotaTurnosTodos(r); return l.length>0&&l.every(x=>x.soFds); }
 // Turnos que o supervisor deve cobrir nesse cliente (todos, ou só os marcados no cadastro da rota)
 function rotaTurnos(r){
   const t=rotaTurnosTodos(r);
@@ -2864,9 +2869,9 @@ function rotaTurnosTodos(r){
   const seen={},out=[];
   (f.posto.cargos||[]).forEach(cg=>cargoTurnos(cg).forEach(t=>{
     if(!t.horaEntrada)return;
-    const k=t.horaEntrada+'-'+(t.horaSaida||'');
+    const k=t.horaEntrada+'-'+(t.horaSaida||'')+(t.soFds?'-fds':'');
     if(seen[k])return; seen[k]=1;
-    out.push({nome:t.nome||'Turno',horaEntrada:t.horaEntrada,horaSaida:t.horaSaida||''});
+    out.push({nome:t.nome||'Turno',horaEntrada:t.horaEntrada,horaSaida:t.horaSaida||'',soFds:!!t.soFds});
   }));
   out.sort((a,b)=>a.horaEntrada<b.horaEntrada?-1:(a.horaEntrada>b.horaEntrada?1:0));
   return out;
@@ -2912,9 +2917,12 @@ async function geocodeRota(r){
   return false;
 }
 async function _cronGerar(sup,o,seed,onMsg){
-  const rotas=sup.rota||[], N=rotas.length, W=o.W, D=o.D, V=o.V, T=W*D*V;
+  const todas=sup.rota||[];
+  const rotas=todas.filter(r=>!rotaSoFds(r)), soFdsRotas=todas.filter(rotaSoFds);
+  const N=rotas.length, W=o.W, D=o.D, V=o.V, T=W*D*V;
+  if(!N)throw new Error('Todos os clientes desta rota só trabalham em fim de semana/feriado; nada a distribuir nos dias úteis.');
   if(o.geo){
-    const faltam=rotas.filter(r=>!rotaCoords(r));
+    const faltam=todas.filter(r=>!rotaCoords(r));
     let i=0;
     for(const r of faltam){ i++; onMsg('Localizando clientes no mapa ('+i+'/'+faltam.length+')…'); await geocodeRota(r); }
   }
@@ -2923,7 +2931,7 @@ async function _cronGerar(sup,o,seed,onMsg){
   // Cada cliente → horários de visita que cobrem todos os turnos dele com o mínimo de visitas
   const grupos=rotas.map(r=>{
     if(!o.alt)return [];
-    let g=planVisitas(rotaTurnos(r));
+    let g=planVisitas(rotaTurnos(r).filter(x=>!x.soFds));
     if(!o.noite){ const f=g.filter(x=>!_minNoite(x.min)); if(f.length)g=f; }
     return g;
   });
@@ -2946,6 +2954,20 @@ async function _cronGerar(sup,o,seed,onMsg){
     const x=inst[id];
     itens.push({w:dia.w,d:dia.d,dow:dowL[dia.d],ordem:k+1,rotaId:rotas[x.cli].id,turno:null,hora:x.grupo?x.grupo.hora:null,turnos:x.grupo?x.grupo.turnos.map(q=>({nome:q.nome,horaEntrada:q.horaEntrada,horaSaida:q.horaSaida})):null});
   }));
+  // Turnos que só trabalham em fim de semana/feriado: visita de sábado, 1 horário por semana (até 4 por ciclo)
+  const fdsRotas=[...rotas,...soFdsRotas].filter(r=>rotaTurnos(r).some(x=>x.soFds));
+  const fdsInfo=[];
+  if(o.fds){
+    fdsRotas.forEach((r,j)=>{
+      let g=planVisitas(rotaTurnos(r).filter(x=>x.soFds));
+      if(!o.noite){ const f=g.filter(x=>!_minNoite(x.min)); if(f.length)g=f; }
+      g.slice(0,W).forEach((gr,k)=>{
+        itens.push({w:(j+k)%W,d:99,dow:6,ordem:0,rotaId:r.id,turno:null,hora:gr.hora,turnos:gr.turnos.map(q=>({nome:q.nome,horaEntrada:q.horaEntrada,horaSaida:q.horaSaida,soFds:true}))});
+      });
+      fdsInfo.push(rotaLabel(r)+': '+g.slice(0,W).map(x=>x.hora).join(', '));
+    });
+    for(let w=0;w<W;w++){ itens.filter(i=>i.w===w&&i.d===99).sort((a,b)=>a.hora<b.hora?-1:1).forEach((i,k)=>{i.ordem=k+1;}); }
+  }
   const hoje=today(), seg=weekStart(hoje);
   let inicio=seg;
   if(o.proxima){ const d=new Date(seg+'T12:00'); d.setDate(d.getDate()+7); inicio=fmtYMD(d); }
@@ -2953,7 +2975,7 @@ async function _cronGerar(sup,o,seed,onMsg){
   return {
     cron:{versao:1,geradoEm:hoje,inicio,semanas:W,D,V,consumo:o.consumo,seed,itens,
       resumo:{kmCiclo:Math.round(res.kmCiclo*10)/10,kmSemana:Math.round(res.kmCiclo/W*10)/10,economiaPct:economia,
-        semCoord:rotas.filter((r,i)=>!coords[i]).map(rotaLabel),
+        semCoord:rotas.filter((r,i)=>!coords[i]).map(rotaLabel),fdsInfo,fdsSem:o.fds?[]:fdsRotas.map(rotaLabel),
         grupos:rotas.map((r,i)=>({nome:rotaLabel(r),turnos:rotaTurnos(r).length,horarios:grupos[i].map(g=>g.hora)})).filter(x=>x.turnos>1&&x.horarios.length)}},
     dias:res.dias
   };
@@ -2966,7 +2988,7 @@ function abrirCronModal(supId){
   if(!(sup.rota||[]).length){showToast('Adicione clientes à rota antes de gerar o cronograma.','warn');return;}
   _cronSupId=supId;_cronSeed=1;_cronPrev=null;_cronBusy=false;
   const c=sup.cronograma;
-  const N=sup.rota.length;
+  const N=Math.max(1,sup.rota.filter(r=>!rotaSoFds(r)).length);
   document.getElementById('cron-modal-sup-lbl').textContent=sup.nome;
   document.getElementById('cron-dias').value=c?c.D:Math.min(5,Math.max(1,Math.ceil(N/2)));
   document.getElementById('cron-vis').value=c?c.V:Math.min(N,2);
@@ -2974,18 +2996,19 @@ function abrirCronModal(supId){
   document.getElementById('cron-alt').checked=true;
   document.getElementById('cron-noite').checked=true;
   document.getElementById('cron-geo').checked=true;
+  document.getElementById('cron-fds').checked=true;
   document.getElementById('cron-inicio').value=(new Date().getDay()===0||new Date().getDay()>=4)?'proxima':'atual';
   document.getElementById('cron-modal').style.display='flex';
   _cronInvalida();
 }
 function closeCronModal(){ if(_cronBusy)return; document.getElementById('cron-modal').style.display='none'; }
 function _cronOpts(sup){
-  const N=(sup.rota||[]).length;
+  const N=(sup.rota||[]).filter(r=>!rotaSoFds(r)).length;
   const D=Math.min(6,Math.max(1,parseInt(document.getElementById('cron-dias').value,10)||1));
   const V=Math.min(6,N,Math.max(1,parseInt(document.getElementById('cron-vis').value,10)||1));
   return {W:4,D,V,N,T:4*D*V,consumo:Math.max(1,parseFloat(String(document.getElementById('cron-consumo').value).replace(',','.'))||10),
     alt:document.getElementById('cron-alt').checked,noite:document.getElementById('cron-noite').checked,
-    geo:document.getElementById('cron-geo').checked,proxima:document.getElementById('cron-inicio').value==='proxima'};
+    geo:document.getElementById('cron-geo').checked,fds:document.getElementById('cron-fds').checked,proxima:document.getElementById('cron-inicio').value==='proxima'};
 }
 // Qualquer mudança nos campos invalida o resultado já mostrado
 function _cronInvalida(){
@@ -3033,6 +3056,8 @@ function _cronMostra(sup,r){
   h+='<br>'+(rs.economiaPct>0?'<b>'+rs.economiaPct+'% menos</b> deslocamento que um rodízio sem otimização.':'Sem ganho de deslocamento sobre um rodízio simples (clientes muito próximos ou sem localização).');
   h+='<br><span style="color:var(--text2)">Começa na semana de '+dateFmt(c.inicio)+'. Distâncias estimadas (linha reta × 1,3), sem contar a saída de/para a base.</span>';
   if(rs.grupos&&rs.grupos.length)h+='<div style="margin-top:6px"><b>Turnos agrupados por visita:</b>'+rs.grupos.map(g=>'<div style="padding-left:12px">'+supEsc(g.nome)+': '+g.turnos+' turnos cobertos com '+g.horarios.length+' horário(s) de visita ('+g.horarios.join(', ')+')</div>').join('')+'</div>';
+  if(rs.fdsInfo&&rs.fdsInfo.length)h+='<div style="margin-top:6px"><b>Visitas de sábado (turnos de fim de semana/feriado):</b>'+rs.fdsInfo.map(x=>'<div style="padding-left:12px">'+supEsc(x)+'</div>').join('')+'</div>';
+  if(rs.fdsSem&&rs.fdsSem.length)h+='<div style="color:var(--warn);margin-top:4px"><i class="ti ti-alert-triangle"></i> Sem visita nos turnos de fim de semana: '+supEsc(rs.fdsSem.join(', '))+'.</div>';
   if(rs.semCoord.length)h+='<div style="color:var(--warn);margin-top:4px"><i class="ti ti-alert-triangle"></i> Sem localização (tratados como "perto de todos"): '+supEsc(rs.semCoord.join(', '))+'. Cadastre o endereço no cliente para melhorar o resultado.</div>';
   h+='</div>';
   for(let w=0;w<c.semanas;w++){
@@ -3042,6 +3067,12 @@ function _cronMostra(sup,r){
       const km=r.dias.find(x=>x.w===w&&x.d===d);
       h+='<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12px"><b>'+DIAS_CURTO[its[0]?its[0].dow:CRON_DOW_PADRAO[c.D][d]]+'</b> <span style="color:var(--text3)">· '+(km?fmtNum(km.km):'0')+' km</span>';
       its.forEach(i=>{ const rr=porId[i.rotaId]; h+='<div style="padding-left:12px;color:var(--text)">'+i.ordem+'. '+supEsc(rr?rotaLabel(rr):'?')+(visitaTxt(i)?' <span style="color:var(--text2)">· '+supEsc(visitaTxt(i))+'</span>':'')+'</div>'; });
+      h+='</div>';
+    }
+    const fs=c.itens.filter(i=>i.w===w&&i.d===99).sort((a,b)=>a.ordem-b.ordem);
+    if(fs.length){
+      h+='<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12px"><b>Sáb</b> <span style="color:var(--text3)">· turnos de fim de semana</span>';
+      fs.forEach(i=>{ const rr=porId[i.rotaId]; h+='<div style="padding-left:12px;color:var(--text)">'+i.ordem+'. '+supEsc(rr?rotaLabel(rr):'?')+' <span style="color:var(--text2)">· '+supEsc(visitaTxt(i))+'</span></div>'; });
       h+='</div>';
     }
     h+='</div>';

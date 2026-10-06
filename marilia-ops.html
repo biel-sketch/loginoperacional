@@ -571,6 +571,10 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
         <button class="btn btn-ghost btn-sm" type="button" onclick="copiarEnderecoClienteParaPosto()"><i class="ti ti-copy"></i> Usar do cliente</button>
       </div>
     </div>
+    <div class="field"><label>Dias em que o posto funciona</label>
+      <div class="day-btns" id="posto-dias-btns" style="margin-bottom:6px"></div>
+      <div style="font-size:11px;color:var(--text3);line-height:1.5">Deixe tudo desmarcado se o posto funciona todos os dias. Se um colaborador atende mais de um posto (pela carga horária), cadastre-o em cada posto e marque aqui os dias de cada um — ele só aparece na escala e na presença nos dias do posto, e os supervisores só visitam nesses dias.</div>
+    </div>
     <div id="posto-modal-endereco-info" style="font-size:12px;color:var(--text2);margin-bottom:6px;line-height:1.5"></div>
     <div id="posto-modal-endereco-manual" style="display:none;margin-bottom:10px">
       <div class="field" style="margin-bottom:6px"><input type="text" id="posto-end-logradouro" placeholder="Rua/Av e número"></div>
@@ -665,12 +669,22 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
       <div class="day-btns" id="rota-dias-btns" style="margin-bottom:6px"></div>
       <div style="font-size:11px;color:var(--text3);line-height:1.5">Marque os dias fixos da semana. Sem dia fixo? Deixe tudo desmarcado e informe abaixo quantas visitas por semana.</div>
     </div>
+    <div class="field" id="rota-dias-modo-field" style="display:none"><label>Como usar os dias marcados</label>
+      <div class="day-btns" style="margin-bottom:6px">
+        <button type="button" class="ds-btn" id="rota-modo-todos" onclick="_rotaSetDiasModo('')">Ir em todos os dias marcados</button>
+        <button type="button" class="ds-btn" id="rota-modo-alguns" onclick="_rotaSetDiasModo('alguns')">Ir em apenas um (ou alguns) deles</button>
+      </div>
+      <div id="rota-alguns-n" style="display:none;font-size:12px;color:var(--text2)">Visitas por semana: <input type="number" id="rota-modal-alguns" min="1" max="5" value="1" style="width:64px"> · o cronograma escolhe o dia mais próximo dos outros clientes.</div>
+    </div>
     <div class="field"><label>Frequência das visitas no cronograma automático</label>
-      <select id="rota-modal-freqciclo">
+      <select id="rota-modal-freqciclo" onchange="_rotaRenderDias()">
         <option value="">Automática (divide igual com os demais clientes)</option>
         <option value="quinzenal">A cada 15 dias (2 visitas por ciclo de 4 semanas)</option>
         <option value="mensal">A cada 30 dias (1 visita por ciclo)</option>
       </select>
+    </div>
+    <div class="field" id="rota-semini-field" style="display:none"><label id="rota-semini-lbl">Semana em que começa o revezamento</label>
+      <select id="rota-modal-semini"></select>
     </div>
     <div class="field" id="rota-freq-field"><label>Visitas por semana (sem dia fixo — o cronograma escolhe os dias pela proximidade)</label>
       <input type="number" id="rota-modal-freq" min="1" max="14" value="1">
@@ -786,7 +800,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-06-12:40';
+const BUILD_VERSION='2026-10-06-14:10';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -982,6 +996,7 @@ function calcCiclo(colab, dateStr){
 }
 
 function deveTrabalharHoje(colab, dateStr){
+  if(!postoFuncionaEm(colab.postoId,dateStr)) return false;
   const ft=findTurno(colab.cargoId,colab.turnoId);
   const usa12x36=ft&&ft.turno.escala12x36;
   if(!usa12x36||!colab.inicioCiclo) return true; // escala normal (todo dia) ou sem ciclo definido, sempre aparece
@@ -1689,7 +1704,7 @@ function renderPresContent(){
         const horarioCargo=cargoHorarioFmt(c.cargoId,c.turnoId);
         html+='<div class="colab-pres-card '+cardCls+'">';
         html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
-        html+='<div><div class="colab-name">'+c.nome+' <span class="ciclo-badge folga">Folga 12x36</span></div>';
+        html+='<div><div class="colab-name">'+c.nome+' <span class="ciclo-badge folga">'+(postoFuncionaEm(c.postoId,todayD)?'Folga 12x36':'Posto não funciona hoje')+'</span></div>';
         html+='<div class="colab-info">'+(horarioCargo?'<span class="jornada-badge">'+horarioCargo+'</span>':'')+'</div></div>';
         html+='<div class="pres-btns">';
         html+='<button class="pb'+(status==='E'?' active-e':'')+'" onclick="lancarExtra(\''+posto+'\',\''+nomeJs+'\')"><i class="ti ti-plus" style="font-size:12px"></i> Trabalho extra</button>';
@@ -2181,7 +2196,7 @@ function renderClientes(){
     }
     postos.forEach(p=>{
       html+='<div style="background:var(--bg3);border-radius:9px;padding:10px 12px;margin-top:8px">';
-      html+='<div style="display:flex;align-items:center;gap:8px"><i class="ti ti-map-pin" style="color:var(--cyan);font-size:14px"></i><div style="font-size:13px;font-weight:700;color:var(--text);flex:1">'+p.nome+'</div>';
+      html+='<div style="display:flex;align-items:center;gap:8px"><i class="ti ti-map-pin" style="color:var(--cyan);font-size:14px"></i><div style="font-size:13px;font-weight:700;color:var(--text);flex:1">'+p.nome+(postoDias(p)?' <span style="font-size:10px;font-weight:700;color:var(--cyan);background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:20px;padding:2px 8px;margin-left:4px;white-space:nowrap">'+postoDiasTxt(p)+'</span>':'')+'</div>';
       if(canEdit){
         html+='<button onclick="abrirCargoModal(\''+cl.id+'\',\''+p.id+'\',null)" style="background:none;border:1px solid var(--cyan-bd);border-radius:6px;padding:4px 8px;color:var(--cyan);font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:3px"><i class="ti ti-plus" style="font-size:11px"></i> Cargo</button>';
         html+='<button onclick="abrirPostoModal(\''+cl.id+'\',\''+p.id+'\')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text2);font-size:10px;cursor:pointer;margin-left:6px"><i class="ti ti-pencil" style="font-size:11px"></i></button>';
@@ -2378,7 +2393,19 @@ async function excluirCliente(clienteId){
   saveCache();await pushForceToCloud();renderClientes();
 }
 
-let _postoModalClienteId=null,_postoModalId=null,_postoModalEndereco=null;
+let _postoModalClienteId=null,_postoModalId=null,_postoModalEndereco=null,_postoDias=[];
+function _postoRenderDias(){
+  document.getElementById('posto-dias-btns').innerHTML=DIAS_ORDEM.map(d=>'<button type="button" class="ds-btn'+(_postoDias.includes(d)?' active':'')+'" onclick="_postoToggleDia('+d+')">'+DIAS_CURTO[d]+'</button>').join('');
+}
+function _postoToggleDia(d){ const i=_postoDias.indexOf(d); if(i>=0)_postoDias.splice(i,1);else _postoDias.push(d); _postoRenderDias(); }
+// Dias da semana (0=Dom…6=Sáb) em que o posto funciona; vazio ou os 7 dias = todos os dias
+function postoDias(p){ const d=(p&&p.dias)||[]; return (d.length&&d.length<7)?d:null; }
+function postoFuncionaEm(postoId,dateStr){
+  const f=findPosto(postoId); const d=f?postoDias(f.posto):null;
+  if(!d)return true;
+  return d.includes(new Date(dateStr+'T12:00').getDay());
+}
+function postoDiasTxt(p){ const d=postoDias(p); return d?DIAS_ORDEM.filter(x=>d.includes(x)).map(x=>DIAS_CURTO[x]).join(', '):''; }
 function abrirPostoModal(clienteId,postoId){
   if(!podeEditarClientes()){showToast('Apenas administradores/gestores podem editar postos.','err');return;}
   _postoModalClienteId=clienteId;_postoModalId=postoId;
@@ -2389,6 +2416,7 @@ function abrirPostoModal(clienteId,postoId){
   document.getElementById('posto-modal-nome').value=p?p.nome:'';
   document.getElementById('posto-modal-cep').value='';
   _postoModalEndereco=p&&p.endereco?{...p.endereco}:null;
+  _postoDias=p&&p.dias?[...p.dias]:[]; _postoRenderDias();
   document.getElementById('posto-modal-endereco-info').innerHTML=_postoModalEndereco?('<i class="ti ti-map-pin" style="color:var(--green)"></i> '+enderecoResumo(_postoModalEndereco)):'<span style="color:var(--text3)">Nenhum endereço definido ainda para este posto.</span>';
   document.getElementById('posto-modal-endereco-manual').style.display='none';
   ['posto-end-logradouro','posto-end-bairro','posto-end-municipio','posto-end-uf'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -2453,9 +2481,9 @@ async function salvarPostoModal(){
   if(!cl.postos)cl.postos=[];
   if(_postoModalId){
     const p=cl.postos.find(x=>x.id===_postoModalId);
-    if(p){ p.nome=nome; if(_postoModalEndereco)p.endereco=_postoModalEndereco; }
+    if(p){ p.nome=nome; p.dias=[..._postoDias]; if(_postoModalEndereco)p.endereco=_postoModalEndereco; }
   }else{
-    cl.postos.push({id:uid(),nome,cargos:[],endereco:_postoModalEndereco||null});
+    cl.postos.push({id:uid(),nome,cargos:[],endereco:_postoModalEndereco||null,dias:[..._postoDias]});
   }
   closePostoModal();
   showToast('Posto salvo!','ok');
@@ -2594,14 +2622,19 @@ function rotaLabel(r){
   if(r.avulso)return (r.clienteNome||'Cliente')+(r.localNome?' · '+r.localNome:'');
   return postoLabel(r.postoId);
 }
-function rotaPrevistoSemana(r){ return (r.dias&&r.dias.length)?r.dias.length:(Number(r.frequenciaSemanal)||0); }
+function rotaPostoDias(r){ if(r.avulso)return []; const f=findPosto(r.postoId); const d=f?postoDias(f.posto):null; return d?d.filter(x=>x>=1&&x<=5):[]; }
+function rotaAlguns(r){ return r.diasModo==='alguns'&&(r.dias||[]).filter(x=>x>=1&&x<=5).length>=2&&!r.freqCiclo; }
+function rotaPrevistoSemana(r){ return rotaAlguns(r)?(Number(r.frequenciaSemanal)||1):((r.dias&&r.dias.length)?r.dias.length:(Number(r.frequenciaSemanal)||0)); }
+function semIniTxt(r){ return r.freqCiclo&&r.semIni!==undefined&&r.semIni!==''&&r.semIni!==null?' · começa na semana '+((Number(r.semIni)||0)+1):''; }
 // Check-ins novos guardam rotaId; os antigos só tinham postoId.
 function rotaMatchCheckin(r,c){ return c.rotaId?c.rotaId===r.id:(!r.avulso&&c.postoId===r.postoId); }
 function rotaDiasTxt(r,sup){
   if(sup&&rotaNoCron(sup,r)){
     const n=sup.cronograma.itens.filter(i=>i.rotaId===r.id).length;
-    return 'Cronograma automático · '+n+' visita(s) a cada '+sup.cronograma.semanas+' semanas'+(r.freqCiclo==='quinzenal'?' · a cada 15 dias':(r.freqCiclo==='mensal'?' · a cada 30 dias':''));
+    return 'Cronograma automático · '+n+' visita(s) a cada '+sup.cronograma.semanas+' semanas'+(r.freqCiclo==='quinzenal'?' · a cada 15 dias':(r.freqCiclo==='mensal'?' · a cada 30 dias':''))+semIniTxt(r);
   }
+  if(r.freqCiclo&&r.dias&&r.dias.length)return (r.freqCiclo==='quinzenal'?'A cada 15 dias':'A cada 30 dias')+' · '+(r.dias.length>1?'um destes dias: ':'')+DIAS_ORDEM.filter(d=>r.dias.includes(d)).map(d=>DIAS_CURTO[d]).join(', ')+semIniTxt(r);
+  if(rotaAlguns(r))return (Number(r.frequenciaSemanal)||1)+' visita(s)/semana · em um destes dias: '+DIAS_ORDEM.filter(d=>r.dias.includes(d)).map(d=>DIAS_CURTO[d]).join(', ');
   if(r.dias&&r.dias.length)return DIAS_ORDEM.filter(d=>r.dias.includes(d)).map(d=>DIAS_CURTO[d]).join(', ');
   return (Number(r.frequenciaSemanal)||0)+' visita(s)/semana · sem dia fixo';
 }
@@ -2683,7 +2716,7 @@ async function cronNucleo(cfg){
   let soma=0,n=0;
   for(let i=0;i<nCli;i++)for(let j=i+1;j<nCli;j++){ if(dist[i][j]>0){soma+=dist[i][j];n++;} }
   const escala=n?soma/n:5;
-  const DUP=1000, CAP=300, HOR=800, SPC=300, REP=0.5*escala, SAME=1.5*escala;
+  const PER=1000, DUP=1000, CAP=300, HOR=800, SPC=300, REP=0.5*escala, SAME=1.5*escala;
 
   const memo=new Map();
   function pathDia(ids){
@@ -2781,6 +2814,7 @@ async function cronNucleo(cfg){
       const cl=ids.map(id=>inst[id].cli);
       for(let a=0;a<cl.length;a++)for(let b=a+1;b<cl.length;b++) if(cl[a]===cl[b]){pen+=DUP;viol++;}
       for(const c of cl){ wk[c*W+w]++; mask[c*W+w]|=(1<<d); }
+      for(const id of ids){ const x=inst[id]; if((x.permD&&!x.permD.includes(d))||(x.permW&&!x.permW.includes(w))){pen+=PER;viol++;} }
       keys[dI]=cl.slice().sort((a,b)=>a-b).join(',');
     }
     for(let c=0;c<nCli;c++){
@@ -2944,7 +2978,7 @@ function visitaCurto(it){
 const CRON_DOW_PADRAO={1:[3],2:[2,4],3:[1,3,5],4:[1,2,4,5],5:[1,2,3,4,5]}; // sábado é só plantão em revezamento
 function cronAtivo(sup){return !!(sup&&sup.cronograma&&sup.cronograma.itens&&sup.cronograma.itens.length);}
 function rotaNoCron(sup,r){return cronAtivo(sup)&&sup.cronograma.itens.some(i=>i.rotaId===r.id);}
-function rotaProgramada(sup,r){return rotaNoCron(sup,r)||!!(r.dias&&r.dias.length);}
+function rotaProgramada(sup,r){return rotaNoCron(sup,r)||(!!(r.dias&&r.dias.length)&&!rotaAlguns(r)&&!r.freqCiclo);}
 function cronSemanaIdx(sup,date){
   const c=sup.cronograma;
   const diff=Math.round((new Date(weekStart(date)+'T12:00')-new Date(c.inicio+'T12:00'))/(7*86400000));
@@ -2958,7 +2992,7 @@ function agendaItem(sup,r,date){
     const w=cronSemanaIdx(sup,date);
     if(w>=0)return sup.cronograma.itens.find(i=>i.rotaId===r.id&&i.w===w&&i.dow===dow)||null;
   }
-  return (r.dias&&r.dias.includes(dow))?{legacy:true,ordem:99,turno:null}:null;
+  return (r.dias&&r.dias.includes(dow)&&!rotaAlguns(r)&&!r.freqCiclo)?{legacy:true,ordem:99,turno:null}:null;
 }
 function previstoSemanaRota(sup,r,dates){
   return rotaProgramada(sup,r)?dates.filter(d=>!!agendaItem(sup,r,d)).length:(Number(r.frequenciaSemanal)||0);
@@ -3113,18 +3147,26 @@ async function _cronGerar(sup,o,seed,onMsg){
   //  pela proximidade e gira entre as semanas);  15/30 dias = 2 ou 1 visita por ciclo;  igual = divide o que sobra.
   const modoFreq=o.modo==='freq';
   const dem=rotas.map(r=>{
-    if(r.freqCiclo==='quinzenal')return {tipo:'livre',cnt:2};
-    if(r.freqCiclo==='mensal')return {tipo:'livre',cnt:1};
+    const dd0=(r.dias||[]).filter(x=>x>=1&&x<=5), pd0=dd0.length?[]:rotaPostoDias(r), sI=(r.semIni===''||r.semIni==null)?0:(Number(r.semIni)||0);
+    if(r.freqCiclo==='quinzenal')return {tipo:'livre',cnt:2,perm:dd0.length?dd0:pd0,semIni:sI%W};
+    if(r.freqCiclo==='mensal')return {tipo:'livre',cnt:1,perm:dd0.length?dd0:pd0,semIni:sI%W};
     if(modoFreq){
       const dd=r.dias||[];
+      if(rotaAlguns(r))return {tipo:'livre',f:Math.min(dd0.length,Math.max(1,Number(r.frequenciaSemanal)||1)),perm:dd0};
       if(dd.length)return {tipo:'fixo',dows:dd.filter(x=>x>=1&&x<=5),sab:dd.includes(6)};
-      return {tipo:'livre',f:Math.max(1,Number(r.frequenciaSemanal)||1)};
+      return {tipo:'livre',f:pd0.length?Math.min(pd0.length,Math.max(1,Number(r.frequenciaSemanal)||1)):Math.max(1,Number(r.frequenciaSemanal)||1),perm:pd0};
     }
-    return {tipo:'igual'};
+    return {tipo:'igual',perm:pd0};
   });
   const dowFix=[...new Set(dem.filter(x=>x.tipo==='fixo').flatMap(x=>x.dows))];
-  const dowL=_escolherDias(o.D,dowFix), D=dowL.length;
-  if(D>o.D)avisos.push('Dias por semana ajustado para '+D+' porque há clientes com dias fixos em '+dowFix.length+' dias diferentes.');
+  let dowL=_escolherDias(o.D,dowFix);
+  dem.forEach((x,i)=>{
+    if(!x.perm||!x.perm.length)return;
+    const need=Math.min(x.perm.length,x.f||1);
+    for(const dw of x.perm){ if(x.perm.filter(q=>dowL.includes(q)).length>=need)break; if(!dowL.includes(dw))dowL=[...dowL,dw].sort((a,b)=>a-b); }
+  });
+  const D=dowL.length;
+  if(D>o.D)avisos.push('Dias por semana ajustado para '+D+' porque os dias marcados nos clientes exigem esses dias de campo.');
   const cont=new Array(N).fill(0), fixInst=[];
   dem.forEach((x,i)=>{
     if(x.tipo==='fixo'){
@@ -3153,13 +3195,32 @@ async function _cronGerar(sup,o,seed,onMsg){
     capDia=fixos.slice();
     const carga=fixos.map((x,j)=>x+(scrumDia[j]?1:0)); // dia com reunião comporta menos visitas
     const ordT=[...Array(nD).keys()].sort((a,b)=>((a%D)*W+((a/D)|0))-((b%D)*W+((b/D)|0)));
-    const livreTot=cont.reduce((x,y)=>x+y,0)-fixInst.length;
+    let reservadas=0;
+    dem.forEach((x,i)=>{
+      if((!x.perm||!x.perm.length)&&x.semIni===undefined)return;
+      const pd=(x.perm&&x.perm.length)?x.perm.map(dw=>dowL.indexOf(dw)).filter(q=>q>=0):dowL.map((_,q)=>q);
+      const ws=x.semIni!==undefined?(x.cnt===2?[x.semIni%W,(x.semIni+Math.round(W/2))%W]:[x.semIni%W]):[...Array(W).keys()].flatMap(w=>Array(x.f).fill(w));
+      const usados=new Set();
+      ws.forEach(w=>{ let bj=-1; for(const d of pd){ const j=w*D+d; if(usados.has(j))continue; if(bj<0||carga[j]<carga[bj])bj=j; } if(bj>=0){usados.add(bj);capDia[bj]++;carga[bj]++;reservadas++;} });
+    });
+    // visitas por semana sem restrição de dia: cada semana recebe as visitas do cliente, nos dias menos carregados
+    dem.forEach((x,i)=>{
+      if(x.tipo!=='livre'||x.perm&&x.perm.length||x.semIni!==undefined||!x.f)return;
+      const f=Math.min(x.f,D);
+      for(let w=0;w<W;w++)for(let k=0;k<f;k++){ let bj=w*D; for(let d=1;d<D;d++)if(carga[w*D+d]<carga[bj])bj=w*D+d; capDia[bj]++;carga[bj]++;reservadas++; }
+    });
+    const livreTot=cont.reduce((x,y)=>x+y,0)-fixInst.length-reservadas;
     for(let k=0;k<livreTot;k++){ let bi=ordT[0]; for(const j of ordT)if(carga[j]<carga[bi])bi=j; capDia[bi]++; carga[bi]++; }
   }
   const occ=new Array(N).fill(0), inst=[];
   const novoInst=(i,extra)=>{
-    const gl=grupos[i], g=gl.length?gl[(occ[i]+seed+i)%gl.length]:null; occ[i]++;
-    inst.push(Object.assign({cli:i,bucket:g?Math.floor(g.min/90):-1,grupo:g,win:g?g.win:null,noite:g?!!g.noite:false},extra||{}));
+    const gl=grupos[i], g=gl.length?gl[(occ[i]+seed+i)%gl.length]:null;
+    const x=Object.assign({cli:i,bucket:g?Math.floor(g.min/90):-1,grupo:g,win:g?g.win:null,noite:g?!!g.noite:false},extra||{});
+    const dm=dem[i];
+    if(dm.perm&&dm.perm.length){ const pd=dm.perm.map(dw=>dowL.indexOf(dw)).filter(q=>q>=0); if(pd.length)x.permD=pd; }
+    if(dm.semIni!==undefined){ x.permW=[(dm.semIni+Math.round(W/2)*(dm.cnt===2?occ[i]:0))%W]; }
+    occ[i]++;
+    inst.push(x);
   };
   fixInst.forEach(f=>novoInst(f.i,{fixW:f.w,fixD:f.d}));
   for(let i=0;i<N;i++){ const fx=dem[i].tipo==='fixo'?cont[i]:0; for(let k=0;k<cont[i]-fx;k++)novoInst(i); }
@@ -3169,6 +3230,7 @@ async function _cronGerar(sup,o,seed,onMsg){
     if(!res||(r2.viol+r2.violH)<(res.viol+res.violH))res=r2;
     if(r2.viol===0&&r2.violH===0)break;
   }
+  if(res.viol>0)avisos.push('Não foi possível respeitar todas as restrições (dias permitidos, semana de início, visitas por semana) — veja os clientes marcados e ajuste os dias ou a capacidade.');
   const itens=[], diasExp=[];
   res.dias.forEach((dia,dI)=>diasExp.push({campo:Math.round(dia.ag.campo),scrum:scrumDia[dI],cedo:dia.ag.cedo,w:dia.w,d:dia.d,dow:dowL[dia.d],ini:_fmtMin(dia.ag.ini),fim:_fmtMin(dia.ag.fim),pIni:_fmtMin(dia.ag.pIni),pFim:_fmtMin(dia.ag.pFim),noturno:dia.ag.noturno,km:Math.round(dia.km*10)/10}));
   res.dias.forEach(dia=>dia.ordem.forEach((id,k)=>{
@@ -3669,7 +3731,7 @@ async function excluirSupervisor(id){
 }
 
 // --- Modal de cliente da rota (cadastrado ou avulso) ---
-let _rotaModalSupId=null,_rotaModalId=null,_rotaAvulso=false,_rotaDias=[];
+let _rotaModalSupId=null,_rotaModalId=null,_rotaAvulso=false,_rotaDias=[],_rotaDiasModo='',_rotaSemIni=0;
 function abrirRotaModal(supervisorId,rotaId){
   if(!podeEditarSupervisores()){showToast('Apenas administradores/gestores podem editar rotas.','err');return;}
   const sup=findSupervisor(supervisorId);
@@ -3689,6 +3751,9 @@ function abrirRotaModal(supervisorId,rotaId){
   document.getElementById('rota-modal-freq').value=r?(Number(r.frequenciaSemanal)||1):1;
   document.getElementById('rota-modal-freqciclo').value=r&&r.freqCiclo?r.freqCiclo:'';
   _rotaDias=r&&r.dias?[...r.dias]:[];
+  _rotaDiasModo=r&&r.diasModo==='alguns'?'alguns':'';
+  document.getElementById('rota-modal-alguns').value=(r&&r.diasModo==='alguns')?(Number(r.frequenciaSemanal)||1):1;
+  _rotaSemIni=r&&r.semIni!==undefined&&r.semIni!==''&&r.semIni!==null?Number(r.semIni)||0:0;
   _rotaTurnosReset(r&&!r.avulso?r:null);
   _rotaSetTipo(r?!!r.avulso:!clientesAtivos().length);
   _rotaRenderDias();
@@ -3725,8 +3790,28 @@ function _rotaSetTipo(avulso){
 }
 function _rotaRenderDias(){
   document.getElementById('rota-dias-btns').innerHTML=DIAS_ORDEM.map(d=>'<button type="button" class="ds-btn'+(_rotaDias.includes(d)?' active':'')+'" onclick="_rotaToggleDia('+d+')">'+DIAS_CURTO[d]+'</button>').join('');
+  const util=_rotaDias.filter(x=>x>=1&&x<=5).length, fc=document.getElementById('rota-modal-freqciclo').value;
+  const mf=document.getElementById('rota-dias-modo-field');
+  mf.style.display=(util>=2&&!fc)?'block':'none';
+  if(util<2)_rotaDiasModo='';
+  document.getElementById('rota-modo-todos').className='ds-btn'+(_rotaDiasModo?'':' active');
+  document.getElementById('rota-modo-alguns').className='ds-btn'+(_rotaDiasModo?' active':'');
+  document.getElementById('rota-alguns-n').style.display=_rotaDiasModo?'block':'none';
+  const na=document.getElementById('rota-modal-alguns'); na.max=Math.max(1,util-1);
+  if(parseInt(na.value,10)>util-1&&util>1)na.value=util-1;
+  const sf=document.getElementById('rota-semini-field'), ss=document.getElementById('rota-modal-semini');
+  if(fc){
+    const cur=(ss.options.length&&ss.dataset.fc===fc)?parseInt(ss.value,10):_rotaSemIni;
+    const n=fc==='quinzenal'?2:4, nomes=[];
+    for(let k=0;k<n;k++)nomes.push(fc==='quinzenal'?'Semana '+(k+1)+' do ciclo — visitas nas semanas '+(k+1)+' e '+(k+3):'Semana '+(k+1)+' do ciclo');
+    ss.innerHTML=nomes.map((t,k)=>'<option value="'+k+'">'+t+'</option>').join('');
+    ss.dataset.fc=fc; ss.value=String(Math.min(n-1,Math.max(0,cur||0)));
+    document.getElementById('rota-semini-lbl').textContent=fc==='quinzenal'?'Em qual semana começa o revezamento de 15 dias?':'Em qual semana do ciclo acontece a visita mensal?';
+    sf.style.display='block';
+  }else sf.style.display='none';
   document.getElementById('rota-freq-field').style.display=_rotaDias.length?'none':'block';
 }
+function _rotaSetDiasModo(m){ _rotaDiasModo=m; _rotaRenderDias(); }
 function _rotaToggleDia(d){
   const i=_rotaDias.indexOf(d);
   if(i>=0)_rotaDias.splice(i,1);else _rotaDias.push(d);
@@ -3758,8 +3843,11 @@ async function salvarRotaModal(){
     dados={avulso:false,postoId,clienteNome:'',localNome:'',endereco:'',turnosVisita:(sel.length&&sel.length<todos.length)?sel:[]};
   }
   const dias=[..._rotaDias].sort((a,b)=>DIAS_ORDEM.indexOf(a)-DIAS_ORDEM.indexOf(b));
-  const freq=dias.length?dias.length:Math.max(1,parseInt(document.getElementById('rota-modal-freq').value,10)||1);
   dados.freqCiclo=document.getElementById('rota-modal-freqciclo').value||'';
+  const util=dias.filter(x=>x>=1&&x<=5).length;
+  dados.diasModo=(!dados.freqCiclo&&util>=2&&_rotaDiasModo==='alguns')?'alguns':'';
+  dados.semIni=dados.freqCiclo?(parseInt(document.getElementById('rota-modal-semini').value,10)||0):'';
+  const freq=dados.diasModo==='alguns'?Math.min(util-1,Math.max(1,parseInt(document.getElementById('rota-modal-alguns').value,10)||1)):(dias.length?dias.length:Math.max(1,parseInt(document.getElementById('rota-modal-freq').value,10)||1));
   if(!sup.rota)sup.rota=[];
   if(_rotaModalId){
     const r=sup.rota.find(x=>x.id===_rotaModalId);

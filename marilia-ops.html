@@ -229,6 +229,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .crono-day{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:8px 6px;min-height:86px;display:flex;flex-direction:column;gap:6px}
 .crono-day.hoje{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan-bd)}
 .crono-day.fds{background:rgba(255,255,255,.015)}
+.crono-bar{position:relative;height:9px;background:var(--bg);border:1px solid var(--border);border-radius:5px;overflow:hidden;flex-shrink:0}
+.crono-bar i{position:absolute;top:0;bottom:0;display:block}
 .crono-day-h{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between;gap:4px}
 .crono-day.hoje .crono-day-h{color:var(--cyan)}
 .crono-chips{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
@@ -692,7 +694,9 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
       <div class="field"><label>Dias de visita por semana</label><input type="number" id="cron-dias" min="1" max="5" value="3" oninput="_cronInvalida()"></div>
       <div class="field" id="cron-vis-field"><label>Visitas por dia</label><input type="number" id="cron-vis" min="1" max="6" value="2" oninput="_cronInvalida()"></div>
       <div class="field"><label>Consumo do veículo (km/l)</label><input type="number" id="cron-consumo" min="1" step="0.5" value="10" oninput="_cronInvalida()"></div>
-      <div class="field"><label>Início do expediente</label><input type="time" id="cron-exp-ini" value="08:00" oninput="_cronInvalida()"></div>
+      <div class="field"><label>Início preferido do expediente</label><input type="time" id="cron-exp-ini" value="08:00" oninput="_cronInvalida()"></div>
+      <div class="field"><label>Pode começar a partir de</label><input type="time" id="cron-exp-min" value="06:00" oninput="_cronInvalida()"></div>
+      <div class="field"><label>Pode começar até</label><input type="time" id="cron-exp-max" value="14:00" oninput="_cronInvalida()"></div>
       <div class="field"><label>Jornada (horas de trabalho)</label><input type="number" id="cron-jornada" min="1" max="12" step="0.5" value="8" oninput="_cronInvalida()"></div>
       <div class="field"><label>Intervalo de almoço (horas)</label><input type="number" id="cron-pausa" min="0" max="4" step="0.5" value="2" oninput="_cronInvalida()"></div>
       <div class="field"><label>Duração de cada visita (min)</label><input type="number" id="cron-dur" min="10" max="240" step="5" value="60" oninput="_cronInvalida()"></div>
@@ -711,7 +715,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
       <div class="field" style="margin:0;width:100px"><label>Duração (min)</label><input type="number" id="cron-scrum-dur" min="5" max="240" value="60" oninput="_cronInvalida()"></div>
       <div class="field" style="margin:0;width:130px"><label>Deslocamento (min)</label><input type="number" id="cron-scrum-desloc" min="0" max="120" value="20" oninput="_cronInvalida()"></div>
     </div>
-    <div style="font-size:11px;color:var(--text3);line-height:1.5;margin:4px 0">O expediente tem a jornada + o intervalo no meio (ex.: 08:00–12:00 e 14:00–18:00). Em dia com visita à noite o expediente começa mais tarde, para terminar depois da visita — o supervisor trabalha menos de dia.</div>
+    <div style="font-size:11px;color:var(--text3);line-height:1.5;margin:4px 0">O expediente tem a jornada + o intervalo no meio (ex.: 08:00–12:00 e 14:00–18:00). A hora de início varia de dia para dia, dentro do intervalo permitido: o sistema começa mais cedo ou mais tarde conforme os horários dos turnos das visitas do dia (ex.: visita à noite → o expediente começa à tarde e o supervisor trabalha menos de manhã).</div>
     <div id="cron-resumo-form" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6"></div>
     <div id="cron-progresso" style="font-size:12px;color:var(--cyan);margin-top:8px"></div>
     <div id="cron-resultado"></div>
@@ -782,7 +786,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-06-12:00';
+const BUILD_VERSION='2026-10-06-12:40';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -2666,6 +2670,7 @@ async function cronNucleo(cfg){
   const {nCli,dist,inst,W,D,V}=cfg;
   const esp=cfg.esp||[];
   const H=Object.assign({ini:480,jornada:480,pausa:120,dur:60,vel:40,maxCampo:9999},cfg.horario||{});
+  if(H.iniMin==null)H.iniMin=H.ini; if(H.iniMax==null)H.iniMax=H.ini;
   const SC=cfg.scrum||null, scrumDia=cfg.scrumDia||[];
   const rnd=_rng(cfg.seed||1);
   const nDias=W*D;
@@ -2725,28 +2730,17 @@ async function cronNucleo(cfg){
   }
   // Expediente do dia: jornada (ex.: 8h) + intervalo (ex.: 2h) no meio. Dia normal começa em H.ini;
   // se há visita à noite, o expediente é empurrado para terminar depois dela (trabalha menos de dia).
-  const smemo=new Map();
-  function agendaDia(ordem,sc){
-    sc=!!(sc&&SC);
-    const key=ordem.join(',')+'|'+(sc?1:0);
-    const m0=smemo.get(key); if(m0)return m0;
-    const span=H.jornada+H.pausa, fimNormal=H.ini+span;
-    let fim=fimNormal, noturno=false;
-    ordem.forEach(id=>{
-      const x=inst[id]; if(!x.noite)return;
-      noturno=true;
-      let tN=Infinity;
-      (x.win||[]).forEach(w=>{ if(w[1]>=fimNormal-H.dur)tN=Math.min(tN,Math.max(w[0],fimNormal-H.dur)); });
-      if(tN<Infinity)fim=Math.max(fim,tN+H.dur);
-    });
-    fim=Math.ceil(fim/30)*30;
-    const ini=fim-span, pIni=ini+H.jornada/2, pFim=pIni+H.pausa;
-    // períodos bloqueados para visita: intervalo de almoço e reunião no escritório (com o deslocamento até lá)
+  // O expediente (jornada + intervalo) não tem hora fixa: para cada dia o sistema testa inícios de 30 em 30 min
+  // (a partir do preferido, entre o mais cedo e o mais tarde permitidos) e fica com o mais próximo do preferido
+  // em que todas as visitas cabem nos horários dos turnos, fora do almoço e da reunião.
+  const smemo=new Map(), span=H.jornada+H.pausa;
+  function tentar(ordem,sc,ini){
+    const fim=ini+span, pIni=ini+H.jornada/2, pFim=pIni+H.pausa;
     const bloq=[[pIni,pFim]];
     if(sc)bloq.push([SC.ini-SC.desloc,SC.ini+SC.dur+SC.desloc]);
     const livre=tt=>{ let mv=true,g=0; while(mv&&g++<8){ mv=false; for(const q of bloq){ if(tt<q[1]&&tt+H.dur>q[0]){tt=q[1];mv=true;} } } return tt; };
     let cur=ini,prev=-1,viol=0,campo=0; const times=[];
-    if(sc&&ini>SC.ini)viol++; // expediente deslocado (noite): não dá para estar na reunião da manhã
+    if(sc&&(ini>SC.ini||fim<SC.ini+SC.dur))viol++; // precisa estar no escritório na reunião
     for(const id of ordem){
       const x=inst[id];
       const trav=prev>=0?dist[inst[prev].cli][x.cli]/H.vel*60:0;
@@ -2761,9 +2755,18 @@ async function cronNucleo(cfg){
       times.push(best); cur=best+H.dur; prev=id; campo+=H.dur+trav;
     }
     if(campo>H.maxCampo)viol+=Math.ceil((campo-H.maxCampo)/30);
-    const res={viol,times,ini,fim,pIni,pFim,noturno,campo,sc};
-    smemo.set(key,res);
-    return res;
+    return {viol,times,ini,fim,pIni,pFim,noturno:ini>H.ini,cedo:ini<H.ini,campo,sc};
+  }
+  function agendaDia(ordem,sc){
+    sc=!!(sc&&SC);
+    const key=ordem.join(',')+'|'+(sc?1:0);
+    const m0=smemo.get(key); if(m0)return m0;
+    const cands=[H.ini];
+    for(let s=30;s<=900;s+=30){ if(H.ini-s>=H.iniMin)cands.push(H.ini-s); if(H.ini+s<=H.iniMax)cands.push(H.ini+s); }
+    let melhor=null;
+    for(const ini of cands){ const r=tentar(ordem,sc,ini); if(!melhor||r.viol<melhor.viol)melhor=r; if(r.viol===0)break; }
+    smemo.set(key,melhor);
+    return melhor;
   }
   const wk=new Int32Array(nCli*W), mask=new Int32Array(nCli*W);
   function custo(slots){
@@ -2865,7 +2868,7 @@ function _minNoite(m){ return m>=1080||m<360; }
 function _winDe(v){
   if(v.ini==null||v.ini===undefined)return [[v.min,v.min+60]];
   let s=v.ini*5,e=s+v.len*5;
-  if(e<=360){s+=1440;e+=1440;}
+  if(e<=360)return [[s,e],[s+1440,e+1440]]; // madrugada: no começo do mesmo dia ou na madrugada seguinte
   return [[s,e]];
 }
 // Dias úteis de campo: os dias fixos marcados + os que faltam para chegar a D (central da semana primeiro)
@@ -2896,26 +2899,31 @@ function planVisitas(turnos,margem){
   else{ let i=0; while(i<L){ const a=(st+i)%L, mk=cov[a]; let len=1; while(i+len<L&&cov[(st+i+len)%L]===mk)len++; runs.push({mk,ini:a,len}); i+=len; } }
   const porMask={};
   runs.forEach(r=>{ if(r.mk&&(!porMask[r.mk]||porMask[r.mk].len<r.len))porMask[r.mk]=r; });
-  const cands=Object.values(porMask).map(r=>{
-    let min=((r.ini+Math.floor(r.len/2))*step)%1440;
-    if(min<300||min>=1380){
-      for(let j=0;j<r.len;j++){ const m=((r.ini+j)*step)%1440; if(m>=1200){min=m;break;} }
-    }
-    return {mk:r.mk,len:r.len,min,ini:r.ini};
-  });
   const full=(1<<n)-1;
   let best=null;
-  for(let k=1;k<=Math.min(n,cands.length)&&!best;k++){
-    (function rec(from,pick,uni){
-      if(pick.length===k){
-        if(uni!==full)return;
-        const noite=pick.filter(c=>_minNoite(c.min)).length, tot=pick.reduce((a,c)=>a+c.len,0);
-        const sc=noite*100000-tot;
-        if(!best||sc<best.sc)best={sc,pick:pick.slice()};
-        return;
+  // só agrupa turnos com pelo menos 30 min de janela em comum (senão a visita não é viável); se não houver
+  // cobertura assim, aceita janelas menores
+  for(const minLen of [30,5]){
+    const cands=Object.values(porMask).filter(r=>r.len*step>=minLen).map(r=>{
+      let min=((r.ini+Math.floor(r.len/2))*step)%1440;
+      if(min<300||min>=1380){
+        for(let j=0;j<r.len;j++){ const m=((r.ini+j)*step)%1440; if(m>=1200){min=m;break;} }
       }
-      for(let i=from;i<cands.length;i++){ pick.push(cands[i]); rec(i+1,pick,uni|cands[i].mk); pick.pop(); }
-    })(0,[],0);
+      return {mk:r.mk,len:r.len,min,ini:r.ini};
+    });
+    for(let k=1;k<=Math.min(n,cands.length)&&!best;k++){
+      (function rec(from,pick,uni){
+        if(pick.length===k){
+          if(uni!==full)return;
+          const noite=pick.filter(c=>_minNoite(c.min)).length, tot=pick.reduce((a,c)=>a+c.len,0);
+          const sc=noite*100000-tot;
+          if(!best||sc<best.sc)best={sc,pick:pick.slice()};
+          return;
+        }
+        for(let i=from;i<cands.length;i++){ pick.push(cands[i]); rec(i+1,pick,uni|cands[i].mk); pick.pop(); }
+      })(0,[],0);
+    }
+    if(best)break;
   }
   let visitas=best?best.pick.map(c=>({min:c.min,mk:c.mk,ini:c.ini,len:c.len})):[];
   // turnos que nenhuma janela alcançou (turno muito curto): visita própria na entrada
@@ -2970,7 +2978,27 @@ function fmtHM(min){ min=Math.round(min); return Math.floor(min/60)+'h'+String(m
 function expTxt(e){
   if(!e)return '';
   if(e.sab)return 'Plantão de sábado';
-  return (e.noturno?'☾ ':'')+e.ini+'–'+e.fim+' · intervalo '+e.pIni+'–'+e.pFim+(e.campo!=null?' · em clientes '+fmtHM(e.campo):'');
+  return (e.noturno?'☾ ':(e.cedo?'☀ ':''))+e.ini+'–'+e.fim+' · intervalo '+e.pIni+'–'+e.pFim+(e.campo!=null?' · em clientes '+fmtHM(e.campo):'');
+}
+// Linha do tempo do dia (05h–24h): expediente, almoço, reunião e visitas
+function cronBarra(sup,ex,itens,scd){
+  const A=300,B=1440, pos=m=>Math.max(0,Math.min(100,(m-A)/(B-A)*100));
+  const seg=(s,e,cor,op)=>'<i style="left:'+pos(s)+'%;width:'+Math.max(1.5,pos(e)-pos(s))+'%;background:'+cor+(op?';opacity:'+op:'')+'"></i>';
+  const dur=(sup.cronograma.exped&&sup.cronograma.exped.dur)||60;
+  let h='<div class="crono-bar" title="Linha do tempo 05h–24h">';
+  if(ex&&!ex.sab&&ex.ini){
+    const s=_min(ex.ini); let e=_min(ex.fim); if(e<=s)e+=1440;
+    h+=seg(s,e,'var(--text3)',.28);
+    h+=seg(_min(ex.pIni),_min(ex.pFim),'var(--bg)');
+  }
+  if(scd)h+=seg(scd.ini,scd.ini+scd.dur,'var(--purple, #a78bfa)');
+  itens.forEach(it=>{
+    if(!it.ag||it.ag.legacy||!it.ag.hora)return;
+    const s=_min(it.ag.hora);
+    const cor=it.st==='feito'?'var(--green)':it.st==='hoje'?'var(--cyan)':it.st==='perdida'?'var(--red)':'var(--blue)';
+    h+=seg(s,s+dur,cor);
+  });
+  return h+'</div>';
 }
 function cronScrumDia(sup,date){
   if(!cronAtivo(sup)||!sup.cronograma.scrum)return null;
@@ -3062,7 +3090,7 @@ async function _cronGerar(sup,o,seed,onMsg){
   const rotas=todas.filter(r=>!rotaSoFds(r)), soFdsRotas=todas.filter(rotaSoFds);
   const N=rotas.length, W=o.W, V=o.V;
   const avisos=[];
-  const H={ini:o.expIni,jornada:o.jornada,pausa:o.pausa,dur:o.dur,vel:o.vel,maxCampo:o.maxCampo}, spanH=H.jornada+H.pausa;
+  const H={ini:o.expIni,iniMin:o.expIniMin,iniMax:o.expIniMax,jornada:o.jornada,pausa:o.pausa,dur:o.dur,vel:o.vel,maxCampo:o.maxCampo}, spanH=H.jornada+H.pausa;
   if(!N)throw new Error('Todos os clientes desta rota só trabalham em fim de semana/feriado; nada a distribuir nos dias úteis.');
   if(o.geo){
     const faltam=todas.filter(r=>!rotaCoords(r));
@@ -3142,7 +3170,7 @@ async function _cronGerar(sup,o,seed,onMsg){
     if(r2.viol===0&&r2.violH===0)break;
   }
   const itens=[], diasExp=[];
-  res.dias.forEach((dia,dI)=>diasExp.push({campo:Math.round(dia.ag.campo),scrum:scrumDia[dI],w:dia.w,d:dia.d,dow:dowL[dia.d],ini:_fmtMin(dia.ag.ini),fim:_fmtMin(dia.ag.fim),pIni:_fmtMin(dia.ag.pIni),pFim:_fmtMin(dia.ag.pFim),noturno:dia.ag.noturno,km:Math.round(dia.km*10)/10}));
+  res.dias.forEach((dia,dI)=>diasExp.push({campo:Math.round(dia.ag.campo),scrum:scrumDia[dI],cedo:dia.ag.cedo,w:dia.w,d:dia.d,dow:dowL[dia.d],ini:_fmtMin(dia.ag.ini),fim:_fmtMin(dia.ag.fim),pIni:_fmtMin(dia.ag.pIni),pFim:_fmtMin(dia.ag.pFim),noturno:dia.ag.noturno,km:Math.round(dia.km*10)/10}));
   res.dias.forEach(dia=>dia.ordem.forEach((id,k)=>{
     const x=inst[id];
     itens.push({w:dia.w,d:dia.d,dow:dowL[dia.d],ordem:k+1,rotaId:rotas[x.cli].id,turno:null,hora:_fmtMin(dia.ag.times[k]),turnos:x.grupo?x.grupo.turnos.map(q=>({nome:q.nome,horaEntrada:q.horaEntrada,horaSaida:q.horaSaida})):null});
@@ -3184,7 +3212,7 @@ async function _cronGerar(sup,o,seed,onMsg){
   if(o.proxima){ const d=new Date(seg+'T12:00'); d.setDate(d.getDate()+7); inicio=fmtYMD(d); }
   const economia=res.kmBase>0?Math.max(0,Math.round((res.kmBase-res.kmCiclo)/res.kmBase*100)):0;
   return {
-    cron:{versao:3,modo:o.modo,dowL,geradoEm:hoje,inicio,semanas:W,D,V:Math.max(...capDia),consumo:o.consumo,seed,itens,dias:diasExp,exped:{ini:H.ini,jornada:H.jornada,pausa:H.pausa,dur:H.dur,vel:H.vel,maxCampo:H.maxCampo},scrum:o.scrum||null,
+    cron:{versao:3,modo:o.modo,dowL,geradoEm:hoje,inicio,semanas:W,D,V:Math.max(...capDia),consumo:o.consumo,seed,itens,dias:diasExp,exped:{ini:H.ini,iniMin:H.iniMin,iniMax:H.iniMax,jornada:H.jornada,pausa:H.pausa,dur:H.dur,vel:H.vel,maxCampo:H.maxCampo},scrum:o.scrum||null,
       resumo:{kmCiclo:Math.round(res.kmCiclo*10)/10,kmSemana:Math.round(res.kmCiclo/W*10)/10,economiaPct:economia,
         semCoord:rotas.filter((r,i)=>!coords[i]).map(rotaLabel),avisos,fdsInfo,sabInfo,violH:res.violH,fdsSem:o.fds?[]:fdsRotas.map(rotaLabel),
         grupos:rotas.map((r,i)=>({nome:rotaLabel(r),turnos:rotaTurnos(r).length,horarios:grupos[i].map(g=>g.hora)})).filter(x=>x.turnos>1&&x.horarios.length)}},
@@ -3204,6 +3232,8 @@ function abrirCronModal(supId){
   document.getElementById('cron-dias').value=c?c.D:Math.min(5,Math.max(1,Math.ceil(N/2)));
   const ex=c&&c.exped?c.exped:{ini:480,jornada:480,pausa:120,dur:60,vel:40};
   document.getElementById('cron-exp-ini').value=_fmtMin(ex.ini);
+  document.getElementById('cron-exp-min').value=_fmtMin(ex.iniMin!=null?ex.iniMin:360);
+  document.getElementById('cron-exp-max').value=_fmtMin(ex.iniMax!=null?ex.iniMax:840);
   document.getElementById('cron-jornada').value=ex.jornada/60;
   document.getElementById('cron-pausa').value=ex.pausa/60;
   document.getElementById('cron-dur').value=ex.dur;
@@ -3238,6 +3268,8 @@ function _cronOpts(sup){
     alt:document.getElementById('cron-alt').checked,noite:document.getElementById('cron-noite').checked,
     geo:document.getElementById('cron-geo').checked,fds:document.getElementById('cron-fds').checked,
     expIni:_min(document.getElementById('cron-exp-ini').value||'08:00'),
+    expIniMin:Math.min(_min(document.getElementById('cron-exp-min').value||'06:00'),_min(document.getElementById('cron-exp-ini').value||'08:00')),
+    expIniMax:Math.max(_min(document.getElementById('cron-exp-max').value||'14:00'),_min(document.getElementById('cron-exp-ini').value||'08:00')),
     jornada:Math.max(1,parseFloat(String(document.getElementById('cron-jornada').value).replace(',','.'))||8)*60,
     pausa:Math.max(0,parseFloat(String(document.getElementById('cron-pausa').value).replace(',','.'))||0)*60,
     dur:Math.max(10,parseInt(document.getElementById('cron-dur').value,10)||60),
@@ -3515,6 +3547,7 @@ function renderSupervisoresCrono(){
       const ex=cronDiaExp(sup,d);
       if(ex)html+='<div style="font-size:9px;color:'+(ex.noturno?'var(--warn)':'var(--text3)')+';padding:0 2px 5px;line-height:1.35">'+supEsc(expTxt(ex))+'</div>';
       const scd=cronScrumDia(sup,d);
+      if(ex||scd)html+=cronBarra(sup,ex,itens,scd);
       if(scd)html+='<div class="crono-chip" style="border-style:dashed" title="'+supEsc(scrumTxt(scd))+'"><i class="ti ti-users"></i><div><div>Daily scrum</div><small>'+_fmtMin(scd.ini)+' · escritório</small></div></div>';
       html+='<div class="crono-chips">'+(itens.length?itens.map(cronoChip).join(''):'<span class="crono-vazio">—</span>')+'</div></div>';
     });

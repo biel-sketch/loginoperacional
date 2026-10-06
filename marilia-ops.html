@@ -663,6 +663,13 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
       <div class="day-btns" id="rota-dias-btns" style="margin-bottom:6px"></div>
       <div style="font-size:11px;color:var(--text3);line-height:1.5">Marque os dias fixos da semana. Sem dia fixo? Deixe tudo desmarcado e informe abaixo quantas visitas por semana.</div>
     </div>
+    <div class="field"><label>Frequência das visitas no cronograma automático</label>
+      <select id="rota-modal-freqciclo">
+        <option value="">Automática (divide igual com os demais clientes)</option>
+        <option value="quinzenal">A cada 15 dias (2 visitas por ciclo de 4 semanas)</option>
+        <option value="mensal">A cada 30 dias (1 visita por ciclo)</option>
+      </select>
+    </div>
     <div class="field" id="rota-freq-field"><label>Visitas por semana (sem dia fixo)</label>
       <input type="number" id="rota-modal-freq" min="1" max="14" value="1">
     </div>
@@ -679,15 +686,21 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     <div class="modal-title"><i class="ti ti-wand" style="color:var(--cyan)"></i>Gerar cronograma automático</div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Supervisor: <b id="cron-modal-sup-lbl" style="color:var(--text)"></b> · rodízio de 4 semanas, clientes próximos agrupados no mesmo dia e trajeto de menor deslocamento.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="field"><label>Dias de visita por semana</label><input type="number" id="cron-dias" min="1" max="6" value="3" oninput="_cronInvalida()"></div>
+      <div class="field"><label>Dias de visita por semana</label><input type="number" id="cron-dias" min="1" max="5" value="3" oninput="_cronInvalida()"></div>
       <div class="field"><label>Visitas por dia</label><input type="number" id="cron-vis" min="1" max="6" value="2" oninput="_cronInvalida()"></div>
       <div class="field"><label>Consumo do veículo (km/l)</label><input type="number" id="cron-consumo" min="1" step="0.5" value="10" oninput="_cronInvalida()"></div>
+      <div class="field"><label>Início do expediente</label><input type="time" id="cron-exp-ini" value="08:00" oninput="_cronInvalida()"></div>
+      <div class="field"><label>Jornada (horas de trabalho)</label><input type="number" id="cron-jornada" min="1" max="12" step="0.5" value="8" oninput="_cronInvalida()"></div>
+      <div class="field"><label>Intervalo de almoço (horas)</label><input type="number" id="cron-pausa" min="0" max="4" step="0.5" value="2" oninput="_cronInvalida()"></div>
+      <div class="field"><label>Duração de cada visita (min)</label><input type="number" id="cron-dur" min="10" max="240" step="5" value="60" oninput="_cronInvalida()"></div>
+      <div class="field"><label>Velocidade média (km/h)</label><input type="number" id="cron-vel" min="10" max="120" value="40" oninput="_cronInvalida()"></div>
       <div class="field"><label>Início do rodízio</label><select id="cron-inicio" onchange="_cronInvalida()"><option value="atual">Esta semana</option><option value="proxima">Próxima semana</option></select></div>
     </div>
     <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0;cursor:pointer"><input type="checkbox" id="cron-alt" checked onchange="_cronInvalida()" style="margin-top:2px"> <span>Visitar cada cliente nos turnos dele (1º, 2º, 3º), alternando o turno a cada visita</span></label>
     <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0;cursor:pointer"><input type="checkbox" id="cron-noite" checked onchange="_cronInvalida()" style="margin-top:2px"> <span>Incluir turnos da noite</span></label>
     <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0;cursor:pointer"><input type="checkbox" id="cron-geo" checked onchange="_cronInvalida()" style="margin-top:2px"> <span>Buscar no mapa a localização dos clientes que ainda não têm coordenadas (pode levar alguns segundos)</span></label>
-    <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0;cursor:pointer"><input type="checkbox" id="cron-fds" checked onchange="_cronInvalida()" style="margin-top:2px"> <span>Incluir visitas de sábado para os turnos que só trabalham em fim de semana/feriado (os dias úteis visitam apenas os demais turnos)</span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0;cursor:pointer"><input type="checkbox" id="cron-fds" checked onchange="_cronInvalida()" style="margin-top:2px"> <span>Sábados de plantão em revezamento entre os supervisores, para os turnos que só trabalham em fim de semana/feriado (nos dias úteis só os demais turnos)</span></label>
+    <div style="font-size:11px;color:var(--text3);line-height:1.5;margin:4px 0">O expediente tem a jornada + o intervalo no meio (ex.: 08:00–12:00 e 14:00–18:00). Em dia com visita à noite o expediente começa mais tarde, para terminar depois da visita — o supervisor trabalha menos de dia.</div>
     <div id="cron-resumo-form" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6"></div>
     <div id="cron-progresso" style="font-size:12px;color:var(--cyan);margin-top:8px"></div>
     <div id="cron-resultado"></div>
@@ -758,7 +771,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-05-14:40';
+const BUILD_VERSION='2026-10-06-10:30';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -2572,7 +2585,7 @@ function rotaMatchCheckin(r,c){ return c.rotaId?c.rotaId===r.id:(!r.avulso&&c.po
 function rotaDiasTxt(r,sup){
   if(sup&&rotaNoCron(sup,r)){
     const n=sup.cronograma.itens.filter(i=>i.rotaId===r.id).length;
-    return 'Cronograma automático · '+n+' visita(s) a cada '+sup.cronograma.semanas+' semanas';
+    return 'Cronograma automático · '+n+' visita(s) a cada '+sup.cronograma.semanas+' semanas'+(r.freqCiclo==='quinzenal'?' · a cada 15 dias':(r.freqCiclo==='mensal'?' · a cada 30 dias':''));
   }
   if(r.dias&&r.dias.length)return DIAS_ORDEM.filter(d=>r.dias.includes(d)).map(d=>DIAS_CURTO[d]).join(', ');
   return (Number(r.frequenciaSemanal)||0)+' visita(s)/semana · sem dia fixo';
@@ -2640,6 +2653,8 @@ function _rng(seed){
 }
 async function cronNucleo(cfg){
   const {nCli,dist,inst,W,D,V}=cfg;
+  const esp=cfg.esp||[];
+  const H=Object.assign({ini:480,jornada:480,pausa:120,dur:60,vel:40},cfg.horario||{});
   const rnd=_rng(cfg.seed||1);
   const nDias=W*D, nSlots=nDias*V;
   const cnt=new Array(nCli).fill(0); inst.forEach(x=>{cnt[x.cli]++;});
@@ -2648,7 +2663,7 @@ async function cronNucleo(cfg){
   let soma=0,n=0;
   for(let i=0;i<nCli;i++)for(let j=i+1;j<nCli;j++){ if(dist[i][j]>0){soma+=dist[i][j];n++;} }
   const escala=n?soma/n:5;
-  const DUP=1000, CAP=300, REP=0.5*escala, SAME=1.5*escala;
+  const DUP=1000, CAP=300, HOR=800, SPC=300, REP=0.5*escala, SAME=1.5*escala;
 
   const memo=new Map();
   function pathDia(ids){
@@ -2678,15 +2693,51 @@ async function cronNucleo(cfg){
     memo.set(key,res);
     return res;
   }
+  // Expediente do dia: jornada (ex.: 8h) + intervalo (ex.: 2h) no meio. Dia normal começa em H.ini;
+  // se há visita à noite, o expediente é empurrado para terminar depois dela (trabalha menos de dia).
+  const smemo=new Map();
+  function agendaDia(ordem){
+    const key=ordem.join(',');
+    const m0=smemo.get(key); if(m0)return m0;
+    const span=H.jornada+H.pausa, fimNormal=H.ini+span;
+    let fim=fimNormal, noturno=false;
+    ordem.forEach(id=>{
+      const x=inst[id]; if(!x.noite)return;
+      noturno=true;
+      let tN=Infinity;
+      (x.win||[]).forEach(w=>{ if(w[1]>=fimNormal-H.dur)tN=Math.min(tN,Math.max(w[0],fimNormal-H.dur)); });
+      if(tN<Infinity)fim=Math.max(fim,tN+H.dur);
+    });
+    fim=Math.ceil(fim/30)*30;
+    const ini=fim-span, pIni=ini+H.jornada/2, pFim=pIni+H.pausa;
+    let cur=ini,prev=-1,viol=0; const times=[];
+    for(const id of ordem){
+      const x=inst[id];
+      const t0=prev>=0?cur+dist[inst[prev].cli][x.cli]/H.vel*60:cur;
+      let best=-1;
+      for(const w of (x.win||[[0,2880]])){
+        let tt=Math.max(t0,w[0],ini);
+        if(tt+H.dur>pIni&&tt<pFim)tt=pFim;
+        if(tt>w[1]||tt+H.dur>fim)continue;
+        if(best<0||tt<best)best=tt;
+      }
+      if(best<0){ viol++; best=Math.max(t0,ini); if(best+H.dur>pIni&&best<pFim)best=pFim; }
+      times.push(best); cur=best+H.dur; prev=id;
+    }
+    const res={viol,times,ini,fim,pIni,pFim,noturno};
+    smemo.set(key,res);
+    return res;
+  }
   const wk=new Int32Array(nCli*W), mask=new Int32Array(nCli*W);
   function custo(slots){
     wk.fill(0);mask.fill(0);
-    let km=0,pen=0,viol=0;
+    let km=0,pen=0,viol=0,vh=0;
     const keys=new Array(nDias);
     for(let dI=0;dI<nDias;dI++){
       const w=(dI/D)|0, d=dI%D;
       const ids=slots.slice(dI*V,dI*V+V);
-      km+=pathDia(ids).km;
+      const pd0=pathDia(ids); km+=pd0.km;
+      const ag0=agendaDia(pd0.ordem); if(ag0.viol){pen+=HOR*ag0.viol;vh+=ag0.viol;}
       const cl=ids.map(id=>inst[id].cli);
       for(let a=0;a<V;a++)for(let b=a+1;b<V;b++) if(cl[a]===cl[b]){pen+=DUP;viol++;}
       for(const c of cl){ wk[c*W+w]++; mask[c*W+w]|=(1<<d); }
@@ -2694,6 +2745,12 @@ async function cronNucleo(cfg){
     }
     for(let c=0;c<nCli;c++){
       for(let w=0;w<W;w++){ const ex=wk[c*W+w]-cap[c]; if(ex>0){pen+=CAP*ex;viol+=ex;} }
+      if(esp[c]&&cnt[c]===2){
+        let w1=-1,w2=-1;
+        for(let w=0;w<W;w++)if(wk[c*W+w]>0){ if(w1<0)w1=w; else w2=w; }
+        if(w2<0||Math.abs(w2-w1)!==W/2){pen+=SPC;viol++;}
+        else if(mask[c*W+w1]!==mask[c*W+w2])pen+=2*escala; // mesmo dia da semana: 15 dias certinhos
+      }
       if(W>1&&cnt[c]>1){
         for(let w=0;w<W;w++){
           const nx=(w+1)%W; if(nx===w)continue;
@@ -2705,7 +2762,7 @@ async function cronNucleo(cfg){
     for(let d=0;d<D;d++)for(let w1=0;w1<W;w1++)for(let w2=w1+1;w2<W;w2++){
       if(keys[w1*D+d]===keys[w2*D+d])pen+=SAME;
     }
-    return {km,pen,viol,total:km+pen};
+    return {km,pen,viol,vh,total:km+pen};
   }
 
   // Solução inicial: rodadas (1ª visita de cada cliente, depois 2ª...) preenchendo os dias em ordem
@@ -2743,9 +2800,9 @@ async function cronNucleo(cfg){
   const dias=[];
   for(let dI=0;dI<nDias;dI++){
     const ids=best.slice(dI*V,dI*V+V), pd=pathDia(ids);
-    dias.push({w:(dI/D)|0,d:dI%D,ordem:pd.ordem,km:pd.km});
+    dias.push({w:(dI/D)|0,d:dI%D,ordem:pd.ordem,km:pd.km,ag:agendaDia(pd.ordem)});
   }
-  return {slots:best,kmCiclo:fin.km,kmBase:base,viol:fin.viol,dias};
+  return {slots:best,kmCiclo:fin.km,kmBase:base,viol:fin.viol,violH:fin.vh,dias};
 }
 
 
@@ -2755,6 +2812,13 @@ async function cronNucleo(cfg){
 function _min(h){ const a=String(h||'0:0').split(':'); return (parseInt(a[0],10)||0)*60+(parseInt(a[1],10)||0); }
 function _fmtMin(m){ m=((Math.round(m)%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
 function _minNoite(m){ return m>=1080||m<360; }
+// Janela (em minutos desde 00:00; valores > 1440 = madrugada seguinte) em que a visita cobre os turnos
+function _winDe(v){
+  if(v.ini==null||v.ini===undefined)return [[v.min,v.min+60]];
+  let s=v.ini*5,e=s+v.len*5;
+  if(e<=360){s+=1440;e+=1440;}
+  return [[s,e]];
+}
 function planVisitas(turnos,margem){
   const n=turnos.length; if(!n)return [];
   margem=margem==null?30:margem;
@@ -2781,7 +2845,7 @@ function planVisitas(turnos,margem){
     if(min<300||min>=1380){
       for(let j=0;j<r.len;j++){ const m=((r.ini+j)*step)%1440; if(m>=1200){min=m;break;} }
     }
-    return {mk:r.mk,len:r.len,min};
+    return {mk:r.mk,len:r.len,min,ini:r.ini};
   });
   const full=(1<<n)-1;
   let best=null;
@@ -2797,21 +2861,23 @@ function planVisitas(turnos,margem){
       for(let i=from;i<cands.length;i++){ pick.push(cands[i]); rec(i+1,pick,uni|cands[i].mk); pick.pop(); }
     })(0,[],0);
   }
-  let visitas=best?best.pick.map(c=>({min:c.min,mk:c.mk})):[];
+  let visitas=best?best.pick.map(c=>({min:c.min,mk:c.mk,ini:c.ini,len:c.len})):[];
   // turnos que nenhuma janela alcançou (turno muito curto): visita própria na entrada
   let uni=0; visitas.forEach(v=>{uni|=v.mk;});
   for(let i=0;i<n;i++)if(!(uni&(1<<i)))visitas.push({min:_min(turnos[i].horaEntrada),mk:1<<i});
-  return visitas.map(v=>({min:v.min,hora:_fmtMin(v.min),turnos:turnos.filter((_,i)=>v.mk&(1<<i))})).sort((a,b)=>a.min-b.min);
+  return visitas.map(v=>({min:v.min,hora:_fmtMin(v.min),win:_winDe(v),turnos:turnos.filter((_,i)=>v.mk&(1<<i))})).sort((a,b)=>a.min-b.min);
 }
 function visitaTxt(it){
-  if(it&&it.turnos&&it.turnos.length)return 'horário sugerido '+it.hora+' · '+it.turnos.map(turnoTxt).join(' + ');
+  if(it&&it.turnos&&it.turnos.length)return 'horário '+it.hora+' · '+it.turnos.map(turnoTxt).join(' + ');
+  if(it&&it.hora)return 'horário '+it.hora;
   return it&&it.turno?turnoTxt(it.turno):'';
 }
 function visitaCurto(it){
-  if(it&&it.turnos&&it.turnos.length)return '~'+it.hora+' · '+it.turnos.map(x=>x.nome+' '+x.horaEntrada).join(' + ');
+  if(it&&it.turnos&&it.turnos.length)return it.hora+' · '+it.turnos.map(x=>x.nome+' '+x.horaEntrada).join(' + ');
+  if(it&&it.hora)return it.hora;
   return it&&it.turno?turnoTxt(it.turno):'';
 }
-const CRON_DOW_PADRAO={1:[3],2:[2,4],3:[1,3,5],4:[1,2,4,5],5:[1,2,3,4,5],6:[1,2,3,4,5,6]};
+const CRON_DOW_PADRAO={1:[3],2:[2,4],3:[1,3,5],4:[1,2,4,5],5:[1,2,3,4,5]}; // sábado é só plantão em revezamento
 function cronAtivo(sup){return !!(sup&&sup.cronograma&&sup.cronograma.itens&&sup.cronograma.itens.length);}
 function rotaNoCron(sup,r){return cronAtivo(sup)&&sup.cronograma.itens.some(i=>i.rotaId===r.id);}
 function rotaProgramada(sup,r){return rotaNoCron(sup,r)||!!(r.dias&&r.dias.length);}
@@ -2838,6 +2904,17 @@ function rotaPrevistoMedio(sup,r){
   return rotaPrevistoSemana(r);
 }
 function fmtNum(n){ return String(Math.round(n*10)/10).replace('.',','); }
+function cronDiaExp(sup,date){
+  if(!cronAtivo(sup)||!sup.cronograma.dias)return null;
+  const w=cronSemanaIdx(sup,date); if(w<0)return null;
+  const dow=new Date(date+'T12:00').getDay();
+  return sup.cronograma.dias.find(x=>x.w===w&&x.dow===dow)||null;
+}
+function expTxt(e){
+  if(!e)return '';
+  if(e.sab)return 'Plantão de sábado';
+  return (e.noturno?'☾ ':'')+e.ini+'–'+e.fim+' · intervalo '+e.pIni+'–'+e.pFim;
+}
 function cronDesatualizado(sup){
   return cronAtivo(sup)?(sup.rota||[]).filter(r=>!rotaNoCron(sup,r)):[];
 }
@@ -2920,6 +2997,7 @@ async function _cronGerar(sup,o,seed,onMsg){
   const todas=sup.rota||[];
   const rotas=todas.filter(r=>!rotaSoFds(r)), soFdsRotas=todas.filter(rotaSoFds);
   const N=rotas.length, W=o.W, D=o.D, V=o.V, T=W*D*V;
+  const H={ini:o.expIni,jornada:o.jornada,pausa:o.pausa,dur:o.dur,vel:o.vel}, spanH=H.jornada+H.pausa;
   if(!N)throw new Error('Todos os clientes desta rota só trabalham em fim de semana/feriado; nada a distribuir nos dias úteis.');
   if(o.geo){
     const faltam=todas.filter(r=>!rotaCoords(r));
@@ -2933,49 +3011,67 @@ async function _cronGerar(sup,o,seed,onMsg){
     if(!o.alt)return [];
     let g=planVisitas(rotaTurnos(r).filter(x=>!x.soFds));
     if(!o.noite){ const f=g.filter(x=>!_minNoite(x.min)); if(f.length)g=f; }
+    // visita que não cabe no expediente normal → dia com expediente deslocado (noite)
+    g.forEach(x=>{ x.noite=!x.win.some(w=>Math.max(w[0],H.ini)<=Math.min(w[1],H.ini+spanH-H.dur)); });
     return g;
   });
   // Cada cliente recebe T/N visitas; as que sobram vão para quem tem mais horários a cobrir.
-  const base=Math.floor(T/N), extra=T-base*N;
-  const prio=[...Array(N).keys()].sort((a,b)=>(grupos[b].length-grupos[a].length)||(((a+seed)%N)-((b+seed)%N)));
-  const cont=new Array(N).fill(base); prio.slice(0,extra).forEach(i=>{cont[i]++;});
+  // Frequência própria do posto (a cada 15 dias = 2 visitas/ciclo; a cada 30 dias = 1) — o restante divide igual.
+  const fixoN=rotas.map(r=>r.freqCiclo==='quinzenal'?2:(r.freqCiclo==='mensal'?1:0));
+  const fixoTot=fixoN.reduce((x,y)=>x+y,0), autoIdx=[...Array(N).keys()].filter(i=>!fixoN[i]), restoT=T-fixoTot;
+  if(autoIdx.length?restoT<autoIdx.length:restoT!==0)throw new Error(autoIdx.length?'Poucas visitas no ciclo para os clientes com frequência automática.':'Com todos os clientes em frequência fixa são necessárias exatamente '+fixoTot+' visitas no ciclo (hoje: '+T+'). Ajuste dias/visitas por dia.');
+  const cont=fixoN.slice();
+  if(autoIdx.length){
+    const base=Math.floor(restoT/autoIdx.length), extra=restoT-base*autoIdx.length;
+    autoIdx.forEach(i=>{cont[i]=base;});
+    autoIdx.slice().sort((x,y)=>(grupos[y].length-grupos[x].length)||(((x+seed)%N)-((y+seed)%N))).slice(0,extra).forEach(i=>{cont[i]++;});
+  }
   const inst=[];
   for(let i=0;i<N;i++)for(let k=0;k<cont[i];k++){
     const gl=grupos[i], g=gl.length?gl[(k+seed+i)%gl.length]:null;
-    inst.push({cli:i,bucket:g?Math.floor(g.min/90):-1,grupo:g});
+    inst.push({cli:i,bucket:g?Math.floor(g.min/90):-1,grupo:g,win:g?g.win:null,noite:g?!!g.noite:false});
   }
   let res=null;
   for(let a=0;a<3;a++){
-    res=await cronNucleo({nCli:N,dist,inst,W,D,V,seed:seed+a*7919,onProgress:p=>onMsg('Otimizando trajetos… '+Math.round(p*100)+'%')});
-    if(res.viol===0)break;
+    const r2=await cronNucleo({nCli:N,dist,inst,W,D,V,horario:H,esp:rotas.map(r=>r.freqCiclo==='quinzenal'),seed:seed+a*7919,onProgress:p=>onMsg('Otimizando trajetos e horários… '+Math.round(p*100)+'%')});
+    if(!res||(r2.viol+r2.violH)<(res.viol+res.violH))res=r2;
+    if(r2.viol===0&&r2.violH===0)break;
   }
-  const dowL=CRON_DOW_PADRAO[D], itens=[];
+  const dowL=CRON_DOW_PADRAO[D], itens=[], diasExp=[];
+  res.dias.forEach(dia=>diasExp.push({w:dia.w,d:dia.d,dow:dowL[dia.d],ini:_fmtMin(dia.ag.ini),fim:_fmtMin(dia.ag.fim),pIni:_fmtMin(dia.ag.pIni),pFim:_fmtMin(dia.ag.pFim),noturno:dia.ag.noturno,km:Math.round(dia.km*10)/10}));
   res.dias.forEach(dia=>dia.ordem.forEach((id,k)=>{
     const x=inst[id];
-    itens.push({w:dia.w,d:dia.d,dow:dowL[dia.d],ordem:k+1,rotaId:rotas[x.cli].id,turno:null,hora:x.grupo?x.grupo.hora:null,turnos:x.grupo?x.grupo.turnos.map(q=>({nome:q.nome,horaEntrada:q.horaEntrada,horaSaida:q.horaSaida})):null});
+    itens.push({w:dia.w,d:dia.d,dow:dowL[dia.d],ordem:k+1,rotaId:rotas[x.cli].id,turno:null,hora:_fmtMin(dia.ag.times[k]),turnos:x.grupo?x.grupo.turnos.map(q=>({nome:q.nome,horaEntrada:q.horaEntrada,horaSaida:q.horaSaida})):null});
   }));
-  // Turnos que só trabalham em fim de semana/feriado: visita de sábado, 1 horário por semana (até 4 por ciclo)
+  // Sábado: revezamento entre os supervisores que têm turnos de fim de semana/feriado nos seus postos.
+  // Cada um trabalha nas semanas que lhe cabem e visita só os postos vinculados a ele.
   const fdsRotas=[...rotas,...soFdsRotas].filter(r=>rotaTurnos(r).some(x=>x.soFds));
-  const fdsInfo=[];
-  if(o.fds){
+  const fdsInfo=[]; let sabInfo='';
+  if(o.fds&&fdsRotas.length){
+    const lista=supervisoresAtivos().filter(s=>(s.rota||[]).some(r=>rotaTurnos(r).some(x=>x.soFds)));
+    let kS=lista.findIndex(s=>s.id===sup.id); if(kS<0)kS=0;
+    const Sf=Math.max(1,lista.length), semSab=[];
+    if(Sf<=W){ for(let w=0;w<W;w++)if(w%Sf===kS)semSab.push(w); } else semSab.push(kS%W);
     fdsRotas.forEach((r,j)=>{
       let g=planVisitas(rotaTurnos(r).filter(x=>x.soFds));
       if(!o.noite){ const f=g.filter(x=>!_minNoite(x.min)); if(f.length)g=f; }
-      g.slice(0,W).forEach((gr,k)=>{
-        itens.push({w:(j+k)%W,d:99,dow:6,ordem:0,rotaId:r.id,turno:null,hora:gr.hora,turnos:gr.turnos.map(q=>({nome:q.nome,horaEntrada:q.horaEntrada,horaSaida:q.horaSaida,soFds:true}))});
+      g.forEach((gr,k)=>{
+        itens.push({w:semSab[(j+k)%semSab.length],d:99,dow:6,ordem:0,rotaId:r.id,turno:null,hora:gr.hora,turnos:gr.turnos.map(q=>({nome:q.nome,horaEntrada:q.horaEntrada,horaSaida:q.horaSaida,soFds:true}))});
       });
-      fdsInfo.push(rotaLabel(r)+': '+g.slice(0,W).map(x=>x.hora).join(', '));
+      fdsInfo.push(rotaLabel(r)+': '+g.map(x=>x.hora).join(', '));
     });
     for(let w=0;w<W;w++){ itens.filter(i=>i.w===w&&i.d===99).sort((a,b)=>a.hora<b.hora?-1:1).forEach((i,k)=>{i.ordem=k+1;}); }
+    semSab.forEach(w=>diasExp.push({w,d:99,dow:6,sab:true}));
+    sabInfo='Seus sábados de plantão: semana'+(semSab.length>1?'s ':' ')+semSab.map(w=>w+1).join(' e ')+' do ciclo (revezamento entre '+Sf+' supervisor'+(Sf>1?'es':'')+' com postos de fim de semana).';
   }
   const hoje=today(), seg=weekStart(hoje);
   let inicio=seg;
   if(o.proxima){ const d=new Date(seg+'T12:00'); d.setDate(d.getDate()+7); inicio=fmtYMD(d); }
   const economia=res.kmBase>0?Math.max(0,Math.round((res.kmBase-res.kmCiclo)/res.kmBase*100)):0;
   return {
-    cron:{versao:1,geradoEm:hoje,inicio,semanas:W,D,V,consumo:o.consumo,seed,itens,
+    cron:{versao:2,geradoEm:hoje,inicio,semanas:W,D,V,consumo:o.consumo,seed,itens,dias:diasExp,exped:{ini:H.ini,jornada:H.jornada,pausa:H.pausa,dur:H.dur,vel:H.vel},
       resumo:{kmCiclo:Math.round(res.kmCiclo*10)/10,kmSemana:Math.round(res.kmCiclo/W*10)/10,economiaPct:economia,
-        semCoord:rotas.filter((r,i)=>!coords[i]).map(rotaLabel),fdsInfo,fdsSem:o.fds?[]:fdsRotas.map(rotaLabel),
+        semCoord:rotas.filter((r,i)=>!coords[i]).map(rotaLabel),fdsInfo,sabInfo,violH:res.violH,fdsSem:o.fds?[]:fdsRotas.map(rotaLabel),
         grupos:rotas.map((r,i)=>({nome:rotaLabel(r),turnos:rotaTurnos(r).length,horarios:grupos[i].map(g=>g.hora)})).filter(x=>x.turnos>1&&x.horarios.length)}},
     dias:res.dias
   };
@@ -2991,6 +3087,12 @@ function abrirCronModal(supId){
   const N=Math.max(1,sup.rota.filter(r=>!rotaSoFds(r)).length);
   document.getElementById('cron-modal-sup-lbl').textContent=sup.nome;
   document.getElementById('cron-dias').value=c?c.D:Math.min(5,Math.max(1,Math.ceil(N/2)));
+  const ex=c&&c.exped?c.exped:{ini:480,jornada:480,pausa:120,dur:60,vel:40};
+  document.getElementById('cron-exp-ini').value=_fmtMin(ex.ini);
+  document.getElementById('cron-jornada').value=ex.jornada/60;
+  document.getElementById('cron-pausa').value=ex.pausa/60;
+  document.getElementById('cron-dur').value=ex.dur;
+  document.getElementById('cron-vel').value=ex.vel;
   document.getElementById('cron-vis').value=c?c.V:Math.min(N,2);
   document.getElementById('cron-consumo').value=c&&c.consumo?c.consumo:10;
   document.getElementById('cron-alt').checked=true;
@@ -3004,21 +3106,32 @@ function abrirCronModal(supId){
 function closeCronModal(){ if(_cronBusy)return; document.getElementById('cron-modal').style.display='none'; }
 function _cronOpts(sup){
   const N=(sup.rota||[]).filter(r=>!rotaSoFds(r)).length;
-  const D=Math.min(6,Math.max(1,parseInt(document.getElementById('cron-dias').value,10)||1));
+  const D=Math.min(5,Math.max(1,parseInt(document.getElementById('cron-dias').value,10)||1));
   const V=Math.min(6,N,Math.max(1,parseInt(document.getElementById('cron-vis').value,10)||1));
-  return {W:4,D,V,N,T:4*D*V,consumo:Math.max(1,parseFloat(String(document.getElementById('cron-consumo').value).replace(',','.'))||10),
+  const fx=(sup.rota||[]).filter(r=>!rotaSoFds(r)).map(r=>r.freqCiclo==='quinzenal'?2:(r.freqCiclo==='mensal'?1:0));
+  const fixoTot=fx.reduce((a,b)=>a+b,0), autoN=fx.filter(x=>!x).length;
+  return {W:4,D,V,N,fixoTot,autoN,T:4*D*V,consumo:Math.max(1,parseFloat(String(document.getElementById('cron-consumo').value).replace(',','.'))||10),
     alt:document.getElementById('cron-alt').checked,noite:document.getElementById('cron-noite').checked,
-    geo:document.getElementById('cron-geo').checked,fds:document.getElementById('cron-fds').checked,proxima:document.getElementById('cron-inicio').value==='proxima'};
+    geo:document.getElementById('cron-geo').checked,fds:document.getElementById('cron-fds').checked,
+    expIni:_min(document.getElementById('cron-exp-ini').value||'08:00'),
+    jornada:Math.max(1,parseFloat(String(document.getElementById('cron-jornada').value).replace(',','.'))||8)*60,
+    pausa:Math.max(0,parseFloat(String(document.getElementById('cron-pausa').value).replace(',','.'))||0)*60,
+    dur:Math.max(10,parseInt(document.getElementById('cron-dur').value,10)||60),
+    vel:Math.max(10,parseInt(document.getElementById('cron-vel').value,10)||40),
+    proxima:document.getElementById('cron-inicio').value==='proxima'};
 }
 // Qualquer mudança nos campos invalida o resultado já mostrado
+function _cronFalta(o){ return o.autoN?(o.T-o.fixoTot<o.autoN):(o.T!==o.fixoTot); }
 function _cronInvalida(){
   _cronPrev=null;
   const sup=findSupervisor(_cronSupId); if(!sup)return;
   const o=_cronOpts(sup);
   const el=document.getElementById('cron-resumo-form');
-  const falta=o.T<o.N;
-  el.innerHTML='<b>'+o.N+'</b> cliente(s) · <b>'+o.T+'</b> visitas no ciclo de 4 semanas'+(falta?'':' · cada cliente é visitado cerca de <b>'+fmtNum(o.T/o.N)+'</b>× no ciclo ('+fmtNum(o.T/o.N/4)+'×/semana)')+
-    (falta?'<div style="color:var(--red);margin-top:4px">Poucas visitas para cobrir todos os clientes: aumente os dias por semana ou as visitas por dia (mínimo '+o.N+' visitas no ciclo).</div>':'');
+  const falta=_cronFalta(o);
+  const mediaAuto=o.autoN?(o.T-o.fixoTot)/o.autoN:0;
+  el.innerHTML='<b>'+o.N+'</b> cliente(s) · <b>'+o.T+'</b> visitas no ciclo de 4 semanas'+(falta?'':(o.autoN?' · clientes em frequência automática: cerca de <b>'+fmtNum(mediaAuto)+'</b>× no ciclo ('+fmtNum(mediaAuto/4)+'×/semana)':''))+
+    (o.N-o.autoN?' · '+(o.N-o.autoN)+' com frequência fixa (15/30 dias)':'')+
+    (falta?'<div style="color:var(--red);margin-top:4px">'+(o.autoN?'Poucas visitas para cobrir todos os clientes: aumente os dias por semana ou as visitas por dia (mínimo '+(o.fixoTot+o.autoN)+' visitas no ciclo).':'Com todos os clientes em frequência fixa são necessárias exatamente '+o.fixoTot+' visitas no ciclo: ajuste dias × visitas por dia (×4 semanas).')+'</div>':'');
   document.getElementById('cron-resultado').innerHTML='';
   document.getElementById('cron-progresso').textContent='';
   document.getElementById('cron-btn-gerar').innerHTML='<i class="ti ti-wand" style="font-size:14px"></i> Gerar cronograma';
@@ -3029,7 +3142,7 @@ async function cronGerarClick(){
   if(_cronBusy)return;
   const sup=findSupervisor(_cronSupId); if(!sup)return;
   const o=_cronOpts(sup);
-  if(o.T<o.N)return;
+  if(_cronFalta(o))return;
   _cronBusy=true;
   const bG=document.getElementById('cron-btn-gerar'), bS=document.getElementById('cron-btn-salvar');
   const prog=document.getElementById('cron-progresso');
@@ -3056,6 +3169,8 @@ function _cronMostra(sup,r){
   h+='<br>'+(rs.economiaPct>0?'<b>'+rs.economiaPct+'% menos</b> deslocamento que um rodízio sem otimização.':'Sem ganho de deslocamento sobre um rodízio simples (clientes muito próximos ou sem localização).');
   h+='<br><span style="color:var(--text2)">Começa na semana de '+dateFmt(c.inicio)+'. Distâncias estimadas (linha reta × 1,3), sem contar a saída de/para a base.</span>';
   if(rs.grupos&&rs.grupos.length)h+='<div style="margin-top:6px"><b>Turnos agrupados por visita:</b>'+rs.grupos.map(g=>'<div style="padding-left:12px">'+supEsc(g.nome)+': '+g.turnos+' turnos cobertos com '+g.horarios.length+' horário(s) de visita ('+g.horarios.join(', ')+')</div>').join('')+'</div>';
+  if(rs.sabInfo)h+='<div style="margin-top:6px"><i class="ti ti-calendar-event"></i> '+supEsc(rs.sabInfo)+'</div>';
+  if(rs.violH)h+='<div style="color:var(--warn);margin-top:4px"><i class="ti ti-alert-triangle"></i> '+rs.violH+' visita(s) não couberam no expediente/horário do turno. Reduza as visitas por dia, aumente os dias ou use "Gerar outra variação".</div>';
   if(rs.fdsInfo&&rs.fdsInfo.length)h+='<div style="margin-top:6px"><b>Visitas de sábado (turnos de fim de semana/feriado):</b>'+rs.fdsInfo.map(x=>'<div style="padding-left:12px">'+supEsc(x)+'</div>').join('')+'</div>';
   if(rs.fdsSem&&rs.fdsSem.length)h+='<div style="color:var(--warn);margin-top:4px"><i class="ti ti-alert-triangle"></i> Sem visita nos turnos de fim de semana: '+supEsc(rs.fdsSem.join(', '))+'.</div>';
   if(rs.semCoord.length)h+='<div style="color:var(--warn);margin-top:4px"><i class="ti ti-alert-triangle"></i> Sem localização (tratados como "perto de todos"): '+supEsc(rs.semCoord.join(', '))+'. Cadastre o endereço no cliente para melhorar o resultado.</div>';
@@ -3065,13 +3180,14 @@ function _cronMostra(sup,r){
     for(let d=0;d<c.D;d++){
       const its=c.itens.filter(i=>i.w===w&&i.d===d).sort((a,b)=>a.ordem-b.ordem);
       const km=r.dias.find(x=>x.w===w&&x.d===d);
-      h+='<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12px"><b>'+DIAS_CURTO[its[0]?its[0].dow:CRON_DOW_PADRAO[c.D][d]]+'</b> <span style="color:var(--text3)">· '+(km?fmtNum(km.km):'0')+' km</span>';
+      const dx=c.dias.find(x=>x.w===w&&x.d===d);
+      h+='<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12px"><b>'+DIAS_CURTO[its[0]?its[0].dow:CRON_DOW_PADRAO[c.D][d]]+'</b> <span style="color:var(--text3)">· '+(km?fmtNum(km.km):'0')+' km'+(dx?' · '+supEsc(expTxt(dx)):'')+'</span>';
       its.forEach(i=>{ const rr=porId[i.rotaId]; h+='<div style="padding-left:12px;color:var(--text)">'+i.ordem+'. '+supEsc(rr?rotaLabel(rr):'?')+(visitaTxt(i)?' <span style="color:var(--text2)">· '+supEsc(visitaTxt(i))+'</span>':'')+'</div>'; });
       h+='</div>';
     }
     const fs=c.itens.filter(i=>i.w===w&&i.d===99).sort((a,b)=>a.ordem-b.ordem);
     if(fs.length){
-      h+='<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12px"><b>Sáb</b> <span style="color:var(--text3)">· turnos de fim de semana</span>';
+      h+='<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12px"><b>Sáb</b> <span style="color:var(--text3)">· plantão (turnos de fim de semana)</span>';
       fs.forEach(i=>{ const rr=porId[i.rotaId]; h+='<div style="padding-left:12px;color:var(--text)">'+i.ordem+'. '+supEsc(rr?rotaLabel(rr):'?')+' <span style="color:var(--text2)">· '+supEsc(visitaTxt(i))+'</span></div>'; });
       h+='</div>';
     }
@@ -3239,6 +3355,8 @@ function renderSupervisoresCrono(){
       const itens=c.porDia[d];
       html+='<div class="crono-day'+(d===hoje?' hoje':'')+((dow===0||dow===6)?' fds':'')+'">';
       html+='<div class="crono-day-h"><span>'+DIAS_CURTO[dow]+'</span><span>'+d.slice(8)+'/'+d.slice(5,7)+'</span></div>';
+      const ex=cronDiaExp(sup,d);
+      if(ex)html+='<div style="font-size:9px;color:'+(ex.noturno?'var(--warn)':'var(--text3)')+';padding:0 2px 5px;line-height:1.35">'+supEsc(expTxt(ex))+'</div>';
       html+='<div class="crono-chips">'+(itens.length?itens.map(cronoChip).join(''):'<span class="crono-vazio">—</span>')+'</div></div>';
     });
     html+='</div>';
@@ -3377,6 +3495,7 @@ function abrirRotaModal(supervisorId,rotaId){
   document.getElementById('rota-avulso-local').value=r&&r.avulso?(r.localNome||''):'';
   document.getElementById('rota-avulso-end').value=r&&r.avulso?(r.endereco||''):'';
   document.getElementById('rota-modal-freq').value=r?(Number(r.frequenciaSemanal)||1):1;
+  document.getElementById('rota-modal-freqciclo').value=r&&r.freqCiclo?r.freqCiclo:'';
   _rotaDias=r&&r.dias?[...r.dias]:[];
   _rotaTurnosReset(r&&!r.avulso?r:null);
   _rotaSetTipo(r?!!r.avulso:!clientesAtivos().length);
@@ -3448,6 +3567,7 @@ async function salvarRotaModal(){
   }
   const dias=[..._rotaDias].sort((a,b)=>DIAS_ORDEM.indexOf(a)-DIAS_ORDEM.indexOf(b));
   const freq=dias.length?dias.length:Math.max(1,parseInt(document.getElementById('rota-modal-freq').value,10)||1);
+  dados.freqCiclo=document.getElementById('rota-modal-freqciclo').value||'';
   if(!sup.rota)sup.rota=[];
   if(_rotaModalId){
     const r=sup.rota.find(x=>x.id===_rotaModalId);
@@ -3524,6 +3644,8 @@ function renderSupervisoresCheckin(){
     cont.innerHTML=html;return;
   }
 
+  const expDia=cronDiaExp(sup,date);
+  if(expDia)html+='<div class="card" style="padding:10px 14px;font-size:12px;color:'+(expDia.noturno?'var(--warn)':'var(--text2)')+'"><i class="ti ti-clock-hour-4"></i> Expediente de hoje: <b>'+supEsc(expTxt(expDia))+'</b>'+(expDia.noturno?' — dia com visita à noite, expediente começa mais tarde':'')+'</div>';
   const agItem=r=>agendaItem(sup,r,date);
   const agendadas=rota.filter(r=>agItem(r)).sort((x,y)=>agItem(x).ordem-agItem(y).ordem);
   const semFixo=rota.filter(r=>!rotaProgramada(sup,r));

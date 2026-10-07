@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>FEMSA Aparecida — Painel Operacional</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -165,6 +165,97 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .tv-kpi-val{font-size:38px;font-weight:700;color:var(--text);line-height:1;letter-spacing:-.02em}
 .tv-kpi-sub{font-size:12px;color:var(--text2);margin-top:6px}
 .tv-section-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* === OPERAÇÃO (carretas, tiles, produção por colaborador) === */
+.op-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:13px;color:var(--text2)}
+.op-who i{color:var(--cyan);margin-right:4px}.op-who strong{color:var(--text)}
+.op-date{font-size:12px;color:var(--text3);text-transform:capitalize}
+.op-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.op-tile{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;min-width:0}
+.op-tile.prod{border-color:var(--green-bd);background:var(--green-bg)}
+.op-tile.buf{border-color:var(--cyan-bd);background:var(--cyan-bg)}
+.op-tile-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.op-tile-val{font-size:26px;font-weight:700;color:var(--text);line-height:1.15;margin-top:4px;letter-spacing:-.01em}
+.op-tile.prod .op-tile-val{color:var(--green)}.op-tile.buf .op-tile-val{color:var(--cyan)}
+.op-tile-sub{font-size:10px;color:var(--text3);margin-top:2px;line-height:1.3}
+.op-help{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:12px}
+.turno-tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+.turno-tabs .btn{width:auto;flex:1 0 auto;min-width:92px}
+.cg{margin-bottom:14px}
+.cg-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.cg-t{font-size:12px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px}
+.cg-t i{color:var(--cyan);font-size:16px}
+.car-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.car-n{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--text2);width:58px;flex-shrink:0}
+.car-n i{color:var(--cyan);font-size:16px}
+.car-row .num-wrap{flex:1;min-width:0}
+.car-row .num-wrap input{font-size:20px;padding:0;height:46px}
+.car-u{font-size:11px;color:var(--text3);flex-shrink:0}
+.car-x{width:40px;height:46px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);border-radius:9px;font-size:18px;cursor:pointer;flex-shrink:0}
+.car-add{width:100%;padding:11px;border:1px dashed var(--cyan-bd);background:var(--cyan-bg);color:var(--cyan);border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.car-add:active{opacity:.8}
+.car-tot{font-size:12px;color:var(--text2);margin-top:6px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.car-tot strong{color:var(--text)}
+.cg-det{margin-top:4px;border:1px solid var(--border);border-radius:9px;padding:10px 12px;background:var(--bg3)}
+.cg-det summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--text2)}
+.prow{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.prow:last-of-type{border-bottom:none}
+.prow-main{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.prow-nome{min-width:0;flex:1}
+.prow-nome .n{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow-nome .m{font-size:11px;margin-top:2px}
+.prow .num-wrap{width:152px;flex-shrink:0}
+.prow .num-btn{width:40px;height:44px}
+.prow .num-wrap input{font-size:18px;height:44px}
+.prow select{width:100%;margin-top:8px;padding:9px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px}
+@media(max-width:900px){.op-tiles{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:560px){
+  .op-tiles{grid-template-columns:1fr 1fr;gap:8px}
+  .op-tile.buf{grid-column:1/-1}
+  .op-tile-val{font-size:24px}
+  .prow-main{flex-wrap:wrap}
+  .prow .num-wrap{width:100%}
+  .prow .num-btn{width:56px;height:48px}
+  .prow .num-wrap input{font-size:22px;height:48px}
+}
+#sc-operacao{max-width:880px;margin:0 auto}
+.num-wrap input::-webkit-outer-spin-button,.num-wrap input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.num-wrap input[type=number]{-moz-appearance:textfield;appearance:textfield}
+/* === RESPONSIVO (celular / tablet) === */
+img,canvas,svg{max-width:100%}
+.pc-n{overflow-wrap:anywhere;line-height:1.25}
+@media(max-width:768px){
+  .screens-wrap{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  .pres-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .pc{padding:12px 8px;min-height:64px}
+  .pc-n{padding:0 18px;font-size:12px}
+  .pc-ferias-btn{width:26px;height:26px;font-size:13px;top:5px;right:5px}
+  .ds-btn{padding:9px 14px}
+  .screen table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #config-content div[style*="display:flex"]{flex-wrap:wrap}
+  #config-content input,#config-content select{min-width:0;max-width:100%}
+  #config-content .btn-sm{white-space:normal}
+  .hist-mes-label{min-width:0;flex:1}
+  .card{padding:14px}
+  .tv-kpi-row{grid-template-columns:repeat(2,1fr)}
+  .tv-section-row{grid-template-columns:1fr}
+  #tv-overlay{padding:16px}
+  .toast{left:12px;right:12px;max-width:none;top:calc(env(safe-area-inset-top,0px) + 8px)}
+}
+@media(max-width:560px){
+  .modal-overlay{padding:0;align-items:flex-end}
+  .modal-box{max-width:none;max-height:92vh;border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+  .modal-btns{flex-wrap:wrap}
+  .modal-btns>*{flex:1 1 120px}
+  .modal-field input,.modal-field select,.field input,.field select,.field textarea{font-size:16px}
+}
+@media(max-width:380px){
+  .kpi{padding:12px}
+  .kpi-val{font-size:22px}
+  .kpi-lbl{font-size:9px}
+  .snav-item{padding:11px 14px}
+  .bn{font-size:8px}
+}
 @media(max-width:768px){
   .sidebar{display:none!important}
   .main-content{width:100%;margin-left:0}
@@ -325,32 +416,53 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
           </div>
         </div>
         <div class="screen" id="sc-operacao">
+          <div class="op-top">
+            <div class="op-who"><i class="ti ti-user"></i> Lançando como <strong id="op-user-label">—</strong></div>
+            <div class="op-date" id="op-date-lbl"></div>
+          </div>
+          <div class="op-tiles">
+            <div class="op-tile"><div class="op-tile-lbl"><i class="ti ti-truck-delivery"></i> Recebidos</div><div class="op-tile-val" id="tl-rec">0</div><div class="op-tile-sub" id="tl-rec-sub">hoje</div></div>
+            <div class="op-tile prod"><div class="op-tile-lbl"><i class="ti ti-package"></i> Produzidos</div><div class="op-tile-val" id="tl-prod">0</div><div class="op-tile-sub" id="tl-prod-sub">soma dos colaboradores</div></div>
+            <div class="op-tile"><div class="op-tile-lbl"><i class="ti ti-truck-loading"></i> Enviados</div><div class="op-tile-val" id="tl-env">0</div><div class="op-tile-sub" id="tl-env-sub">hoje</div></div>
+            <div class="op-tile"><div class="op-tile-lbl"><i class="ti ti-trash"></i> Descarte</div><div class="op-tile-val" id="tl-desc">0</div><div class="op-tile-sub">hoje</div></div>
+            <div class="op-tile buf"><div class="op-tile-lbl"><i class="ti ti-stack-2"></i> Estoque (buffer)</div><div class="op-tile-val" id="buf-preview">+0</div><div class="op-tile-sub">produzidos − enviados (acumulado)</div></div>
+          </div>
+
+          <div class="card" id="prod-pessoas-section" style="border-color:var(--cyan-bd)">
+            <div class="card-title"><i class="ti ti-users" style="color:var(--cyan)"></i> Produção por colaborador <span class="tt-badge" id="prod-total-badge" style="margin-left:auto">0 no turno</span></div>
+            <div class="op-help">Lance quanto cada colaborador produziu no turno. Ao salvar, o total entra automaticamente em <strong>Produzidos</strong> do dia e na meta mensal.</div>
+            <div class="turno-tabs" id="prod-turno-btns-wrap"></div>
+            <div id="prod-pessoas-info" class="op-help" style="margin-bottom:6px"></div>
+            <div id="prod-pessoas-list"></div>
+          </div>
+
           <div class="card">
-            <div class="card-title"><i class="ti ti-stack-2"></i> Lançar movimentação</div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--text2);display:flex;align-items:center;gap:8px">
-              <i class="ti ti-user" style="font-size:15px;color:var(--cyan)"></i>Lançando como: <strong id="op-user-label" style="color:var(--text)">—</strong>
+            <div class="card-title"><i class="ti ti-truck"></i> Carretas e descarte</div>
+            <div class="cg">
+              <div class="cg-h"><span class="cg-t"><i class="ti ti-truck-delivery"></i> Recebidos</span><span class="tt-badge" id="tt-rec">0 hoje</span></div>
+              <div id="cg-rec"></div>
             </div>
-            <div class="pallet-fields-grid">
-              <div><div class="pf-label">Recebidos<span class="tt-badge" id="tt-rec">0 hoje</span></div><div class="num-wrap"><button class="num-btn" onclick="adj('mv-rec',-1)">−</button><input type="number" id="mv-rec" value="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-rec',1)">+</button></div></div>
-              <div><div class="pf-label">Produzidos<span class="tt-badge" id="tt-prod">0 hoje</span></div><div class="num-wrap"><button class="num-btn" onclick="adj('mv-prod',-1)">−</button><input type="number" id="mv-prod" value="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-prod',1)">+</button></div></div>
-              <div><div class="pf-label">Enviados<span class="tt-badge" id="tt-env">0 hoje</span></div><div class="num-wrap"><button class="num-btn" onclick="adj('mv-env',-1)">−</button><input type="number" id="mv-env" value="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-env',1)">+</button></div></div>
-              <div><div class="pf-label">Descarte<span class="tt-badge" id="tt-desc">0 hoje</span></div><div class="num-wrap"><button class="num-btn" onclick="adj('mv-desc',-1)">−</button><input type="number" id="mv-desc" value="0" min="0" inputmode="numeric"><button class="num-btn" onclick="adj('mv-desc',1)">+</button></div></div>
+            <div class="cg">
+              <div class="cg-h"><span class="cg-t"><i class="ti ti-truck-loading"></i> Enviados</span><span class="tt-badge" id="tt-env">0 hoje</span></div>
+              <div id="cg-env"></div>
             </div>
-            <div class="buf-box"><div style="font-size:10px;color:var(--cyan);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:6px">Estoque (buffer histórico)</div><div class="buf-val" id="buf-preview">+0</div><div style="font-size:11px;color:var(--text2);margin-top:4px">produzidos − enviados</div></div>
-            <button class="btn btn-primary" onclick="lancar()"><i class="ti ti-check" style="font-size:16px"></i> Lançar movimentação</button>
+            <div class="cg">
+              <div class="cg-h"><span class="cg-t"><i class="ti ti-trash"></i> Descarte (paletes)</span><span class="tt-badge" id="tt-desc">0 hoje</span></div>
+              <div class="num-wrap"><button class="num-btn" onclick="adj('mv-desc',-1)">−</button><input type="number" id="mv-desc" value="0" min="0" inputmode="numeric"><button class="num-btn" onclick="adj('mv-desc',1)">+</button></div>
+            </div>
+            <details class="cg-det"><summary>Produzidos sem colaborador (ajuste avulso)</summary>
+              <div class="op-help" style="margin:8px 0">Use só se houve produção que não está na lista de colaboradores. Soma ao total do dia.</div>
+              <div class="num-wrap"><button class="num-btn" onclick="adj('mv-prod',-1)">−</button><input type="number" id="mv-prod" value="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-prod',1)">+</button></div>
+              <span class="tt-badge" id="tt-prod" style="display:none">0 hoje</span>
+            </details>
+            <input type="hidden" id="mv-rec" value="0"><input type="hidden" id="mv-env" value="0">
+            <button class="btn btn-primary" style="margin-top:14px" onclick="lancar()"><i class="ti ti-check" style="font-size:16px"></i> Lançar movimentação</button>
             <button class="btn btn-ghost" style="margin-top:8px" onclick="abrirLancamentoRetroativo()"><i class="ti ti-calendar-plus" style="font-size:16px"></i> Lançar retroativo</button>
             <div id="lanc-ok-inline" style="display:none;margin-top:14px;padding:14px 16px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;align-items:center;gap:10px">
               <i class="ti ti-circle-check" style="font-size:22px;color:var(--green);flex-shrink:0"></i>
               <div><div style="font-size:14px;font-weight:700;color:var(--green)">Lançamento realizado com sucesso!</div>
               <div style="font-size:12px;color:var(--text2);margin-top:2px">Dados sincronizados</div></div>
             </div>
-          </div>
-          <div class="card" id="prod-pessoas-section" style="border-color:var(--cyan-bd)">
-            <div class="card-title"><i class="ti ti-users" style="color:var(--cyan)"></i> Produção por Colaborador</div>
-            <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Lance a produção de cada colaborador de Recuperação de Pallets deste turno. Pode lançar isso, o lançamento geral abaixo, ou os dois — são independentes. É só pra acompanhamento individual — <strong>não soma</strong> no total de Produzidos nem na meta mensal.</div>
-            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="prod-turno-btns-wrap"></div>
-            <div id="prod-pessoas-info" style="font-size:12px;color:var(--text2);margin-bottom:10px"></div>
-            <div id="prod-pessoas-list"></div>
           </div>
           <div class="card" id="op-hist-card" style="display:none">
             <div class="card-title"><i class="ti ti-history"></i> Lançamentos do dia</div>
@@ -409,8 +521,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
  </div>
  <div id="retro-prod-pessoas"></div>
  <div id="retro-geral-fields">
+ <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">Produzidos é calculado pela produção individual dos colaboradores (acima).</div>
  <div class="modal-field"><label>Recebidos</label><input type="number" id="retro-rec" min="0" inputmode="numeric"></div>
- <div class="modal-field"><label>Produzidos</label><input type="number" id="retro-prod" min="0" inputmode="numeric"></div>
+ <input type="hidden" id="retro-prod" value="0">
  <div class="modal-field"><label>Enviados</label><input type="number" id="retro-env" min="0" inputmode="numeric"></div>
  <div class="modal-field"><label>Descarte</label><input type="number" id="retro-desc" min="0" inputmode="numeric"></div>
  </div>
@@ -951,7 +1064,10 @@ async function pushToCloud(){
           Object.entries(state.movimentos).forEach(([d,ms])=>{
             if(!mm[d])mm[d]=[];
             const ex=new Set(mm[d].map(m=>m.ts));
-            ms.forEach(m=>{if(!ex.has(m.ts))mm[d].push(m);});
+            ms.forEach(m=>{
+              if(!ex.has(m.ts)){mm[d].push(m);return;}
+              if(m.auto){const cm=mm[d].find(x=>x.ts===m.ts);if(cm&&(m.updTs||'')>(cm.updTs||'')){cm.prod=m.prod;cm.updTs=m.updTs;cm.who=m.who;}}
+            });
             mm[d].sort((a,b)=>a.ts.localeCompare(b.ts));
           });
           const presResetTs=(cloud.presencasResetTs||'')>=(state.presencasResetTs||'')?(cloud.presencasResetTs||''):state.presencasResetTs;
@@ -1362,7 +1478,7 @@ function buildProducaoIndividualHojeCard(){
   };
   const rotulo=diaD===today()?'hoje':dateFmt(diaD);
   return'<div class="card"><div class="card-title"><i class="ti ti-users"></i>Produção Individual por Turno ('+rotulo+')</div>'+
-    '<div style="font-size:11px;color:var(--text2);margin-bottom:14px">Meta individual: '+info.metaPorPessoa+' pallets/pessoa · não soma no total geral</div>'+
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:14px">Meta individual: '+info.metaPorPessoa+' pallets/pessoa · soma em Produzidos do dia</div>'+
     turnosComGente.map(grupoHtml).join('')+
     '</div>';
 }
@@ -1811,30 +1927,92 @@ async function cancelarFerias(nome,inicio){
 }
 
 // OPERAÇÃO
+const CARRETA_PALETES=390;
+let cargas={rec:[],env:[]};
+function _somaCargas(k){return cargas[k].reduce((a,b)=>a+(parseInt(b)||0),0);}
+function _syncCargas(){
+  ['rec','env'].forEach(k=>{const e=document.getElementById('mv-'+k);if(e)e.value=_somaCargas(k);});
+  updBuf();
+}
+function renderCargas(){
+  ['rec','env'].forEach(k=>{
+    const el=document.getElementById('cg-'+k);if(!el)return;
+    const l=cargas[k];
+    el.innerHTML=l.map((v,i)=>'<div class="car-row"><span class="car-n"><i class="ti ti-truck"></i> '+(i+1)+'ª</span><div class="num-wrap"><input type="number" min="0" inputmode="numeric" value="'+v+'" oninput="cargaSet(\''+k+'\','+i+',this.value)" onfocus="this.select()"></div><span class="car-u">paletes</span><button class="car-x" aria-label="Remover carreta" onclick="cargaDel(\''+k+'\','+i+')">×</button></div>').join('')+
+      '<button class="car-add" onclick="cargaAdd(\''+k+'\')"><i class="ti ti-plus"></i> '+(l.length?'Outra carreta':'Adicionar carreta')+' ('+CARRETA_PALETES+' paletes)</button>'+
+      (l.length?'<div class="car-tot"><span><strong>'+l.length+'</strong> carreta'+(l.length>1?'s':'')+'</span><span><strong>'+_somaCargas(k).toLocaleString('pt-BR')+'</strong> paletes'+(l.some(v=>(parseInt(v)||0)<CARRETA_PALETES)?' · há carga abaixo de '+CARRETA_PALETES:'')+'</span></div>':'<div class="car-tot"><span>Nenhuma carreta lançada</span></div>');
+  });
+  _syncCargas();
+}
+function _cargaTotLbl(k){
+  const el=document.getElementById('cg-'+k);if(!el)return;
+  const t=el.querySelector('.car-tot');if(!t)return;
+  const l=cargas[k];
+  t.innerHTML=l.length?'<span><strong>'+l.length+'</strong> carreta'+(l.length>1?'s':'')+'</span><span><strong>'+_somaCargas(k).toLocaleString('pt-BR')+'</strong> paletes'+(l.some(v=>(parseInt(v)||0)<CARRETA_PALETES)?' · há carga abaixo de '+CARRETA_PALETES:'')+'</span>':'<span>Nenhuma carreta lançada</span>';
+}
+function cargaAdd(k){cargas[k].push(CARRETA_PALETES);renderCargas();}
+function cargaDel(k,i){cargas[k].splice(i,1);renderCargas();}
+function cargaSet(k,i,v){cargas[k][i]=Math.max(0,parseInt(v)||0);_cargaTotLbl(k);_syncCargas();}
+// Produzidos "automático": soma da produção por colaborador (salva ou em edição) + lançamentos avulsos
+function _prodAutoSalvo(date){return (state.movimentos[date]||[]).filter(m=>m.auto==='pessoas').reduce((s,m)=>s+(m.prod||0),0);}
+function _prodPessoasLive(date){
+  let t=0;const dd=(state.producaoPessoas||{})[date]||{};
+  Object.values(dd).forEach(tv=>{Object.values((tv&&tv.pessoas)||{}).forEach(r=>{t+=(r&&r.prod)||0;});});
+  return t;
+}
+function _prodPessoasPendente(date){return _prodPessoasLive(date)-_prodAutoSalvo(date);}
+function upsertAutoProd(date,turno){
+  const dia=(state.producaoPessoas[date]||{})[turno];
+  const soma=Object.values((dia&&dia.pessoas)||{}).reduce((s,r)=>s+((r&&r.prod)||0),0);
+  if(!state.movimentos[date])state.movimentos[date]=[];
+  const agora=new Date().toISOString(), who=currentUser?currentUser.user:'Desconhecido';
+  let m=state.movimentos[date].find(x=>x.auto==='pessoas'&&x.turno===turno);
+  if(m){ m.prod=soma;m.updTs=agora;m.who=who; }
+  else if(soma>0){ state.movimentos[date].push({ts:agora,updTs:agora,who,rec:0,prod:soma,env:0,desc:0,turno,auto:'pessoas'}); }
+}
+function refreshProdLive(){
+  const todayD=today(),movs=state.movimentos[todayD]||[];
+  const manual=movs.filter(m=>m.auto!=='pessoas').reduce((s,m)=>s+(m.prod||0),0);
+  const live=_prodPessoasLive(todayD), pend=_prodPessoasPendente(todayD);
+  const el=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  el('tl-prod',(manual+live).toLocaleString('pt-BR'));
+  el('tl-prod-sub',live.toLocaleString('pt-BR')+' dos colaboradores'+(manual?' + '+manual.toLocaleString('pt-BR')+' avulso':'')+(pend?' · '+Math.abs(pend)+' ainda não salvo':''));
+  el('tt-prod',(manual+live)+' hoje');
+  if(typeof selTurnoProd!=='undefined'&&selTurnoProd){
+    const dia=((state.producaoPessoas[todayD]||{})[selTurnoProd]);
+    const t=Object.values((dia&&dia.pessoas)||{}).reduce((s,r)=>s+((r&&r.prod)||0),0);
+    el('prod-total-badge',t.toLocaleString('pt-BR')+' no turno');
+  }
+  updBuf();
+}
 function renderOperacao(){
   const ul=document.getElementById('op-user-label');if(ul&&currentUser)ul.textContent=currentUser.user;
+  const dl=document.getElementById('op-date-lbl');if(dl)dl.textContent=dateFull(today());
   const todayD=today(),movs=state.movimentos[todayD]||[];
   const tR=movs.reduce((s,m)=>s+(m.rec||0),0);
-  const tP=movs.reduce((s,m)=>s+(m.prod||0),0);
   const tE=movs.reduce((s,m)=>s+(m.env||0),0);
   const tD=movs.reduce((s,m)=>s+(m.desc||0),0);
+  const nCar=(k)=>movs.reduce((s,m)=>s+((m.carretas&&m.carretas[k])?m.carretas[k].length:0),0);
   const el=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  el('tt-rec',tR+' hoje');el('tt-prod',tP+' hoje');el('tt-env',tE+' hoje');el('tt-desc',tD+' hoje');
-  updBuf();
+  el('tt-rec',tR+' hoje');el('tt-env',tE+' hoje');el('tt-desc',tD+' hoje');
+  el('tl-rec',tR.toLocaleString('pt-BR'));el('tl-env',tE.toLocaleString('pt-BR'));el('tl-desc',tD.toLocaleString('pt-BR'));
+  el('tl-rec-sub',nCar('rec')?nCar('rec')+' carreta(s) hoje':'paletes hoje');el('tl-env-sub',nCar('env')?nCar('env')+' carreta(s) hoje':'paletes hoje');
+  renderCargas();
   const hc=document.getElementById('op-hist-card'),ho=document.getElementById('op-hist');
-if(movs.length&&hc&&ho){hc.style.display='block';ho.innerHTML=movs.map((m,i)=>({m,i})).slice().reverse().map(({m,i})=>'<div class="log-entry" style="cursor:pointer" onclick="abrirEditMov(\'+todayD+\','+i+')"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · '+m.who+(m.editadoManualmente?' <i class="ti ti-edit" style="font-size:10px;color:var(--cyan)"></i>':'')+'</div><div class="log-vals">'+(m.rec?'Rec:'+m.rec+' ':'')+(m.prod?'Prod:'+m.prod+' ':'')+(m.env?'Env:'+m.env+' ':'')+(m.desc?'Desc:'+m.desc+'':'')+'</div></div>').join('');}
+  if(movs.length&&hc&&ho){hc.style.display='block';ho.innerHTML=movs.map((m,i)=>({m,i})).slice().reverse().map(({m,i})=>'<div class="log-entry" style="cursor:pointer" onclick="abrirEditMov(\''+todayD+'\','+i+')"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · '+m.who+(m.auto==='pessoas'?' · produção dos colaboradores (Turno '+m.turno+')':'')+(m.editadoManualmente?' <i class="ti ti-edit" style="font-size:10px;color:var(--cyan)"></i>':'')+'</div><div class="log-vals">'+(m.rec?'Rec:'+m.rec+(m.carretas&&m.carretas.rec?' ('+m.carretas.rec.length+' carr.)':'')+' ':'')+(m.prod?'Prod:'+m.prod+' ':'')+(m.env?'Env:'+m.env+(m.carretas&&m.carretas.env?' ('+m.carretas.env.length+' carr.)':'')+' ':'')+(m.desc?'Desc:'+m.desc+'':'')+'</div></div>').join('');}
   else if(hc)hc.style.display='none';
   renderProdPessoas();
+  refreshProdLive();
 }
 function adj(id,d){const e=document.getElementById(id);if(e){e.value=Math.max(0,(parseInt(e.value)||0)+d);updBuf();}}
 function updBuf(){
-  const p=parseInt(document.getElementById('mv-prod')?.value)||0;
+  const p=(parseInt(document.getElementById('mv-prod')?.value)||0)+_prodPessoasPendente(today());
   const e=parseInt(document.getElementById('mv-env')?.value)||0;
   // Buffer global: acumulado de todos os dias + o que está sendo lançado agora
   const globalBase=calcBufferGlobal();
   const buf=globalBase+p-e;
   const bv=document.getElementById('buf-preview');
-  if(bv){bv.textContent=(buf>=0?'+':'')+buf;bv.style.color=buf>=0?'var(--cyan)':'var(--red)';}
+  if(bv){bv.textContent=(buf>=0?'+':'')+buf.toLocaleString('pt-BR');bv.style.color=buf>=0?'var(--cyan)':'var(--red)';}
 }
 async function lancar(){
   const rec=parseInt(document.getElementById('mv-rec')?.value)||0;
@@ -1845,7 +2023,10 @@ async function lancar(){
   const todayD=today();
   const who=currentUser?currentUser.user:'Desconhecido';
   if(!state.movimentos[todayD])state.movimentos[todayD]=[];
-  state.movimentos[todayD].push({ts:new Date().toISOString(),who,rec,prod,env,desc,turno:selTurnoProd});
+  const mov={ts:new Date().toISOString(),who,rec,prod,env,desc,turno:selTurnoProd};
+  if(cargas.rec.length||cargas.env.length)mov.carretas={rec:cargas.rec.slice(),env:cargas.env.slice()};
+  state.movimentos[todayD].push(mov);
+  cargas={rec:[],env:[]};
   ['mv-rec','mv-prod','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
   saveCache();await pushToCloud();verificarAusencia();showLancamentoOK();renderOperacao();
 }
@@ -1882,12 +2063,13 @@ function renderProdPessoas(){
     const abaixo=reg.prod<info.metaPorPessoa;
     const safeId=c.nome.replace(/[^a-zA-Z0-9]/g,'_');
     const nomeJs=c.nome.replace(/'/g,"\\'");
-    return'<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
-      '<div style="font-size:13px;font-weight:600;color:var(--text)">'+c.nome+'</div>'+
-      '<div class="num-wrap" style="width:170px"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" '+(saved?'disabled':'')+' value="'+(reg.prod||'')+'" placeholder="0" oninput="setProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderProdPessoas()"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
+    const falta=info.metaPorPessoa-(reg.prod||0);
+    return'<div class="prow">'+
+      '<div class="prow-main">'+
+      '<div class="prow-nome"><div class="n">'+c.nome+'</div><div class="m" style="color:'+(abaixo?'var(--text3)':'var(--green)')+'">'+(abaixo?'meta '+info.metaPorPessoa+' · faltam '+falta:'meta batida ✓')+'</div></div>'+
+      '<div class="num-wrap"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" inputmode="numeric" min="0" '+(saved?'disabled':'')+' value="'+(reg.prod||'')+'" placeholder="0" onfocus="this.select()" oninput="setProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderProdPessoas()"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
       '</div>'+
-      (abaixo&&!saved?'<select id="motivo-'+safeId+'" style="width:100%;margin-top:8px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px" onchange="setMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
+      (abaixo&&!saved?'<select id="motivo-'+safeId+'" onchange="setMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
         MOTIVOS_NAO_META.map(m=>'<option value="'+m+'" '+(reg.motivo===m?'selected':'')+'>'+m+'</option>').join('')+
       '</select>':'')+
       (abaixo&&saved&&reg.motivo?'<div style="font-size:11px;color:var(--text2);margin-top:4px">Motivo: '+reg.motivo+'</div>':'')+
@@ -1898,6 +2080,7 @@ function renderProdPessoas(){
     :
     '<button class="btn btn-primary" style="margin-top:12px" onclick="salvarProducaoPessoas()"><i class="ti ti-check" style="font-size:16px"></i> Salvar produção do turno</button>'
   );
+  refreshProdLive();
 }
 function selTurnoProd_(t){selTurnoProd=t;renderProdPessoas();}
 function setProdPessoa(nome,val,rerender){
@@ -1905,7 +2088,7 @@ function setProdPessoa(nome,val,rerender){
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
   dia.pessoas[nome].prod=Math.max(0,parseInt(val)||0);
   dia.touchedAt=new Date().toISOString();
-  if(rerender!==false)renderProdPessoas();
+  if(rerender!==false)renderProdPessoas();else refreshProdLive();
 }
 function adjProdPessoa(nome,d){
   const dia=_prodBuf();
@@ -1933,7 +2116,8 @@ async function salvarProducaoPessoas(){
     }
   }
   dia.savedAt=new Date().toISOString();
-  saveCache();await pushToCloud();showToast('Produção individual salva! (não soma no total — é só visualização)','ok');renderProdPessoas();renderOperacao();
+  upsertAutoProd(today(),selTurnoProd);
+  saveCache();await pushToCloud();showToast('Produção salva e somada em Produzidos do dia!','ok');renderOperacao();
 }
 function unlockProdPessoas(){
   const dia=_prodBuf();
@@ -2018,10 +2202,10 @@ async function lancarRetroativo(){
   if(!turno){showToast('Escolha um turno.','warn');return;}
   if(!inclGeral&&!inclIndividual){showToast('Marque ao menos uma opção: Lançamento geral ou Produção individual.','warn');return;}
   const rec=inclGeral?(parseInt(document.getElementById('retro-rec').value)||0):0;
-  const prod=inclGeral?(parseInt(document.getElementById('retro-prod').value)||0):0;
+  const prod=0; // Produzidos vem da produção por colaborador
   const env=inclGeral?(parseInt(document.getElementById('retro-env').value)||0):0;
   const desc=inclGeral?(parseInt(document.getElementById('retro-desc').value)||0):0;
-  if(inclGeral&&!rec&&!prod&&!env&&!desc){showToast('Informe pelo menos um valor no lançamento geral.','warn');return;}
+  if(inclGeral&&!rec&&!env&&!desc){showToast('Informe pelo menos um valor no lançamento geral.','warn');return;}
   let diaProd=null;
   if(inclIndividual){
     const info=calcMetaIndividual();
@@ -2035,7 +2219,7 @@ async function lancarRetroativo(){
         return;
       }
     }
-    if(colabsTurno.length)diaProd.savedAt=new Date().toISOString();
+    if(colabsTurno.length){diaProd.savedAt=new Date().toISOString();upsertAutoProd(data,turno);}
   }
   if(inclGeral){
     const who=currentUser?currentUser.user:'Desconhecido';

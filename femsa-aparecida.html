@@ -1979,7 +1979,7 @@ async function cancelarFerias(nome,inicio){
 }
 
 // OPERAÇÃO
-const CARRETA_PALETES=390;
+const CARRETA_PALETES={rec:390,env:420};
 let cargas={rec:[],env:[]};
 function _somaCargas(k){return cargas[k].reduce((a,b)=>a+(parseInt(b)||0),0);}
 function _syncCargas(){
@@ -1991,8 +1991,8 @@ function renderCargas(){
     const el=document.getElementById('cg-'+k);if(!el)return;
     const l=cargas[k];
     el.innerHTML=l.map((v,i)=>'<div class="car-row"><span class="car-n"><i class="ti ti-truck"></i> '+(i+1)+'ª</span><div class="num-wrap"><input type="number" min="0" inputmode="numeric" value="'+v+'" oninput="cargaSet(\''+k+'\','+i+',this.value)" onfocus="this.select()"></div><span class="car-u">paletes</span><button class="car-x" aria-label="Remover carreta" onclick="cargaDel(\''+k+'\','+i+')">×</button></div>').join('')+
-      '<button class="car-add" onclick="cargaAdd(\''+k+'\')"><i class="ti ti-plus"></i> '+(l.length?'Outra carreta':'Adicionar carreta')+' ('+CARRETA_PALETES+' paletes)</button>'+
-      (l.length?'<div class="car-tot"><span><strong>'+l.length+'</strong> carreta'+(l.length>1?'s':'')+'</span><span><strong>'+_somaCargas(k).toLocaleString('pt-BR')+'</strong> paletes'+(l.some(v=>(parseInt(v)||0)<CARRETA_PALETES)?' · há carga abaixo de '+CARRETA_PALETES:'')+'</span></div>':'<div class="car-tot"><span>Nenhuma carreta lançada</span></div>');
+      '<button class="car-add" onclick="cargaAdd(\''+k+'\')"><i class="ti ti-plus"></i> '+(l.length?'Outra carreta':'Adicionar carreta')+' ('+CARRETA_PALETES[k]+' paletes)</button>'+
+      (l.length?'<div class="car-tot"><span><strong>'+l.length+'</strong> carreta'+(l.length>1?'s':'')+'</span><span><strong>'+_somaCargas(k).toLocaleString('pt-BR')+'</strong> paletes'+(l.some(v=>(parseInt(v)||0)<CARRETA_PALETES[k])?' · há carga abaixo de '+CARRETA_PALETES[k]:'')+'</span></div>':'<div class="car-tot"><span>Nenhuma carreta lançada</span></div>');
   });
   _syncCargas();
 }
@@ -2000,9 +2000,9 @@ function _cargaTotLbl(k){
   const el=document.getElementById('cg-'+k);if(!el)return;
   const t=el.querySelector('.car-tot');if(!t)return;
   const l=cargas[k];
-  t.innerHTML=l.length?'<span><strong>'+l.length+'</strong> carreta'+(l.length>1?'s':'')+'</span><span><strong>'+_somaCargas(k).toLocaleString('pt-BR')+'</strong> paletes'+(l.some(v=>(parseInt(v)||0)<CARRETA_PALETES)?' · há carga abaixo de '+CARRETA_PALETES:'')+'</span>':'<span>Nenhuma carreta lançada</span>';
+  t.innerHTML=l.length?'<span><strong>'+l.length+'</strong> carreta'+(l.length>1?'s':'')+'</span><span><strong>'+_somaCargas(k).toLocaleString('pt-BR')+'</strong> paletes'+(l.some(v=>(parseInt(v)||0)<CARRETA_PALETES[k])?' · há carga abaixo de '+CARRETA_PALETES[k]:'')+'</span>':'<span>Nenhuma carreta lançada</span>';
 }
-function cargaAdd(k){cargas[k].push(CARRETA_PALETES);renderCargas();}
+function cargaAdd(k){cargas[k].push(CARRETA_PALETES[k]);renderCargas();}
 function cargaDel(k,i){cargas[k].splice(i,1);renderCargas();}
 function cargaSet(k,i,v){cargas[k][i]=Math.max(0,parseInt(v)||0);_cargaTotLbl(k);_syncCargas();}
 // Produzidos "automático": soma da produção por colaborador (salva ou em edição) + lançamentos avulsos

@@ -800,7 +800,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-06-14:10';
+const BUILD_VERSION='2026-10-07-10:00';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -2618,11 +2618,24 @@ function supCor(sup){
   const i=(state.supervisores||[]).findIndex(s=>s.id===sup.id);
   return SUP_CORES[(i<0?0:i)%SUP_CORES.length];
 }
+// Rota de cliente inteiro: sem posto específico — a visita passa em todos os postos do cliente
+function rotaClienteTodos(r){ return r.todosPostos?(state.clientes||[]).find(c=>c.id===r.clienteId)||null:null; }
+function rotaPostosLista(r){
+  if(r.avulso)return [];
+  if(r.todosPostos){ const cl=rotaClienteTodos(r); return cl?(cl.postos||[]).map(p=>({cliente:cl,posto:p})):[]; }
+  const f=findPosto(r.postoId); return f?[f]:[];
+}
+function rotaPostosTxt(r){ return r.todosPostos?rotaPostosLista(r).map(x=>x.posto.nome).join(' · '):''; }
 function rotaLabel(r){
   if(r.avulso)return (r.clienteNome||'Cliente')+(r.localNome?' · '+r.localNome:'');
+  if(r.todosPostos){ const cl=rotaClienteTodos(r); return cl?cl.nome+' · todos os postos':'(cliente removido)'; }
   return postoLabel(r.postoId);
 }
-function rotaPostoDias(r){ if(r.avulso)return []; const f=findPosto(r.postoId); const d=f?postoDias(f.posto):null; return d?d.filter(x=>x>=1&&x<=5):[]; }
+function rotaPostoDias(r){
+  if(r.avulso)return [];
+  if(r.todosPostos){ const l=rotaPostosLista(r); if(!l.length||l.some(x=>!postoDias(x.posto)))return []; return [...new Set(l.flatMap(x=>postoDias(x.posto)))].filter(x=>x>=1&&x<=5); }
+  const f=findPosto(r.postoId); const d=f?postoDias(f.posto):null; return d?d.filter(x=>x>=1&&x<=5):[];
+}
 function rotaAlguns(r){ return r.diasModo==='alguns'&&(r.dias||[]).filter(x=>x>=1&&x<=5).length>=2&&!r.freqCiclo; }
 function rotaPrevistoSemana(r){ return rotaAlguns(r)?(Number(r.frequenciaSemanal)||1):((r.dias&&r.dias.length)?r.dias.length:(Number(r.frequenciaSemanal)||0)); }
 function semIniTxt(r){ return r.freqCiclo&&r.semIni!==undefined&&r.semIni!==''&&r.semIni!==null?' · começa na semana '+((Number(r.semIni)||0)+1):''; }
@@ -2640,6 +2653,7 @@ function rotaDiasTxt(r,sup){
 }
 function rotaEnderecoTxt(r){
   if(r.avulso)return r.endereco||'';
+  if(r.todosPostos){ const cl=rotaClienteTodos(r); if(!cl)return ''; if(cl.endereco&&(cl.endereco.logradouro||cl.endereco.municipio))return enderecoResumo(cl.endereco); const p=(cl.postos||[]).find(x=>x.endereco); return p?enderecoResumo(p.endereco):''; }
   const f=findPosto(r.postoId);
   return f&&f.posto.endereco?enderecoResumo(f.posto.endereco):'';
 }
@@ -3052,6 +3066,12 @@ function turnoBucket(t){
 function _coordOk(o){return !!o&&typeof o.lat==='number'&&typeof o.lng==='number'&&isFinite(o.lat)&&isFinite(o.lng);}
 function rotaCoords(r){
   if(r.avulso)return _coordOk(r)?{lat:r.lat,lng:r.lng}:null;
+  if(r.todosPostos){
+    const cl=rotaClienteTodos(r); if(!cl)return null;
+    if(_coordOk(cl.endereco))return cl.endereco;
+    const cs=(cl.postos||[]).map(p=>p.endereco).filter(_coordOk);
+    return cs.length?{lat:cs.reduce((a,c)=>a+c.lat,0)/cs.length,lng:cs.reduce((a,c)=>a+c.lng,0)/cs.length}:null;
+  }
   const f=findPosto(r.postoId); if(!f)return null;
   if(_coordOk(f.posto.endereco))return f.posto.endereco;
   if(_coordOk(f.cliente.endereco))return f.cliente.endereco;
@@ -3068,9 +3088,9 @@ function rotaTurnos(r){
 }
 function rotaTurnosTodos(r){
   if(r.avulso)return [];
-  const f=findPosto(r.postoId); if(!f)return [];
+  const lista=rotaPostosLista(r); if(!lista.length)return [];
   const seen={},out=[];
-  (f.posto.cargos||[]).forEach(cg=>cargoTurnos(cg).forEach(t=>{
+  lista.flatMap(f=>f.posto.cargos||[]).forEach(cg=>cargoTurnos(cg).forEach(t=>{
     if(!t.horaEntrada)return;
     const k=t.horaEntrada+'-'+(t.horaSaida||'')+(t.soFds?'-fds':'');
     if(seen[k])return; seen[k]=1;
@@ -3102,7 +3122,8 @@ async function geocodeRota(r){
   let alvo,qs=[];
   if(r.avulso){ alvo=r; if(r.endereco)qs.push(r.endereco+', Brasil'); }
   else{
-    const f=findPosto(r.postoId); if(!f)return false;
+    const f=r.todosPostos?(()=>{const cl=rotaClienteTodos(r);return cl?{cliente:cl,posto:(cl.postos||[]).find(p=>p.endereco&&(p.endereco.logradouro||p.endereco.municipio))||{}}:null;})():findPosto(r.postoId);
+    if(!f)return false;
     const e=(f.posto.endereco&&(f.posto.endereco.logradouro||f.posto.endereco.municipio))?f.posto.endereco:f.cliente.endereco;
     if(!e)return false;
     alvo=e;
@@ -3673,7 +3694,7 @@ function renderSupervisores(){
         const semEnd=!r.avulso&&!end&&findPosto(r.postoId);
         html+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--border)">';
         html+='<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+supEsc(rotaLabel(r))+(r.avulso?' <span class="badge b-warn" style="margin-left:4px">não cadastrado</span>':'')+'</div>';
-        html+='<div style="font-size:11px;color:var(--text2)">'+supEsc(rotaDiasTxt(r,sup))+(end?' · '+supEsc(end):'')+(semEnd?' · <span style="color:var(--warn)">sem endereço cadastrado</span>':'')+(rotaTurnosTodos(r).length>1?' · turnos: '+supEsc(rotaTurnos(r).map(x=>x.nome).join(', ')):'')+'</div></div>';
+        html+='<div style="font-size:11px;color:var(--text2)">'+supEsc(rotaDiasTxt(r,sup))+(r.todosPostos?' · <span style="color:var(--cyan)">passa em: '+supEsc(rotaPostosTxt(r)||'nenhum posto cadastrado')+'</span>':'')+(end?' · '+supEsc(end):'')+(semEnd?' · <span style="color:var(--warn)">sem endereço cadastrado</span>':'')+(rotaTurnosTodos(r).length>1?' · turnos: '+supEsc(rotaTurnos(r).map(x=>x.nome).join(', ')):'')+'</div></div>';
         if(canEdit)html+='<div style="display:flex;gap:10px;flex-shrink:0"><i class="ti ti-pencil" style="font-size:14px;color:var(--text3);cursor:pointer" onclick="abrirRotaModal(\''+sup.id+'\',\''+r.id+'\')"></i> <i class="ti ti-x" style="font-size:14px;color:var(--red);cursor:pointer" onclick="excluirRota(\''+sup.id+'\',\''+r.id+'\')"></i></div>';
         html+='</div>';
       });
@@ -3742,9 +3763,9 @@ function abrirRotaModal(supervisorId,rotaId){
   document.getElementById('rota-modal-sup-lbl').textContent=sup.nome;
   const selCliente=document.getElementById('rota-modal-cliente');
   selCliente.innerHTML=clientesAtivos().map(cl=>'<option value="'+cl.id+'">'+supEsc(cl.nome)+'</option>').join('');
-  if(r&&!r.avulso){ const f=findPosto(r.postoId); if(f)selCliente.value=f.cliente.id; }
+  if(r&&!r.avulso){ if(r.todosPostos){ if(r.clienteId)selCliente.value=r.clienteId; } else { const f=findPosto(r.postoId); if(f)selCliente.value=f.cliente.id; } }
   _rotaModalFillPostos();
-  if(r&&!r.avulso)document.getElementById('rota-modal-posto').value=r.postoId;
+  if(r&&!r.avulso)document.getElementById('rota-modal-posto').value=r.todosPostos?'__todos__':r.postoId;
   document.getElementById('rota-avulso-cliente').value=r&&r.avulso?(r.clienteNome||''):'';
   document.getElementById('rota-avulso-local').value=r&&r.avulso?(r.localNome||''):'';
   document.getElementById('rota-avulso-end').value=r&&r.avulso?(r.endereco||''):'';
@@ -3760,9 +3781,12 @@ function abrirRotaModal(supervisorId,rotaId){
   document.getElementById('rota-modal').style.display='flex';
 }
 let _rotaTurnosSel=[];
+function _rotaModalAlvo(){
+  const v=document.getElementById('rota-modal-posto').value;
+  return v==='__todos__'?{todosPostos:true,clienteId:document.getElementById('rota-modal-cliente').value}:{postoId:v};
+}
 function _rotaTurnosReset(r){
-  const postoId=document.getElementById('rota-modal-posto').value;
-  const todos=rotaTurnosTodos({postoId});
+  const todos=rotaTurnosTodos(_rotaModalAlvo());
   _rotaTurnosSel=(r&&r.turnosVisita&&r.turnosVisita.length)?todos.map(turnoKey).filter(k=>r.turnosVisita.includes(k)):todos.map(turnoKey);
   _rotaRenderTurnos();
 }
@@ -3772,8 +3796,7 @@ function _rotaToggleTurno(k){
   _rotaRenderTurnos();
 }
 function _rotaRenderTurnos(){
-  const postoId=document.getElementById('rota-modal-posto').value;
-  const todos=rotaTurnosTodos({postoId});
+  const todos=rotaTurnosTodos(_rotaModalAlvo());
   document.getElementById('rota-turnos-field').style.display=(!_rotaAvulso&&todos.length)?'block':'none';
   document.getElementById('rota-turnos-lista').innerHTML=todos.map(x=>{
     const k=turnoKey(x);
@@ -3821,7 +3844,7 @@ function _rotaModalFillPostos(){
   const clienteId=document.getElementById('rota-modal-cliente').value;
   const cl=clientesAtivos().find(c=>c.id===clienteId);
   const selPosto=document.getElementById('rota-modal-posto');
-  selPosto.innerHTML=(cl?(cl.postos||[]):[]).map(p=>'<option value="'+p.id+'">'+supEsc(p.nome)+'</option>').join('');
+  selPosto.innerHTML=(cl&&(cl.postos||[]).length?'<option value="__todos__">★ Todos os postos do cliente (a visita passa em todos)</option>':'')+(cl?(cl.postos||[]):[]).map(p=>'<option value="'+p.id+'">'+supEsc(p.nome)+'</option>').join('');
   if(typeof _rotaTurnosReset==='function')_rotaTurnosReset();
 }
 function closeRotaModal(){document.getElementById('rota-modal').style.display='none';}
@@ -3833,14 +3856,16 @@ async function salvarRotaModal(){
   if(_rotaAvulso){
     const clienteNome=document.getElementById('rota-avulso-cliente').value.trim();
     if(!clienteNome){showToast('Informe o nome do cliente.','warn');return;}
-    dados={avulso:true,postoId:'',turnosVisita:[],clienteNome,localNome:document.getElementById('rota-avulso-local').value.trim(),endereco:document.getElementById('rota-avulso-end').value.trim()};
+    dados={avulso:true,postoId:'',todosPostos:false,clienteId:'',turnosVisita:[],clienteNome,localNome:document.getElementById('rota-avulso-local').value.trim(),endereco:document.getElementById('rota-avulso-end').value.trim()};
   }else{
-    const postoId=document.getElementById('rota-modal-posto').value;
-    if(!postoId){showToast('Selecione um posto (ou use "Não cadastrado").','warn');return;}
-    const todos=rotaTurnosTodos({postoId}).map(turnoKey);
+    const postoSel=document.getElementById('rota-modal-posto').value;
+    if(!postoSel){showToast('Selecione um posto (ou use "Não cadastrado").','warn');return;}
+    const todosPostos=postoSel==='__todos__', postoId=todosPostos?'':postoSel;
+    const clienteIdSel=todosPostos?document.getElementById('rota-modal-cliente').value:'';
+    const todos=rotaTurnosTodos(_rotaModalAlvo()).map(turnoKey);
     if(todos.length&&!_rotaTurnosSel.length){showToast('Marque pelo menos um turno para visitar.','warn');return;}
     const sel=todos.filter(k=>_rotaTurnosSel.includes(k));
-    dados={avulso:false,postoId,clienteNome:'',localNome:'',endereco:'',turnosVisita:(sel.length&&sel.length<todos.length)?sel:[]};
+    dados={avulso:false,postoId,todosPostos,clienteId:clienteIdSel,clienteNome:'',localNome:'',endereco:'',turnosVisita:(sel.length&&sel.length<todos.length)?sel:[]};
   }
   const dias=[..._rotaDias].sort((a,b)=>DIAS_ORDEM.indexOf(a)-DIAS_ORDEM.indexOf(b));
   dados.freqCiclo=document.getElementById('rota-modal-freqciclo').value||'';
@@ -3940,7 +3965,7 @@ function renderSupervisoresCheckin(){
     h+='<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+supEsc(rotaLabel(r))+(r.avulso?' <span class="badge b-warn" style="margin-left:4px">não cadastrado</span>':'')+'</div>';
     const ag=agItem(r);
     const agTxt=ag&&!ag.legacy?(ag.ordem+'ª visita do dia'+(visitaTxt(ag)?' · '+visitaTxt(ag):'')):'';
-    h+='<div style="font-size:11px;color:var(--text2)">'+(agTxt?'<b style="color:var(--cyan)">'+supEsc(agTxt)+'</b>':supEsc(rotaDiasTxt(r,sup)))+(end?' · '+supEsc(end):'')+'</div></div>';
+    h+='<div style="font-size:11px;color:var(--text2)">'+(agTxt?'<b style="color:var(--cyan)">'+supEsc(agTxt)+'</b>':supEsc(rotaDiasTxt(r,sup)))+(end?' · '+supEsc(end):'')+'</div>'+(r.todosPostos?'<div style="font-size:11px;color:var(--cyan);margin-top:2px"><i class="ti ti-route" style="font-size:11px"></i> Passar em todos os postos: '+supEsc(rotaPostosTxt(r)||'nenhum posto cadastrado')+'</div>':'')+'</div>';
     if(f){
       h+='<div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><span class="badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)"><i class="ti ti-check" style="font-size:11px"></i> '+(f.hora?supEsc(f.hora):'visitado')+'</span>';
       if(pode)h+='<i class="ti ti-x" title="Desfazer" style="color:var(--red);cursor:pointer;font-size:15px" onclick="excluirCheckin(\''+date+'\',\''+sup.id+'\',\''+f.id+'\')"></i>';
@@ -3969,7 +3994,7 @@ function renderSupervisoresCheckin(){
   if(orfaos.length){
     html+='<div class="card"><div class="card-title"><i class="ti ti-history" style="color:var(--cyan)"></i>Outros registros do dia</div>';
     orfaos.forEach(c=>{
-      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);font-size:12px"><span><b>'+supEsc(c.hora||'--:--')+'</b> — '+supEsc(c.postoId?postoLabel(c.postoId):'(cliente removido da rota)')+'</span>';
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);font-size:12px"><span><b>'+supEsc(c.hora||'--:--')+'</b> — '+supEsc((()=>{const rr=(sup.rota||[]).find(x=>x.id===c.rotaId); return rr?rotaLabel(rr):(c.postoId?postoLabel(c.postoId):'(cliente removido da rota)');})())+'</span>';
       if(pode)html+='<i class="ti ti-x" style="color:var(--red);cursor:pointer" onclick="excluirCheckin(\''+date+'\',\''+sup.id+'\',\''+c.id+'\')"></i>';
       html+='</div>';
     });

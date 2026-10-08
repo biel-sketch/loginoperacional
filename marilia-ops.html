@@ -266,6 +266,56 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
   .sidebar-toggle{display:none!important}
 }
 @media(min-width:769px){.bnav{display:none!important}.topbar{display:none!important}}
+
+/* === MODO TV === */
+#tv-overlay{display:none;position:fixed;inset:0;z-index:1000;background:var(--bg);background-image:radial-gradient(ellipse 60% 50% at 0% 50%,rgba(0,40,80,.45) 0%,transparent 70%);overflow:hidden;padding:2vh 2.2vw;flex-direction:column;gap:1.8vh}
+#tv-overlay.active{display:flex}
+.tv-exit-btn{position:fixed;top:12px;right:14px;z-index:1001;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:7px 12px;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;opacity:.55;transition:opacity .2s}
+.tv-exit-btn:hover{opacity:1;color:var(--cyan)}
+.tv-sync-bar{position:fixed;bottom:0;left:0;right:0;height:3px;background:var(--border);z-index:1002}
+.tv-sync-fill{height:100%;background:var(--cyan);width:0%;transition:width 1s linear}
+.tv-head{display:flex;align-items:center;gap:1.4vw;flex-shrink:0}
+.tv-head img{height:clamp(34px,5vh,56px);object-fit:contain}
+.tv-head h1{font-size:clamp(18px,2.4vw,40px);font-weight:700;color:var(--text);line-height:1.1}
+.tv-sub{font-size:clamp(11px,1.1vw,18px);color:var(--text2);margin-top:3px;text-transform:capitalize}
+.tv-clock{margin-left:auto;margin-right:7vw;font-size:clamp(26px,3.6vw,64px);font-weight:700;color:var(--cyan);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.tv-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:1vw;flex-shrink:0}
+.tv-k{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.4vh 1.2vw;min-width:0}
+.tv-k-l{font-size:clamp(9px,.85vw,14px);font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text2)}
+.tv-k-v{font-size:clamp(30px,4.4vw,76px);font-weight:700;line-height:1.05;color:var(--text);margin-top:.4vh;font-variant-numeric:tabular-nums}
+.tv-k.g .tv-k-v{color:var(--green)}.tv-k.r .tv-k-v{color:var(--red)}.tv-k.w .tv-k-v{color:var(--warn)}.tv-k.c .tv-k-v{color:var(--cyan)}
+.tv-k.r.on{background:var(--red-bg);border-color:var(--red-bd)}
+.tv-main{display:grid;grid-template-columns:2fr 1fr;gap:1.2vw;flex:1;min-height:0}
+.tv-panel{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.6vh 1.2vw;display:flex;flex-direction:column;min-height:0;min-width:0}
+.tv-ph{font-size:clamp(10px,.95vw,16px);font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.12em;margin-bottom:1.2vh;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0}
+.tv-ph span{color:var(--text3);letter-spacing:.04em;text-transform:none;font-weight:600}
+.tv-postos{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:.9vw;flex:1;min-height:0}
+.tv-posto{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:1.2vh .9vw;display:flex;flex-direction:column;justify-content:space-between;min-width:0;min-height:0;overflow:hidden}
+.tv-posto.ok{border-color:var(--green-bd);background:linear-gradient(180deg,var(--green-bg),var(--bg3))}
+.tv-posto.bad{border-color:var(--red-bd);background:linear-gradient(180deg,var(--red-bg),var(--bg3));animation:tvpulse 2s ease-in-out infinite}
+.tv-posto.wait{opacity:.85}
+@keyframes tvpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,77,106,.0)}50%{box-shadow:0 0 18px 0 rgba(255,77,106,.35)}}
+.tv-pn{font-size:clamp(11px,1.15vw,20px);font-weight:700;color:var(--text);line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.tv-pv{font-size:clamp(24px,3vw,52px);font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.tv-pv small{font-size:.45em;color:var(--text2);font-weight:600;margin-left:4px}
+.tv-bar{height:.8vh;min-height:5px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden}
+.tv-bar>div{height:100%;border-radius:4px}
+.tv-pf{font-size:clamp(9px,.85vw,14px);color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-pf.r{color:var(--red);font-weight:700}
+.tv-side{display:flex;flex-direction:column;gap:1.2vw;min-height:0}
+.tv-side .tv-panel{flex:1}
+.tv-list{overflow:hidden;display:flex;flex-direction:column;gap:.7vh}
+.tv-li{display:flex;align-items:center;gap:.7vw;font-size:clamp(11px,1.1vw,19px);color:var(--text);padding:.6vh .6vw;border-radius:8px;background:var(--bg3);min-width:0}
+.tv-li b{font-weight:700;white-space:nowrap}
+.tv-li .s{color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.tv-dot{width:.8vw;min-width:9px;height:.8vw;min-height:9px;border-radius:50%;flex-shrink:0}
+.tv-sup{padding:.8vh .7vw;border-radius:10px;background:var(--bg3)}
+.tv-sup-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:clamp(12px,1.2vw,21px);font-weight:700;color:var(--text)}
+.tv-sup-h span{font-variant-numeric:tabular-nums;color:var(--cyan)}
+.tv-sup-n{font-size:clamp(9px,.85vw,14px);color:var(--text2);margin-top:.4vh;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-foot{display:flex;justify-content:space-between;font-size:clamp(9px,.8vw,13px);color:var(--text3);flex-shrink:0}
+.tv-empty{color:var(--text3);font-size:clamp(11px,1.1vw,18px);padding:1vh 0}
+@media(max-width:900px){#tv-overlay{display:none;overflow-y:auto;padding:54px 14px 14px;gap:12px}#tv-overlay.active{display:block}#tv-overlay>*,#tv-content>*{flex-shrink:0;margin-bottom:12px}.tv-main{min-height:auto}.tv-kpis{grid-template-columns:repeat(3,1fr)}.tv-main{grid-template-columns:1fr}.tv-postos{grid-template-columns:repeat(2,1fr);grid-auto-rows:minmax(110px,auto)}.tv-clock{margin-right:0}.tv-k-v{font-size:34px}}
 </style>
 </head>
 
@@ -286,6 +336,12 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     <div id="login-err" style="color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px"></div>
     <button class="btn-login" onclick="doLogin()"><i class="ti ti-login" style="font-size:16px;vertical-align:-2px"></i> Entrar</button>
   </div></div>
+</div>
+
+<div id="tv-overlay">
+  <button class="tv-exit-btn" onclick="sairModoTV()"><i class="ti ti-x" style="font-size:13px"></i> Sair (ESC)</button>
+  <div class="tv-sync-bar"><div class="tv-sync-fill" id="tv-sync-fill"></div></div>
+  <div id="tv-content" style="display:contents"></div>
 </div>
 
 <div id="app" style="display:none">
@@ -347,6 +403,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
             <label style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Ver dados de</label>
             <input type="date" id="dash-date-input" onchange="setDashDate(this.value)" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px">
             <button id="dash-date-today-btn" onclick="setDashDate(null)" style="display:none;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer">Voltar para hoje</button>
+            <button id="dash-tv-btn" onclick="modoTV()" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-device-tv"></i> Modo TV</button>
           </div>
           <div id="dash-content"></div>
         </div>
@@ -792,6 +849,116 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     </div>
   </div>
 </div>
+<script>
+// === MODO TV ===
+let _tvTimerSync=null,_tvTimerPage=null,_tvTimerClock=null,_tvTimerBar=null,_tvPage=0;
+const TV_POR_PAGINA=6;
+function _tvShort(n){return String(n||'').split(' ').slice(0,2).join(' ');}
+function _tvEsc(t){return supEsc(t==null?'':t);}
+function _tvDados(){
+  const d=today(), presDay=state.presencas[d]||{};
+  const afs=afastamentosAtivosHoje(d);
+  const postos=[];
+  const comGente=new Set(colaboradoresAtivos().map(c=>c.postoId).filter(Boolean));
+  postosAtivos().filter(pid=>comGente.has(pid)).forEach(pid=>{
+    const todos=colaboradoresAtivos().filter(c=>c.postoId===pid);
+    const hoje=todos.filter(c=>deveTrabalharHoje(c,d));
+    const pdat=presDay[pid]||{};
+    const extra=todos.filter(c=>{const p=pdat[c.nome];return p&&p.status==='E'&&!hoje.includes(c);});
+    const esc=[...hoje,...extra];
+    let pres=0,aus=0,folgaM=0; const ausentes=[];
+    esc.forEach(c=>{const p=pdat[c.nome]; if(!p)return; if(p.status==='P'||p.status==='E')pres++; else if(p.status==='A'){aus++;ausentes.push(c.nome);} else if(p.status==='F')folgaM++;});
+    const atest=afs.filter(a=>a.postoId===pid&&a.tipo!=='Férias').length;
+    const fer=afs.filter(a=>a.postoId===pid&&a.tipo==='Férias').length;
+    postos.push({id:pid,label:postoLabel(pid),escalados:esc.length-folgaM,pres,aus,ausentes,atest,fer,folga:todos.length-hoje.length+folgaM,apontado:Object.keys(pdat).length>0});
+  });
+  const T=postos.reduce((a,p)=>({esc:a.esc+p.escalados,pres:a.pres+p.pres,aus:a.aus+p.aus,fer:a.fer+p.fer,atest:a.atest+p.atest,folga:a.folga+p.folga}),{esc:0,pres:0,aus:0,fer:0,atest:0,folga:0});
+  // visitas dos supervisores hoje
+  const sups=supervisoresAtivos().map(s=>{
+    const rota=s.rota||[]; const lista=checkinsDoDia(d,s.id);
+    const ag=rota.map(r=>({r,it:agendaItem(s,r,d)})).filter(x=>x.it).sort((a,b)=>(a.it.ordem||99)-(b.it.ordem||99));
+    const feitas=ag.filter(x=>lista.some(c=>rotaMatchCheckin(x.r,c)));
+    const pend=ag.filter(x=>!feitas.includes(x));
+    return {nome:s.nome,total:ag.length,feitas:feitas.length,pend};
+  }).filter(x=>x.total>0);
+  return {d,postos,T,afs,sups,presDay};
+}
+function renderTV(){
+  const ov=document.getElementById('tv-overlay'); if(!ov||!ov.classList.contains('active'))return;
+  const D=_tvDados(), T=D.T;
+  const cob=T.esc>0?Math.round(T.pres/T.esc*100):0;
+  const dt=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  // ordena: com falta primeiro, depois aguardando, depois ok
+  const ord=D.postos.slice().sort((a,b)=>(b.aus-a.aus)||((a.apontado?1:0)-(b.apontado?1:0))||a.label.localeCompare(b.label,'pt-BR'));
+  const nPag=Math.max(1,Math.ceil(ord.length/TV_POR_PAGINA));
+  if(_tvPage>=nPag)_tvPage=0;
+  const pag=ord.slice(_tvPage*TV_POR_PAGINA,(_tvPage+1)*TV_POR_PAGINA);
+  const cardPosto=p=>{
+    const pct=p.escalados>0?Math.round(p.pres/p.escalados*100):0;
+    const cls=p.aus>0?'bad':(p.apontado&&p.escalados>0&&p.pres>=p.escalados?'ok':(p.apontado?'':'wait'));
+    const cor=p.aus>0?'var(--red)':(p.apontado&&p.pres>=p.escalados?'var(--green)':'var(--warn)');
+    const rodape=p.aus>0?'<div class="tv-pf r">Falta: '+_tvEsc(p.ausentes.slice(0,2).map(_tvShort).join(', ')+(p.ausentes.length>2?' +'+(p.ausentes.length-2):''))+'</div>'
+      :'<div class="tv-pf">'+(p.apontado?(p.atest||p.fer?(p.atest?p.atest+' atestado ':'')+(p.fer?p.fer+' férias':''):'Tudo certo'):'Aguardando apontamento')+'</div>';
+    return '<div class="tv-posto '+cls+'"><div class="tv-pn">'+_tvEsc(p.label)+'</div>'+
+      '<div class="tv-pv" style="color:'+cor+'">'+p.pres+'<small>/ '+p.escalados+' presentes</small></div>'+
+      '<div class="tv-bar"><div style="width:'+pct+'%;background:'+cor+'"></div></div>'+rodape+'</div>';
+  };
+  // faltas e afastamentos
+  const itens=[];
+  D.postos.forEach(p=>p.ausentes.forEach(n=>itens.push({cor:'var(--red)',tag:'Falta',nome:n,posto:p.label})));
+  D.afs.forEach(a=>itens.push({cor:a.tipo==='Férias'?'var(--green)':'var(--warn)',tag:a.tipo==='Férias'?'Férias':'Atestado',nome:a.nome,posto:a.postoId?postoLabel(a.postoId):''}));
+  const MAXI=7;
+  const liHtml=itens.slice(0,MAXI).map(i=>'<div class="tv-li"><span class="tv-dot" style="background:'+i.cor+'"></span><b>'+_tvEsc(_tvShort(i.nome))+'</b><span class="s">'+_tvEsc(i.tag+(i.posto?' · '+i.posto:''))+'</span></div>').join('')+(itens.length>MAXI?'<div class="tv-empty">+ '+(itens.length-MAXI)+' outros</div>':'');
+  const supHtml=D.sups.length?D.sups.map(s=>{
+    const pct=Math.round(s.feitas/s.total*100);
+    const prox=s.pend.slice(0,2).map(x=>(x.it.hora?x.it.hora+' ':'')+rotaLabel(x.r)).join(' → ');
+    return '<div class="tv-sup"><div class="tv-sup-h"><b>'+_tvEsc(s.nome)+'</b><span>'+s.feitas+'/'+s.total+' visitas</span></div>'+
+      '<div class="tv-bar" style="margin-top:.5vh"><div style="width:'+pct+'%;background:'+(pct>=100?'var(--green)':'var(--cyan)')+'"></div></div>'+
+      '<div class="tv-sup-n">'+(s.pend.length?'Próx.: '+_tvEsc(prox):'<span style="color:var(--green)">Rota do dia concluída</span>')+'</div></div>';
+  }).join(''):'<div class="tv-empty">Nenhuma visita prevista para hoje.</div>';
+  document.getElementById('tv-content').innerHTML=
+    '<div class="tv-head"><img src="'+LOGO_B64+'" alt="Logo"><div><h1>Marília Operações — Painel ao vivo</h1><div class="tv-sub">'+dt+(isFimSemanaOuFeriado(D.d)?' · fim de semana/feriado':'')+'</div></div><div class="tv-clock" id="tv-clock">'+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'</div></div>'+
+    '<div class="tv-kpis">'+
+      '<div class="tv-k"><div class="tv-k-l">Escalados hoje</div><div class="tv-k-v">'+T.esc+'</div></div>'+
+      '<div class="tv-k g"><div class="tv-k-l">Presentes</div><div class="tv-k-v">'+T.pres+'</div></div>'+
+      '<div class="tv-k r'+(T.aus>0?' on':'')+'"><div class="tv-k-l">Ausentes</div><div class="tv-k-v">'+T.aus+'</div></div>'+
+      '<div class="tv-k w"><div class="tv-k-l">Atestados</div><div class="tv-k-v">'+T.atest+'</div></div>'+
+      '<div class="tv-k"><div class="tv-k-l">Férias · Folga</div><div class="tv-k-v">'+T.fer+'<span style="color:var(--text3);font-size:.55em"> · '+T.folga+'</span></div></div>'+
+      '<div class="tv-k c"><div class="tv-k-l">Cobertura</div><div class="tv-k-v">'+cob+'%</div></div>'+
+    '</div>'+
+    '<div class="tv-main">'+
+      '<div class="tv-panel"><div class="tv-ph">Postos<span>'+(nPag>1?'página '+(_tvPage+1)+' de '+nPag+' · ':'')+ord.length+' postos</span></div>'+
+        (ord.length?'<div class="tv-postos">'+pag.map(cardPosto).join('')+'</div>':'<div class="tv-empty">Nenhum posto com colaborador cadastrado.</div>')+'</div>'+
+      '<div class="tv-side">'+
+        '<div class="tv-panel"><div class="tv-ph">Faltas e afastamentos<span>'+itens.length+'</span></div><div class="tv-list">'+(liHtml||'<div class="tv-empty" style="color:var(--green)">Sem faltas ou afastamentos hoje ✓</div>')+'</div></div>'+
+        '<div class="tv-panel"><div class="tv-ph">Supervisores · hoje<span>'+D.sups.reduce((a,s)=>a+s.feitas,0)+'/'+D.sups.reduce((a,s)=>a+s.total,0)+' visitas</span></div><div class="tv-list">'+supHtml+'</div></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="tv-foot"><span>Atualiza sozinho a cada 20s</span><span>Última leitura '+(lastSync?lastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'--')+'</span></div>';
+}
+function modoTV(){
+  if(currentRole==='supervisor'){showToast('Modo TV não está disponível para supervisor.','warn');return;}
+  const ov=document.getElementById('tv-overlay'); if(!ov)return;
+  ov.classList.add('active'); _tvPage=0;
+  if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(function(){});
+  renderTV();
+  const sync=()=>{ Promise.resolve().then(()=>syncFromCloud()).catch(()=>{}).then(renderTV); };
+  sync();
+  clearInterval(_tvTimerSync);_tvTimerSync=setInterval(sync,20000);
+  clearInterval(_tvTimerPage);_tvTimerPage=setInterval(()=>{_tvPage++;renderTV();},12000);
+  clearInterval(_tvTimerClock);_tvTimerClock=setInterval(()=>{const c=document.getElementById('tv-clock');if(c)c.textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});},1000);
+  let p=0;const fill=document.getElementById('tv-sync-fill');
+  clearInterval(_tvTimerBar);_tvTimerBar=setInterval(()=>{p+=5;if(p>100)p=0;if(fill)fill.style.width=p+'%';},1000);
+}
+function sairModoTV(){
+  const ov=document.getElementById('tv-overlay'); if(ov)ov.classList.remove('active');
+  [_tvTimerSync,_tvTimerPage,_tvTimerClock,_tvTimerBar].forEach(clearInterval);
+  _tvTimerSync=_tvTimerPage=_tvTimerClock=_tvTimerBar=null;
+  if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const ov=document.getElementById('tv-overlay');if(ov&&ov.classList.contains('active'))sairModoTV();}});
+document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement){const ov=document.getElementById('tv-overlay');if(ov&&ov.classList.contains('active'))sairModoTV();} });
+</script>
 </body>
 </html>
 
@@ -800,7 +967,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 const FB_URL_MARILIA_OPS = 'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
 // Versão do build — mude isso a cada entrega pra dar pra conferir no app (aba Config)
 // se o navegador já está rodando o arquivo mais novo, e não uma cópia em cache.
-const BUILD_VERSION='2026-10-07-10:00';
+const BUILD_VERSION='2026-10-08-10:00';
 const LS_CACHE = 'marilia_ops_cache';
 const SYNC_INTERVAL=8000;
 
@@ -4514,6 +4681,11 @@ function renderConfig(){
   html+='<div class="cfg-row"><div><div class="cfg-lbl">Última sincronização</div><div class="cfg-sub">'+ls+'</div></div></div>';
   html+='<button class="btn btn-purple btn-sm" style="margin-top:10px" onclick="manualSync()"><i class="ti ti-refresh"></i> Sincronizar agora</button></div>';
 
+  if(currentRole!=='supervisor'){
+    html+='<div class="card"><div class="card-title"><i class="ti ti-device-tv" style="color:var(--cyan)"></i>Modo TV</div>';
+    html+='<div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">Painel em tela cheia para TV: presença por posto, faltas e afastamentos do dia e visitas dos supervisores. Atualiza sozinho a cada 20 segundos. ESC para sair.</div>';
+    html+='<button class="btn btn-primary" onclick="modoTV()"><i class="ti ti-device-tv"></i> Ativar Modo TV</button></div>';
+  }
   html+='<div class="card"><div class="card-title"><i class="ti ti-database" style="color:var(--cyan)"></i>Exportar dados</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
   html+='<button class="btn btn-ghost btn-sm" onclick="exportarCSVLins()"><i class="ti ti-table"></i> CSV Presença</button>';

@@ -3426,7 +3426,7 @@ function renderPremiacao(){
   let h='<div class="pm-bar"><button class="btn btn-ghost btn-sm" onclick="premMudarMes(-1)"><i class="ti ti-chevron-left"></i></button><div class="pm-mes">'+premMesNome(mes)+'</div><button class="btn btn-ghost btn-sm" onclick="premMudarMes(1)"><i class="ti ti-chevron-right"></i></button>'
    +'<select onchange="premSetTurno(this.value)"><option value="">Todos os turnos</option>'+turnos.map(t=>'<option value="'+t+'"'+(premTurno===t?' selected':'')+'>Turno '+t+'</option>').join('')+'</select>'
    +(edit?'<button class="btn btn-ghost btn-sm" onclick="premToggleCfg()"><i class="ti ti-settings"></i> Valores e regras</button>':'')
-   +'<button class="btn btn-ghost btn-sm" onclick="exportarPremiacao()" style="margin-left:auto"><i class="ti ti-download"></i> CSV</button></div>';
+   +'<button class="btn btn-ghost btn-sm" onclick="exportarPremiacao()" style="margin-left:auto"><i class="ti ti-file-type-pdf"></i> PDF</button></div>';
   if(premCfgAberto&&edit){
     h+='<div class="card"><div class="card-title"><i class="ti ti-coin"></i> Valores e regras</div><div class="pm-cfg">'
      +PREM_ITENS.map(it=>'<label>'+it.n+' (R$)<input type="number" min="0" step="0.01" value="'+cfg.valores[it.k]+'" onchange="premCfgSet(\'v_'+it.k+'\',this.value)"></label>').join('')
@@ -3466,18 +3466,23 @@ function renderPremiacao(){
   el.innerHTML=h;
 }
 function exportarPremiacao(){
-  const mes=premMesAtual(),cfg=premCfg(),sems=premSemanas(mes);
-  const head=['Colaborador','Turno'];
-  PREM_ITENS.forEach(it=>{sems.forEach(s=>head.push(it.n+' S'+s.n));head.push(it.n+' (mês)');});
-  head.push('Total R$');
-  const rows=[head];
-  premLista().forEach(c=>{
-    const f=premFechar(c,mes),r=[c.nome,c.turno||''];
-    PREM_ITENS.forEach(it=>{sems.forEach(s=>{const v=premSemVal(c,mes,s,it.k).v;r.push(v==='NA'?'N/A':v);});r.push(f.itens[it.k]);});
-    r.push(f.total.toFixed(2).replace('.',','));rows.push(r);
-  });
-  const csv='﻿'+rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(';')).join('\r\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='premiacao_'+mes+'.csv';a.click();URL.revokeObjectURL(a.href);
+  const mes=premMesAtual(),cfg=premCfg(),sems=premSemanas(mes),lista=premLista();
+  const cor=v=>v==='OK'?'#15803d;background:#dcfce7':v==='NOK'?'#b91c1c;background:#fee2e2':'#6b7280';
+  let soma=0,max=PREM_ITENS.reduce((t,it)=>t+(cfg.valores[it.k]||0),0)*lista.length;
+  const linhas=lista.map(c=>{
+    const f=premFechar(c,mes);soma+=f.total;
+    const sm=PREM_ITENS.map(it=>sems.map(s=>{const v=premSemVal(c,mes,s,it.k).v;return '<span style="display:inline-block;width:11px;text-align:center;font-size:8px;font-weight:700;color:'+cor(v)+'">'+(v==='OK'?'✓':v==='NOK'?'✗':v==='NA'?'–':'·')+'</span>';}).join('')).map((x,i)=>x);
+    return '<tr><td style="text-align:left"><b>'+premEsc(c.nome)+'</b><br><span style="color:#6b7280;font-size:9px">Turno '+(c.turno||'-')+'</span></td>'
+      +PREM_ITENS.map((it,i)=>'<td><div style="font-weight:700;padding:3px 6px;border-radius:4px;color:'+cor(f.itens[it.k])+'">'+f.itens[it.k]+(it.k==='ass'&&f.nokAss?' ('+f.nokAss+' sem.)':'')+'</div><div>'+sm[i]+'</div></td>').join('')
+      +'<td style="font-weight:800;white-space:nowrap">'+premBrl(f.total)+'</td></tr>';
+  }).join('');
+  const html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Premiação '+premMesNome(mes)+'</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#111;font-size:11px}h1{font-size:20px;margin:0 0 4px}.sub{color:#6b7280;font-size:11px;margin-bottom:14px}.k{display:flex;gap:12px;margin-bottom:14px}.k div{flex:1;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px}.k b{display:block;font-size:16px;margin-top:2px}table{width:100%;border-collapse:collapse}th{background:#f3f4f6;font-size:9px;text-transform:uppercase;letter-spacing:.05em;padding:6px;border:1px solid #e5e7eb}td{padding:5px 6px;border:1px solid #e5e7eb;text-align:center}tr{page-break-inside:avoid}thead{display:table-header-group}.l{margin-top:10px;color:#6b7280;font-size:9px}</style></head><body>'
+   +'<h1>FEMSA Aparecida — Premiação · '+premMesNome(mes)+'</h1><div class="sub">'+(premTurno?'Turno '+premTurno+' · ':'Todos os turnos · ')+'Gerado em '+new Date().toLocaleString('pt-BR')+'</div>'
+   +'<div class="k"><div>Total a pagar<b>'+premBrl(soma)+'</b></div><div>Máximo possível<b>'+premBrl(max)+'</b></div><div>Colaboradores<b>'+lista.length+'</b></div></div>'
+   +'<table><thead><tr><th style="text-align:left">Colaborador</th>'+PREM_ITENS.map(it=>'<th>'+it.n+'<br>R$ '+(cfg.valores[it.k]||0).toLocaleString('pt-BR')+'</th>').join('')+'<th>Total</th></tr></thead><tbody>'+linhas+'<tr><td style="text-align:left;font-weight:800">Total</td>'+PREM_ITENS.map(()=>'<td></td>').join('')+'<td style="font-weight:800">'+premBrl(soma)+'</td></tr></tbody></table>'
+   +'<div class="l">Pontos abaixo de cada resultado = semanas 1 a 4 (✓ OK, ✗ NOK, · sem lançamento, – não se aplica). Cada NOK tira o valor do item; Assiduidade é perdida com '+cfg.assLimite+' ou mais semanas NOK.</div></body></html>';
+  const w=window.open('','_blank');if(!w){showToast('Permita pop-ups para gerar o PDF.','err');return;}
+  w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);
 }
 </script>
 </body>

@@ -350,6 +350,40 @@ img,canvas,svg{max-width:100%}
 .modal-btn-primary.orange{background:var(--orange)}
 .modal-btn-danger{padding:11px 16px;border:1px solid var(--red-bd);border-radius:9px;background:var(--red-bg);color:var(--red);font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
 .modal-btn-ghost{padding:11px 16px;border:1px solid var(--border);border-radius:9px;background:transparent;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer}
+/* === PREMIAÇÃO === */
+.pm-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--bg2);-webkit-overflow-scrolling:touch}
+.pm-tbl{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;font-size:13px}
+.pm-tbl th{position:sticky;top:0;background:var(--bg3);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:10px 6px;text-align:center;border-bottom:1px solid var(--border);white-space:nowrap}
+.pm-tbl td{padding:6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.05)}
+.pm-tbl th:first-child,.pm-tbl td:first-child{position:sticky;left:0;text-align:left;background:var(--bg2);z-index:2;min-width:150px;max-width:190px;padding-left:12px;border-right:1px solid var(--border)}
+.pm-tbl th:first-child{background:var(--bg3);z-index:3}
+.pm-nm{font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.pm-sub{font-size:10px;color:var(--text3)}
+.pm{min-width:58px;padding:8px 6px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:12px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;position:relative;font-family:inherit}
+.pm:disabled{cursor:default}
+.pm.ok{background:rgba(0,224,150,.14);border-color:rgba(0,224,150,.4);color:var(--green,#00e096)}
+.pm.nok{background:rgba(255,77,106,.16);border-color:rgba(255,77,106,.45);color:var(--red,#ff4d6a)}
+.pm.na{opacity:.55}
+.pm.auto::after{content:'';position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--cyan)}
+.pm.ed::before{content:'✎';position:absolute;top:1px;right:3px;font-size:8px;opacity:.7}
+.pm small{display:block;font-size:9px;font-weight:600;opacity:.8}
+.pm-tot{font-weight:800;color:var(--cyan);white-space:nowrap}
+.pm-tot.z{color:var(--text3)}
+.pm-chips{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px}
+.pm-chip{flex:0 0 auto;padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.pm-chip.active{color:var(--cyan);border-color:var(--cyan-bd);background:var(--cyan-bg)}
+.pm-chip small{display:block;font-size:10px;font-weight:500;opacity:.75}
+.pm-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.pm-bar select,.pm-cfg input{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit}
+.pm-mes{font-weight:700;font-size:15px;min-width:130px;text-align:center;text-transform:capitalize}
+.pm-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.pm-k{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.pm-k-l{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.pm-k-v{font-size:22px;font-weight:800;margin-top:4px}
+.pm-cfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.pm-cfg label{font-size:11px;color:var(--text2);font-weight:600;display:flex;flex-direction:column;gap:4px}
+.pm-leg{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
+@media(max-width:768px){.pm-kpis{grid-template-columns:repeat(2,1fr)}.pm-tbl th:first-child,.pm-tbl td:first-child{min-width:120px;max-width:120px}.pm{min-width:52px}.pm-nm{white-space:normal;font-size:12px;line-height:1.25}}
 </style>
 </head>
 
@@ -383,6 +417,7 @@ img,canvas,svg{max-width:100%}
         <button class="snav-item" id="snav-presenca"    onclick="goTo('presenca')"><i class="ti ti-users"></i>Presença</button>
         <button class="snav-item" id="snav-operacao"    onclick="goTo('operacao')"><i class="ti ti-truck-delivery"></i>Operação</button>
         <button class="snav-item" id="snav-absenteismo" onclick="goTo('absenteismo')"><i class="ti ti-user-off"></i>Absenteísmo</button>
+        <button class="snav-item" id="snav-premiacao"   onclick="goTo('premiacao')"><i class="ti ti-trophy"></i>Premiação</button>
         <button class="snav-item" id="snav-equipe"      onclick="goTo('equipe')"><i class="ti ti-id-badge"></i>Equipe</button>
         <button class="snav-item" id="snav-config"      onclick="goTo('config')"><i class="ti ti-settings"></i>Config</button>
       </nav>
@@ -510,6 +545,10 @@ img,canvas,svg{max-width:100%}
           <div class="sec">Histórico de absenteísmo</div>
           <div id="abs-content"><div class="empty"><i class="ti ti-loader"></i><h3>Carregando...</h3></div></div>
         </div>
+        <div class="screen" id="sc-premiacao">
+          <div class="sec">Premiação</div>
+          <div id="prem-content"></div>
+        </div>
         <div class="screen" id="sc-equipe"><div id="equipe-content"></div></div>
         <div class="screen" id="sc-config"><div id="config-content"></div></div>
       </div>
@@ -523,6 +562,7 @@ img,canvas,svg{max-width:100%}
     <button class="bn" id="bn-presenca"    onclick="goTo('presenca')"><i class="ti ti-users"></i><span>Presença</span></button>
     <button class="bn" id="bn-operacao"    onclick="goTo('operacao')"><i class="ti ti-truck-delivery"></i><span>Operação</span></button>
     <button class="bn" id="bn-absenteismo" onclick="goTo('absenteismo')"><i class="ti ti-user-off"></i><span>Ausências</span></button>
+    <button class="bn" id="bn-premiacao"   onclick="goTo('premiacao')"><i class="ti ti-trophy"></i><span>Prêmio</span></button>
     <button class="bn" id="bn-equipe"      onclick="goTo('equipe')"><i class="ti ti-id-badge"></i><span>Equipe</span></button>
     <button class="bn" id="bn-config"      onclick="goTo('config')"><i class="ti ti-settings"></i><span>Config</span></button>
   </div>
@@ -712,7 +752,7 @@ const USERS=[
   {user:'lançamentos', senha:'login@aparecida', role:'lancamentos'},
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
-let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
+let state={premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
 const ATIVIDADES=['Recuperação de Pallets','Produção de Insumos','Operação de Empilhadeira','Inspeção da Qualidade'];
 function produzPallets(c){return !c.atividade||c.atividade==='Recuperação de Pallets';}
 // Situação do colaborador no dia (presença do turno dele + afastamentos): define cor e se entra na produção
@@ -918,6 +958,8 @@ function mergeState(cloud){
     cloud.afastamentos.forEach(ca=>{if(!localIds.has(ca.id))merged.push(ca);});
     state.afastamentos=merged;
   }
+  if(cloud.premiacao)state.premiacao=mergePrem(state.premiacao,cloud.premiacao);
+  if(cloud.premiacaoCfg)state.premiacaoCfg=mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg);
   if(cloud.bufferAjuste!==undefined)state.bufferAjuste=cloud.bufferAjuste;
   if(cloud.bufferAjusteTs!==undefined)state.bufferAjusteTs=cloud.bufferAjusteTs;
   if(cloud.configTs!==undefined){
@@ -1103,7 +1145,7 @@ async function pushToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
     // Read current cloud state for smart merge
-    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||''};
+    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{}};
     try{
       const r=await fetch(FB_URL);
       if(r.ok){
@@ -1171,7 +1213,7 @@ async function pushToCloud(){
           const bufferSaldoInicial=usaConfigLocal?(state.bufferSaldoInicial||0):(cloud.bufferSaldoInicial||0);
           const turnoExtra=usaConfigLocal?(state.turnoExtra||{ativo:false,horario:'',inicioMin:null}):(cloud.turnoExtra||{ativo:false,horario:'',inicioMin:null});
           const configTs=usaConfigLocal?localConfigTs:cloudConfigTs;
-          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,afastamentos:mergedAfast,bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,turnoExtra,configTs,presencasResetTs:presResetTs,producaoResetTs:prodResetTs};
+          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,afastamentos:mergedAfast,bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,turnoExtra,configTs,presencasResetTs:presResetTs,producaoResetTs:prodResetTs,premiacao:mergePrem(state.premiacao,cloud.premiacao),premiacaoCfg:mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg)};
         }
       }
     }catch(e){}
@@ -1185,6 +1227,8 @@ async function pushToCloud(){
     state.afastamentos=merged.afastamentos||[];
     state.presencasResetTs=merged.presencasResetTs||'';
     state.producaoResetTs=merged.producaoResetTs||'';
+    state.premiacao=merged.premiacao||{};
+    state.premiacaoCfg=merged.premiacaoCfg||{};
     state.bufferAjuste=merged.bufferAjuste||0;
     state.bufferAjusteTs=merged.bufferAjusteTs||'';
     state.metaMensal=merged.metaMensal;
@@ -1275,7 +1319,7 @@ function showScreen(s){
   if(s==='app'){document.getElementById('app').style.display='block';document.getElementById('bnav').style.display='block';}
 }
 
-const SCREEN_TITLES={dashboard:'Dashboard',presenca:'Presença',operacao:'Operação',absenteismo:'Absenteísmo',equipe:'Equipe',config:'Configurações'};
+const SCREEN_TITLES={dashboard:'Dashboard',presenca:'Presença',operacao:'Operação',absenteismo:'Absenteísmo',premiacao:'Premiação',equipe:'Equipe',config:'Configurações'};
 function goTo(sc){
   if(!telasPermitidas().includes(sc))sc='operacao';
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -1288,6 +1332,7 @@ function goTo(sc){
   if(sc==='presenca')renderPresenca();
   if(sc==='operacao')renderOperacao();
   if(sc==='absenteismo')renderAbsenteismo();
+  if(sc==='premiacao')renderPremiacao();
   if(sc==='equipe')renderEquipe();
   if(sc==='config')renderConfig();
 }
@@ -1299,6 +1344,7 @@ function renderAll(){
   if(id==='presenca')renderPresenca();
   if(id==='operacao')renderOperacao();
   if(id==='absenteismo')renderAbsenteismo();
+  if(id==='premiacao')renderPremiacao();
   if(id==='equipe')renderEquipe();
   if(id==='config')renderConfig();
 }
@@ -1318,12 +1364,12 @@ function updateUserDisplay(){
 
 function telasPermitidas(){
   if(currentRole==='lancamentos')return['presenca','operacao'];
-  return['dashboard','presenca','operacao','absenteismo','equipe','config'];
+  return['dashboard','presenca','operacao','absenteismo','premiacao','equipe','config'];
 }
 function buildNav(){
   if(!currentRole&&currentUser)currentRole=currentUser.role;
   const permitidas=telasPermitidas();
-  ['dashboard','presenca','operacao','absenteismo','equipe','config'].forEach(id=>{
+  ['dashboard','presenca','operacao','absenteismo','premiacao','equipe','config'].forEach(id=>{
     const permitido=permitidas.includes(id);
     const sn=document.getElementById('snav-'+id);if(sn)sn.style.display=permitido?'flex':'none';
     const bn=document.getElementById('bn-'+id);if(bn)bn.style.display=permitido?'flex':'none';
@@ -1368,7 +1414,7 @@ function launchApp(){
 
 function boot(){
   unitName=localStorage.getItem(LS_UNIT)||'Aparecida';
-  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;}}catch(e){}
+  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.premiacao)state.premiacao=p.premiacao;if(p.premiacaoCfg)state.premiacaoCfg=p.premiacaoCfg;}}catch(e){}
   if(!state.colaboradores||!state.colaboradores.length)state.colaboradores=DEFAULT_COLABS;
   try{
     const raw=sessionStorage.getItem('femsa_session')||localStorage.getItem('femsa_session');
@@ -2776,7 +2822,7 @@ async function pushForceToCloud(){
   // que a nuvem realmente zerou antes de reportar sucesso.
   resetLock=true;
   setSyncDot('syncing','Salvando...');
-  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||''};
+  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{}};
   let ok=false;
   for(let tentativa=0;tentativa<3&&!ok;tentativa++){
     try{
@@ -3248,6 +3294,190 @@ function sairModoTV(){
   document.getElementById('tv-overlay').classList.remove('active');
   if(document.exitFullscreen)document.exitFullscreen().catch(function(){});
   if(tvTimer){clearInterval(tvTimer);tvTimer=null;}
+}
+
+function premEsc(s){return String(s==null?"":s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m]));}
+// === PREMIAÇÃO (aba semanal + resumo mensal) ===
+const PREM_ITENS=[{k:'seg',n:'Segurança',auto:false},{k:'org',n:'Organização',auto:false},{k:'prod',n:'Produção',auto:true},{k:'cla',n:'Classificação',auto:false},{k:'pal',n:'Palets rejeitados',auto:false},{k:'ass',n:'Assiduidade',auto:true}];
+const PREM_CFG_PAD={valores:{seg:100,org:100,prod:100,cla:100,pal:100,ass:315},metaProd:0,atestadoNok:false,assLimite:2};
+let premMes=null,premSem=1,premView='sem',premTurno='',_premLista=[],premCfgAberto=false;
+function premCfg(){
+  const c=state.premiacaoCfg||{};
+  return{valores:Object.assign({},PREM_CFG_PAD.valores,c.valores||{}),metaProd:c.metaProd>0?c.metaProd:(state.metaIndividualFixa||120),atestadoNok:!!c.atestadoNok,assLimite:c.assLimite>0?c.assLimite:2};
+}
+function mergePrem(a,b){
+  const out=JSON.parse(JSON.stringify(a||{}));
+  Object.entries(b||{}).forEach(([mes,ns])=>{
+    if(!out[mes])out[mes]={};
+    Object.entries(ns||{}).forEach(([nome,ks])=>{
+      if(!out[mes][nome])out[mes][nome]={};
+      Object.entries(ks||{}).forEach(([k,cell])=>{
+        const cur=out[mes][nome][k];
+        if(!cur||(cell&&(cell.ts||'')>(cur.ts||'')))out[mes][nome][k]=cell;
+      });
+    });
+  });
+  return out;
+}
+function mergePremCfg(a,b){return((b&&b.ts)||'')>((a&&a.ts)||'')?b:(a||b||{});}
+function _premSalvar(){saveCache();markPending();pushToCloud();}
+function premMesAtual(){if(!premMes)premMes=today().substring(0,7);return premMes;}
+function premMesNome(m){const p=m.split('-');return new Date(+p[0],+p[1]-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});}
+function premSemanas(mes){
+  const p=mes.split('-').map(Number);const ult=new Date(p[0],p[1],0).getDate();
+  const f=n=>mes+'-'+String(n).padStart(2,'0');
+  return[{n:1,ini:f(1),fim:f(7)},{n:2,ini:f(8),fim:f(14)},{n:3,ini:f(15),fim:f(21)},{n:4,ini:f(22),fim:f(ult)}];
+}
+function premGet(mes,nome,key){const c=state.premiacao&&state.premiacao[mes]&&state.premiacao[mes][nome]&&state.premiacao[mes][nome][key];return c?c.v||'':'';}
+function premSetV(mes,nome,key,v){
+  if(!state.premiacao)state.premiacao={};
+  if(!state.premiacao[mes])state.premiacao[mes]={};
+  if(!state.premiacao[mes][nome])state.premiacao[mes][nome]={};
+  state.premiacao[mes][nome][key]={v:v,ts:new Date().toISOString()};
+}
+// Produção e assiduidade automáticas da semana
+function premAuto(c,sem){
+  const cfg=premCfg(),hoje=today();
+  const r={prod:'',ass:'',avg:0,faltas:0,atest:0};
+  let tot=0,dias=0,temPres=false;
+  let d=sem.ini;
+  while(d<=sem.fim&&d<=hoje){
+    const st=statusProdDia(c,d);
+    const pt=state.presencas[d]&&state.presencas[d][c.turno];
+    const stRaw=pt&&pt.presenca?pt.presenca[c.nome]:'';
+    if(st.k)temPres=true;
+    if(st.k==='a')r.faltas++;
+    if(st.k==='atestado')r.atest++;
+    if(!st.fora){
+      const dd=state.producaoPessoas&&state.producaoPessoas[d]&&state.producaoPessoas[d][c.turno];
+      const reg=dd&&dd.pessoas&&dd.pessoas[c.nome];
+      if(reg&&reg.prod>0){tot+=reg.prod;dias++;}
+      else if(st.k==='p'&&!(reg&&reg.motivo))dias++;
+    }
+    d=addDaysStr(d,1);
+  }
+  if(temPres)r.ass=(r.faltas>0||(cfg.atestadoNok&&r.atest>0))?'NOK':'OK';
+  if(!produzPallets(c))r.prod='NA';
+  else if(dias>0){r.avg=Math.round(tot/dias);r.prod=r.avg>=cfg.metaProd?'OK':'NOK';}
+  return r;
+}
+function premSemVal(c,mes,sem,item){
+  const man=premGet(mes,c.nome,item+'_'+sem.n);
+  if(man)return{v:man,auto:false,man:true};
+  if(item==='prod'||item==='ass'){const a=premAuto(c,sem);return{v:a[item],auto:true,man:false,a:a};}
+  return{v:'',auto:false,man:false};
+}
+function premFechar(c,mes){
+  const cfg=premCfg(),sems=premSemanas(mes),res={itens:{},ed:{},nokAss:0,total:0};
+  PREM_ITENS.forEach(it=>{
+    let nok=0;
+    sems.forEach(s=>{if(premSemVal(c,mes,s,it.k).v==='NOK')nok++;});
+    if(it.k==='ass')res.nokAss=nok;
+    const auto=it.k==='ass'?(nok>=cfg.assLimite?'NOK':'OK'):(nok>0?'NOK':'OK');
+    const ov=premGet(mes,c.nome,it.k+'_F');
+    res.itens[it.k]=ov||auto;res.ed[it.k]=!!ov;
+    if(res.itens[it.k]==='OK')res.total+=cfg.valores[it.k]||0;
+  });
+  return res;
+}
+function premLista(){
+  return colaboradoresAtivos().filter(c=>!premTurno||c.turno===premTurno).sort((a,b)=>(a.turno||'').localeCompare(b.turno||'')||a.nome.localeCompare(b.nome));
+}
+function premBrl(n){return 'R$ '+Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function premMudarMes(d){const p=premMesAtual().split('-').map(Number);const dt=new Date(p[0],p[1]-1+d,1);premMes=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');renderPremiacao();}
+function premSetView(v){premView=v;renderPremiacao();}
+function premSetSem(n){premSem=n;renderPremiacao();}
+function premSetTurno(v){premTurno=v;renderPremiacao();}
+function premToggleCfg(){premCfgAberto=!premCfgAberto;renderPremiacao();}
+function premCfgSet(campo,v){
+  if(!podeEditarPresenca())return;
+  const cfg=state.premiacaoCfg=Object.assign({valores:{}},state.premiacaoCfg||{});
+  if(campo.indexOf('v_')===0){cfg.valores=Object.assign({},cfg.valores);cfg.valores[campo.substring(2)]=Math.max(0,parseFloat(v)||0);}
+  else if(campo==='atestadoNok')cfg.atestadoNok=!!v;
+  else cfg[campo]=Math.max(0,parseFloat(v)||0);
+  cfg.ts=new Date().toISOString();logAuditoria('Alterou configuração da premiação');_premSalvar();
+}
+function _premProx(v){return v===''?'OK':v==='OK'?'NOK':'';}
+function premCiclo(i,item,key){
+  if(!podeEditarPresenca()){showToast('Sem permissão para lançar premiação.','err');return;}
+  const c=_premLista[i];if(!c)return;
+  const mes=premMesAtual();
+  const k=key==='F'?item+'_F':item+'_'+premSem;
+  premSetV(mes,c.nome,k,_premProx(premGet(mes,c.nome,k)));
+  _premSalvar();renderPremiacao();
+}
+function premMarcarTodos(item){
+  if(!podeEditarPresenca())return;
+  const mes=premMesAtual(),k=item+'_'+premSem;let n=0;
+  _premLista.forEach(c=>{if(!premGet(mes,c.nome,k)){premSetV(mes,c.nome,k,'OK');n++;}});
+  if(n){logAuditoria('Premiação: marcou OK em '+item+' semana '+premSem+' ('+n+')');_premSalvar();}
+  renderPremiacao();
+}
+function _premBtn(v,opt){
+  const cls=v==='OK'?'ok':v==='NOK'?'nok':'';
+  const txt=v==='OK'?'OK':v==='NOK'?'NOK':v==='NA'?'—':'·';
+  return '<button class="pm '+cls+(opt.auto?' auto':'')+(opt.ed?' ed':'')+(v==='NA'?' na':'')+'" '+(opt.dis?'disabled ':'')+'onclick="'+opt.on+'">'+txt+(opt.sub?'<small>'+opt.sub+'</small>':'')+'</button>';
+}
+function renderPremiacao(){
+  const el=document.getElementById('prem-content');if(!el)return;
+  const mes=premMesAtual(),sems=premSemanas(mes),cfg=premCfg(),edit=podeEditarPresenca();
+  _premLista=premLista();
+  const turnos=[...new Set(colaboradoresAtivos().map(c=>c.turno).filter(Boolean))].sort();
+  let h='<div class="pm-bar"><button class="btn btn-ghost btn-sm" onclick="premMudarMes(-1)"><i class="ti ti-chevron-left"></i></button><div class="pm-mes">'+premMesNome(mes)+'</div><button class="btn btn-ghost btn-sm" onclick="premMudarMes(1)"><i class="ti ti-chevron-right"></i></button>'
+   +'<select onchange="premSetTurno(this.value)"><option value="">Todos os turnos</option>'+turnos.map(t=>'<option value="'+t+'"'+(premTurno===t?' selected':'')+'>Turno '+t+'</option>').join('')+'</select>'
+   +(edit?'<button class="btn btn-ghost btn-sm" onclick="premToggleCfg()"><i class="ti ti-settings"></i> Valores e regras</button>':'')
+   +'<button class="btn btn-ghost btn-sm" onclick="exportarPremiacao()" style="margin-left:auto"><i class="ti ti-download"></i> CSV</button></div>';
+  if(premCfgAberto&&edit){
+    h+='<div class="card"><div class="card-title"><i class="ti ti-coin"></i> Valores e regras</div><div class="pm-cfg">'
+     +PREM_ITENS.map(it=>'<label>'+it.n+' (R$)<input type="number" min="0" step="0.01" value="'+cfg.valores[it.k]+'" onchange="premCfgSet(\'v_'+it.k+'\',this.value)"></label>').join('')
+     +'<label>Meta de produção (paletes/dia por colaborador)<input type="number" min="1" value="'+cfg.metaProd+'" onchange="premCfgSet(\'metaProd\',this.value)"></label>'
+     +'<label>Semanas com NOK que perdem a assiduidade<input type="number" min="1" value="'+cfg.assLimite+'" onchange="premCfgSet(\'assLimite\',this.value)"></label>'
+     +'<label>Atestado conta como NOK na assiduidade?<select onchange="premCfgSet(\'atestadoNok\',this.value===\'1\')"><option value="0"'+(cfg.atestadoNok?'':' selected')+'>Não (só falta)</option><option value="1"'+(cfg.atestadoNok?' selected':'')+'>Sim</option></select></label></div>'
+     +'<div class="pm-leg">Cada NOK em Segurança, Organização, Produção, Classificação ou Palets rejeitados tira o valor do item. Assiduidade é perdida ao atingir o limite de semanas com NOK no mês.</div></div>';
+  }
+  h+='<div class="vtoggle"><button class="vtog'+(premView==='sem'?' active':'')+'" onclick="premSetView(\'sem\')">Lançar semana</button><button class="vtog'+(premView==='mes'?' active':'')+'" onclick="premSetView(\'mes\')">Resumo do mês</button></div>';
+  if(!_premLista.length){el.innerHTML=h+'<div class="empty"><i class="ti ti-users"></i><h3>Nenhum colaborador</h3></div>';return;}
+  if(premView==='sem'){
+    h+='<div class="pm-chips">'+sems.map(s=>'<button class="pm-chip'+(premSem===s.n?' active':'')+'" onclick="premSetSem('+s.n+')">Semana '+s.n+'<small>'+dateBR(s.ini).substring(0,5)+' a '+dateBR(s.fim).substring(0,5)+'</small></button>').join('')+'</div>';
+    const sem=sems[premSem-1];
+    h+='<div class="pm-wrap"><table class="pm-tbl"><thead><tr><th>Colaborador</th>'+PREM_ITENS.map(it=>'<th>'+it.n+(edit&&!it.auto?'<br><a href="#" onclick="premMarcarTodos(\''+it.k+'\');return false" style="color:var(--cyan);text-transform:none;letter-spacing:0;font-size:10px">todos OK</a>':'')+'</th>').join('')+'</tr></thead><tbody>';
+    _premLista.forEach((c,i)=>{
+      h+='<tr><td><span class="pm-nm">'+premEsc(c.nome)+'</span><span class="pm-sub">Turno '+(c.turno||'-')+(c.atividade&&c.atividade!=='Recuperação de Pallets'?' · '+premEsc(c.atividade):'')+'</span></td>';
+      PREM_ITENS.forEach(it=>{
+        const r=premSemVal(c,mes,sem,it.k);let sub='';
+        if(r.auto&&r.a){if(it.k==='prod'&&r.a.avg)sub=r.a.avg+'/dia';if(it.k==='ass'&&(r.a.faltas||r.a.atest))sub=r.a.faltas?r.a.faltas+' falta'+(r.a.faltas>1?'s':''):r.a.atest+' atest.';}
+        h+='<td>'+_premBtn(r.v,{auto:r.auto&&r.v&&r.v!=='NA',ed:r.man&&it.auto,dis:!edit,on:'premCiclo('+i+',\''+it.k+'\')',sub:sub})+'</td>';
+      });
+      h+='</tr>';
+    });
+    h+='</tbody></table></div><div class="pm-leg">Toque na célula para alternar <b>OK → NOK → vazio</b>. Produção e Assiduidade vêm automáticas (ponto azul) das produções e presenças lançadas; tocar nelas sobrescreve manualmente e vazio volta ao automático. “—” = atividade fora da produção de paletes.</div>';
+  }else{
+    let somaTot=0,cheios=0,nokTot=0;const max=PREM_ITENS.reduce((s,it)=>s+(cfg.valores[it.k]||0),0);
+    const linhas=_premLista.map((c,i)=>{const f=premFechar(c,mes);somaTot+=f.total;if(f.total===max)cheios++;PREM_ITENS.forEach(it=>{if(f.itens[it.k]==='NOK')nokTot++;});return{c:c,f:f,i:i};});
+    h+='<div class="pm-kpis"><div class="pm-k"><div class="pm-k-l">Total a pagar</div><div class="pm-k-v" style="color:var(--cyan)">'+premBrl(somaTot)+'</div></div><div class="pm-k"><div class="pm-k-l">Máximo possível</div><div class="pm-k-v">'+premBrl(max*linhas.length)+'</div></div><div class="pm-k"><div class="pm-k-l">Prêmio integral</div><div class="pm-k-v" style="color:var(--green,#00e096)">'+cheios+' / '+linhas.length+'</div></div><div class="pm-k"><div class="pm-k-l">Total de NOK</div><div class="pm-k-v" style="color:var(--red,#ff4d6a)">'+nokTot+'</div></div></div>';
+    h+='<div class="pm-wrap"><table class="pm-tbl"><thead><tr><th>Colaborador</th>'+PREM_ITENS.map(it=>'<th>'+it.n+'</th>').join('')+'<th>Total</th></tr></thead><tbody>';
+    linhas.forEach(l=>{
+      h+='<tr><td><span class="pm-nm">'+premEsc(l.c.nome)+'</span><span class="pm-sub">Turno '+(l.c.turno||'-')+'</span></td>';
+      PREM_ITENS.forEach(it=>{h+='<td>'+_premBtn(l.f.itens[it.k],{ed:l.f.ed[it.k],dis:!edit,on:'premCiclo('+l.i+',\''+it.k+'\',\'F\')',sub:it.k==='ass'&&l.f.nokAss?l.f.nokAss+' sem. NOK':''})+'</td>';});
+      h+='<td class="pm-tot'+(l.f.total?'':' z')+'">'+premBrl(l.f.total)+'</td></tr>';
+    });
+    h+='<tr><td style="font-weight:800">Total</td>'+PREM_ITENS.map(()=>'<td></td>').join('')+'<td class="pm-tot">'+premBrl(somaTot)+'</td></tr></tbody></table></div><div class="pm-leg">O mês fecha em NOK quando há ao menos uma semana NOK (Assiduidade: ao atingir '+cfg.assLimite+' semanas). Toque no resultado para editar manualmente (✎); vazio volta ao cálculo automático.</div>';
+  }
+  el.innerHTML=h;
+}
+function exportarPremiacao(){
+  const mes=premMesAtual(),cfg=premCfg(),sems=premSemanas(mes);
+  const head=['Colaborador','Turno'];
+  PREM_ITENS.forEach(it=>{sems.forEach(s=>head.push(it.n+' S'+s.n));head.push(it.n+' (mês)');});
+  head.push('Total R$');
+  const rows=[head];
+  premLista().forEach(c=>{
+    const f=premFechar(c,mes),r=[c.nome,c.turno||''];
+    PREM_ITENS.forEach(it=>{sems.forEach(s=>{const v=premSemVal(c,mes,s,it.k).v;r.push(v==='NA'?'N/A':v);});r.push(f.itens[it.k]);});
+    r.push(f.total.toFixed(2).replace('.',','));rows.push(r);
+  });
+  const csv='﻿'+rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='premiacao_'+mes+'.csv';a.click();URL.revokeObjectURL(a.href);
 }
 </script>
 </body>

@@ -750,6 +750,7 @@ const USERS=[
   {user:'João',      senha:'Login@982',  role:'superadmin'},
   {user:'Gabriel',   senha:'L@gin982',   role:'superadmin'},
   {user:'lançamentos', senha:'login@aparecida', role:'lancamentos'},
+  {user:'Financeiro', senha:'L@gin982', role:'financeiro'},
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
 let state={premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
@@ -1356,7 +1357,7 @@ function updateUserDisplay(){
   }
   if(!currentUser)return;
   const u=currentUser.user,av=u.slice(0,2).toUpperCase();
-  const lbl=(role==='admin'||role==='superadmin')?'Administrador':role==='gestor'?'Gestor':role==='lancamentos'?'Lançamentos':'Operador';
+  const lbl=(role==='admin'||role==='superadmin')?'Administrador':role==='gestor'?'Gestor':role==='lancamentos'?'Lançamentos':role==='financeiro'?'Financeiro (visualização)':'Operador';
   const block=document.getElementById('sidebar-user-block');
   if(block)block.innerHTML='<div style="width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2px solid rgba(255,255,255,.15)">'+av+'</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+u+'</div><div style="font-size:10px;color:var(--text2);margin-top:1px">'+lbl+'</div></div>';
   const ma=document.getElementById('mob-avatar');if(ma)ma.textContent=av;
@@ -3484,6 +3485,50 @@ function exportarPremiacao(){
   const w=window.open('','_blank');if(!w){showToast('Permita pop-ups para gerar o PDF.','err');return;}
   w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);
 }
+
+// === PERFIL FINANCEIRO: somente visualização ===
+(function(){
+  function ro(){return currentRole==='financeiro';}
+  window.somenteLeitura=ro;
+  var MUT=['togglePres','setProdPessoa','setMotivoPessoa','adjProdPessoa','setRetroProdPessoa','setRetroMotivoPessoa','adjRetroProdPessoa','cargaSet','cargaAdd','cargaDel','adj','unlockPres','unlockProdPessoas','unlockResetSection','unlockApiSection','salvarEditPresenca','salvarPresenca','salvarProducaoPessoas','lancar','lancarRetroativo','abrirLancamentoRetroativo','abrirEditPresenca','abrirEditMov','salvarEditMov','excluirMov','abrirAfastModal','salvarAfastamento','removerAfastamento','confirmarFerias','cancelarFerias','addColab','editColab','saveColabModal','deleteColabModal','restaurarColab','arquivar','salvarConfigMeta','salvarTurnoExtra','saveConfig','salvarNovoBuffer','zerarBuffer','corrigirBuffer','resetPallets','resetPresencas','resetProducaoIndividual','resetColaboradores','resetTudo','salvarApiKeyNotif','testarNotificacao','enviarWhatsApp','enviarResumoPresenca','premCiclo','premMarcarTodos','premCfgSet','_premSalvar','feriasDoEdit','atualizarRetornoFerias','atualizarTurnosDoModal','togglePres'];
+  var SILENT=['pushToCloud','pushForceToCloud','markPending','saveCache'];
+  MUT.forEach(function(n){
+    var f=window[n]; if(typeof f!=='function')return;
+    window[n]=function(){ if(ro()){ try{showToast('Perfil Financeiro: somente visualização.','err');}catch(e){} return; } return f.apply(this,arguments); };
+  });
+  SILENT.forEach(function(n){
+    var f=window[n]; if(typeof f!=='function')return;
+    window[n]=function(){ if(ro())return; return f.apply(this,arguments); };
+  });
+  var hp=window.hasPending; if(typeof hp==='function')window.hasPending=function(){ return ro()?false:hp.apply(this,arguments); };
+  var tp=window.telasPermitidas; if(typeof tp==='function')window.telasPermitidas=function(){ var l=tp.apply(this,arguments); return ro()?l.filter(function(x){return x!=='config';}):l; };
+  var gt=window.goTo; if(typeof gt==='function')window.goTo=function(sc){ if(ro()&&sc==='config')sc='dashboard'; return gt.call(this,sc); };
+  var bn=window.buildNav; if(typeof bn==='function')window.buildNav=function(){ var r=bn.apply(this,arguments); if(ro()){ ['snav-config','bn-config'].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display='none';}); } return r; };
+  // visual: botões de edição somem, campos viram somente leitura
+  var RX=new RegExp('(^|[^A-Za-z_])('+MUT.join('|')+')\\(');
+  var st=document.createElement('style');
+  st.textContent='.ro-hide{display:none!important}.ro-dis{opacity:.5!important;pointer-events:none!important}body.ro .modal-overlay .modal-btn-primary{display:none!important}';
+  document.head.appendChild(st);
+  var busy=false;
+  function aplicar(){
+    busy=false;
+    if(!ro()){ document.body.classList.remove('ro'); return; }
+    document.body.classList.add('ro');
+    document.querySelectorAll('[onclick],[onchange],[oninput],[onblur]').forEach(function(el){
+      if(el.dataset.roChecked)return;
+      var h=(el.getAttribute('onclick')||'')+' '+(el.getAttribute('onchange')||'')+' '+(el.getAttribute('oninput')||'')+' '+(el.getAttribute('onblur')||'');
+      if(!RX.test(h)){ el.dataset.roChecked='1'; return; }
+      el.dataset.roChecked='1';
+      var t=el.tagName;
+      if(t==='BUTTON')el.classList.add('ro-hide');
+      else if(t==='INPUT'||t==='TEXTAREA'){el.readOnly=true;el.classList.add('ro-dis');}
+      else if(t==='SELECT'){el.disabled=true;el.classList.add('ro-dis');}
+      else el.classList.add('ro-dis');
+    });
+  }
+  new MutationObserver(function(){ if(!busy){busy=true;requestAnimationFrame(aplicar);} }).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['onclick','onchange','oninput','onblur']});
+  setTimeout(aplicar,300);
+})();
 </script>
 </body>
 </html>

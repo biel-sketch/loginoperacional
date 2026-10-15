@@ -384,6 +384,24 @@ img,canvas,svg{max-width:100%}
 .pm-cfg label{font-size:11px;color:var(--text2);font-weight:600;display:flex;flex-direction:column;gap:4px}
 .pm-leg{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
 @media(max-width:768px){.pm-kpis{grid-template-columns:repeat(2,1fr)}.pm-tbl th:first-child,.pm-tbl td:first-child{min-width:120px;max-width:120px}.pm{min-width:52px}.pm-nm{white-space:normal;font-size:12px;line-height:1.25}}
+.pc-b{background:rgba(34,211,238,.10);border-color:rgba(34,211,238,.4)}.pc-b .pc-n,.pc-b .pc-s,.pc-b .pc-c{color:#22d3ee}
+.pc-h{background:rgba(251,146,60,.10);border-color:rgba(251,146,60,.4)}.pc-h .pc-n,.pc-h .pc-s,.pc-h .pc-c{color:#fb923c}
+.st-chip.st-b{background:rgba(34,211,238,.10);border-color:rgba(34,211,238,.4);color:#22d3ee}
+.st-chip.st-h{background:rgba(251,146,60,.10);border-color:rgba(251,146,60,.4);color:#fb923c}
+.prow.st-b{border-left-color:#22d3ee;background:linear-gradient(90deg,rgba(34,211,238,.10),transparent 60%)}
+.prow.st-h{border-left-color:#fb923c;background:linear-gradient(90deg,rgba(251,146,60,.10),transparent 60%)}
+.hist-chip-b{background:rgba(34,211,238,.10);border-color:rgba(34,211,238,.4);color:#22d3ee}
+.hist-chip-h{background:rgba(251,146,60,.10);border-color:rgba(251,146,60,.4);color:#fb923c}
+.pr-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);flex-wrap:wrap}
+.pr-row .n{font-size:13px;font-weight:600;color:var(--text);min-width:0;flex:1 1 140px}
+.pr-seg{display:flex;gap:4px;flex-wrap:wrap}
+.pr-seg button{padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.pr-seg button.on-P{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}
+.pr-seg button.on-A{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}
+.pr-seg button.on-B{background:rgba(34,211,238,.10);border-color:rgba(34,211,238,.4);color:#22d3ee}
+.pr-seg button.on-H{background:rgba(251,146,60,.10);border-color:rgba(251,146,60,.4);color:#fb923c}
+.pr-fixo{font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px;border:1px solid var(--border);color:var(--text2)}
+@media(max-width:600px){.pr-seg{width:100%}.pr-seg button{flex:1}}
 </style>
 </head>
 
@@ -476,6 +494,7 @@ img,canvas,svg{max-width:100%}
             <button class="vtog active" id="ptog-hoje" onclick="setPresView('hoje')">Hoje</button>
             <button class="vtog" id="ptog-hist" onclick="setPresView('historico')">Histórico</button>
           </div>
+          <div id="pres-retro-bar" style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="abrirPresRetro()"><i class="ti ti-calendar-plus" style="font-size:14px"></i> Lançar presença retroativa</button></div>
           <!-- VIEW: Hoje -->
           <div id="pv-hoje">
             <div style="font-size:13px;color:var(--text2);margin-bottom:16px" id="pres-date-lbl"></div>
@@ -586,6 +605,20 @@ img,canvas,svg{max-width:100%}
  </div>
  </div>
  
+ <!-- MODAL PRESENCA RETROATIVA -->
+ <div id="pres-retro-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closePresRetro()">
+ <div class="modal-box" style="max-height:92vh;overflow-y:auto">
+ <div class="modal-title"><i class="ti ti-calendar-plus" style="color:var(--cyan)"></i>Lançar presença retroativa</div>
+ <div class="modal-field"><label>Data</label><input type="date" id="pr-date" onchange="renderPresRetro()"></div>
+ <div class="modal-field"><label>Turno</label><select id="pr-turno" onchange="renderPresRetro()"></select></div>
+ <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:2px 0 4px;flex-wrap:wrap"><div id="pr-info" style="font-size:11px;color:var(--text3)"></div><button class="btn btn-ghost btn-sm" type="button" onclick="setPresRetroTodos('P')"><i class="ti ti-checks" style="font-size:13px"></i> Todos presentes</button></div>
+ <div id="pr-list"></div>
+ <div class="modal-btns" style="margin-top:14px">
+ <button class="modal-btn-primary" onclick="salvarPresRetro()"><i class="ti ti-check" style="font-size:14px"></i> Salvar presença</button>
+ <button class="modal-btn-ghost" onclick="closePresRetro()">Cancelar</button>
+ </div>
+ </div>
+ </div>
  <!-- MODAL LANCAMENTO RETROATIVO (pallets) -->
  <div id="retro-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeRetroModal()">
  <div class="modal-box">
@@ -693,6 +726,8 @@ img,canvas,svg{max-width:100%}
       <button class="btn btn-ghost" style="background:var(--green-bg);border-color:var(--green-bd);color:var(--green)" onclick="salvarEditPresenca('P')"><i class="ti ti-check" style="font-size:13px"></i> Presente</button>
       <button class="btn btn-ghost" style="background:var(--red-bg);border-color:var(--red-bd);color:var(--red)" onclick="salvarEditPresenca('A')"><i class="ti ti-x" style="font-size:13px"></i> Ausente</button>
       <button class="btn btn-ghost" style="background:var(--purple-bg);border-color:var(--purple-bd);color:var(--purple)" onclick="feriasDoEdit()"><i class="ti ti-plane-departure" style="font-size:13px"></i> Férias</button>
+      <button class="btn btn-ghost" style="background:rgba(34,211,238,.10);border-color:rgba(34,211,238,.4);color:#22d3ee" onclick="salvarEditPresenca('B')"><i class="ti ti-clock-pause" style="font-size:13px"></i> Banco de horas (folga)</button>
+      <button class="btn btn-ghost" style="background:rgba(251,146,60,.10);border-color:rgba(251,146,60,.4);color:#fb923c" onclick="salvarEditPresenca('H')"><i class="ti ti-calendar-star" style="font-size:13px"></i> Feriado</button>
     </div>
     <div class="modal-btns">
       <button class="modal-btn-ghost" onclick="closeEditPresencaModal()">Cancelar</button>
@@ -764,6 +799,8 @@ function statusProdDia(c,date){
   const st=pt&&pt.presenca?pt.presenca[c.nome]:'';
   if(st==='A')return{k:'a',lbl:'Ausente',fora:true};
   if(st==='F')return{k:'f',lbl:'Férias',fora:true};
+  if(st==='B')return{k:'b',lbl:'Banco de horas',fora:true};
+  if(st==='H')return{k:'h',lbl:'Feriado',fora:true};
   if(st==='P')return{k:'p',lbl:'Presente',fora:false};
   return{k:'',lbl:'',fora:false};
 }
@@ -1025,7 +1062,7 @@ function verificarAusencia(){
     const p=presDay[t]; if(!p) return;
     Object.entries(p.presenca||{}).forEach(([nome,v])=>{
       if(v==='P') presentes++;
-      else if(v==='F'){ /* férias não conta como falta */ }
+      else if(v==='F'||v==='B'||v==='H'){ /* férias, banco de horas e feriado não contam como falta */ }
       else{ ausentes++; ausentesNomes.push(nome.split(' ')[0]); }
     });
   });
@@ -1056,7 +1093,7 @@ async function enviarResumoPresenca(hora){
     const p=presDay[t]; if(!p) return;
     Object.entries(p.presenca||{}).forEach(([nome,v])=>{
       if(v==='P') presentes++;
-      else if(v==='F'){ /* férias não conta como falta */ }
+      else if(v==='F'||v==='B'||v==='H'){ /* férias, banco de horas e feriado não contam como falta */ }
       else{ ausentes++; ausentesNomes.push(nome.split(' ')[0]); }
     });
   });
@@ -1596,7 +1633,7 @@ function renderDia(){
   const pct=Math.min(100,Math.round(tP/META_DIARIA*100));
   const lastTag=movs.length?'<span style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px"><i class="ti ti-clock" style="font-size:11px"></i>'+timeFmt(movs[movs.length-1].ts)+' · '+movs[movs.length-1].who+'</span>':'';
   let presP=0,presA=0;
-  ['A','B','C'].forEach(t=>{const p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(v=>{if(v==='P')presP++;else presA++;});});
+  ['A','B','C'].forEach(t=>{const p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(v=>{if(v==='P')presP++;else if(v==='A')presA++;});});
   const turnoRows=['A','B','C'].map(t=>{
     const p=presDay[t];
     if(!p||!p.savedAt)return'<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)"><i class="ti ti-clock" style="color:var(--text3);font-size:13px"></i><span style="font-size:13px;color:var(--text2)">Turno '+t+' — aguardando apontamento</span></div>';
@@ -1612,7 +1649,7 @@ function renderDia(){
       if(afast)return'<div class="pc pc-atestado"><div class="pc-n">'+c.nome.split(' ')[0]+'</div><div class="pc-s"><i class="ti ti-file-certificate" style="font-size:10px;margin-right:2px"></i>'+afast.tipo+'</div></div>';
       const st=(p.presenca||{})[c.nome];
       if(!st)return'';
-      return'<div class="pc '+(st==='P'?'pc-p':st==='A'?'pc-a':st==='F'?'pc-f':'')+'"><div class="pc-n">'+c.nome.split(' ')[0]+'</div><div class="pc-s">'+(st==='P'?'Presente':st==='A'?'Ausente':st==='F'?'Férias':'')+'</div></div>';
+      return'<div class="pc '+(st==='P'?'pc-p':st==='A'?'pc-a':st==='F'?'pc-f':st==='B'?'pc-b':st==='H'?'pc-h':'')+'"><div class="pc-n">'+c.nome.split(' ')[0]+'</div><div class="pc-s">'+(st==='P'?'Presente':st==='A'?'Ausente':st==='F'?'Férias':st==='B'?'Banco de horas':st==='H'?'Feriado':'')+'</div></div>';
     }).join('');
     return'<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Turno '+t+' · '+(t==='A'?'06h00–14h20':t==='B'?'14h00–22h20':'22h00–06h20')+'</div><div class="pres-grid">'+cells+'</div></div>';
   }).join('');
@@ -1832,6 +1869,7 @@ function renderPresenca(){
       return'<button class="'+cls+'" id="tbtn-'+t.key+'" onclick="selTurno(\''+t.key+'\')"'+(t.extra?' style="border-style:dashed"':'')+'><div class="turno-lbl">'+t.label+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">'+t.horario+'</div></button>';
     }).join('');
   }
+  const _pb=document.getElementById('pres-retro-bar');if(_pb)_pb.style.display=podeEditarPresenca()?'block':'none';
   renderPresGrid();
 }
 function selTurno(t){selTurnoAtivo=t;renderPresenca();}
@@ -1852,8 +1890,8 @@ function renderPresGrid(){
       return'<div class="pc pc-atestado" onclick="event.stopPropagation();showToast(\''+c.nome.split(' ')[0].replace(/'/g,"\\'")+' está de '+afast.tipo.replace(/'/g,"\\'")+' até '+dateBR(afast.dataFim)+' — não é possível lançar presença.\',\'warn\')"><div class="pc-n">'+c.nome.split(' ').slice(0,2).join(' ')+'</div>'+(c.cargo?'<div class="pc-c">'+c.cargo+'</div>':'')+'<div class="pc-s"><i class="ti ti-file-certificate" style="font-size:11px;margin-right:3px"></i>'+afast.tipo+'</div></div>';
     }
     const st=presSaved[c.nome]||'';
-    const cls=st==='P'?' pc-p':st==='A'?' pc-a':st==='F'?' pc-f':'';
-    const lbl=st==='P'?'Presente':st==='A'?'Ausente':st==='F'?'Férias':'—';
+    const cls=st==='P'?' pc-p':st==='A'?' pc-a':st==='F'?' pc-f':st==='B'?' pc-b':st==='H'?' pc-h':'';
+    const lbl=st==='P'?'Presente':st==='A'?'Ausente':st==='F'?'Férias':st==='B'?'Banco de horas':st==='H'?'Feriado':'—';
     const feriasBtn=(!saved&&podeEditarPresenca())?'<div class="pc-ferias-btn" onclick="event.stopPropagation();abrirFeriasModal(selTurnoAtivo,\''+c.nome.replace(/'/g,"\\'")+'\',today())" title="Marcar férias"><i class="ti ti-plane-departure"></i></div>':'';
     return'<div class="pc'+cls+'" onclick="'+(saved?'unlockPres()':'togglePres(\''+c.nome+'\')')+'">'+feriasBtn+'<div class="pc-n">'+c.nome.split(' ').slice(0,2).join(' ')+'</div>'+(c.cargo?'<div class="pc-c">'+c.cargo+'</div>':'')+'<div class="pc-s">'+lbl+'</div></div>';
   }).join('');
@@ -1873,7 +1911,7 @@ function togglePres(nome){
   if(!state.presencas[todayD])state.presencas[todayD]={};
   if(!state.presencas[todayD][selTurnoAtivo])state.presencas[todayD][selTurnoAtivo]={presenca:{}};
   const cur=state.presencas[todayD][selTurnoAtivo].presenca[nome]||'';
-  state.presencas[todayD][selTurnoAtivo].presenca[nome]=cur===''?'P':cur==='P'?'A':'';
+  state.presencas[todayD][selTurnoAtivo].presenca[nome]=cur===''?'P':cur==='P'?'A':cur==='A'?'B':cur==='B'?'H':'';
   if(cur==='F'&&state.presencas[todayD][selTurnoAtivo].feriasInfo)delete state.presencas[todayD][selTurnoAtivo].feriasInfo[nome];
   state.presencas[todayD][selTurnoAtivo].touchedAt=new Date().toISOString();
   renderPresGrid();
@@ -1898,7 +1936,7 @@ function abrirEditPresenca(date,turno,nome){
   _editDate=date;_editTurno=turno;_editNome=nome;
   const pt=state.presencas[date]&&state.presencas[date][turno];
   const st=pt&&pt.presenca?pt.presenca[nome]||'':'';
-  const statusLbl=st==='A'?'Ausente':st==='F'?'Férias':st==='P'?'Presente':'Sem registro';
+  const statusLbl=st==='A'?'Ausente':st==='F'?'Férias':st==='B'?'Banco de horas (folga)':st==='H'?'Feriado':st==='P'?'Presente':'Sem registro';
   document.getElementById('edit-pres-nome').textContent=nome;
   document.getElementById('edit-pres-info').textContent='Turno '+turno+' · '+dateBR(date)+' · Atual: '+statusLbl;
   document.getElementById('edit-pres-modal').style.display='flex';
@@ -2412,6 +2450,7 @@ function renderAbsenteismo(){
         var nome=e2[0],st=e2[1];
         if(!absMap[nome])absMap[nome]={faltas:[],presencas:0,ferias:0};
         if(st==='F'){absMap[nome].ferias++;return;}
+        if(st==='B'||st==='H')return;
         if(!diasMap[nome])diasMap[nome]=0;
         diasMap[nome]++;
         if(st==='A')absMap[nome].faltas.push(date);else absMap[nome].presencas++;
@@ -2941,6 +2980,7 @@ function exportarAbsenteismo(){
         var nome=e2[0],st=e2[1];
         if(!absMap[nome])absMap[nome]={faltas:[],presencas:0,ferias:0};
         if(st==='F'){absMap[nome].ferias++;return;}
+        if(st==='B'||st==='H')return;
         if(!diasMap[nome])diasMap[nome]=0;
         diasMap[nome]++;
         if(st==='A')absMap[nome].faltas.push(date);else absMap[nome].presencas++;
@@ -3127,7 +3167,7 @@ function renderTV(){
   var tD=movs.reduce(function(s,m){return s+(m.desc||0);},0);
   var tBufDiaTV=tP-tE,tBuf=calcBufferGlobal(),pct=Math.min(100,Math.round(tP/META_DIARIA*100));
   var presP=0,presA=0,presQ=0;
-  ['A','B','C'].forEach(function(t){var p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(function(s){presQ++;if(s==='P')presP++;else presA++;});});
+  ['A','B','C'].forEach(function(t){var p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(function(s){presQ++;if(s==='P')presP++;else if(s==='A')presA++;});});
   var dt=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   var hr=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   var bufColor=tBuf>=0?'var(--cyan)':'var(--red)';
@@ -3256,9 +3296,11 @@ function renderPresHist(){
         let cls='hist-chip-p',icon='ti-check';
         if(st==='A'){cls='hist-chip-a';icon='ti-x';ausentes++;}
         else if(st==='F'){cls='hist-chip-f';icon='ti-plane-departure';ferias++;}
-        else{presentes++;}
+        else if(st==='B'){cls='hist-chip-b';icon='ti-clock-pause';}
+        else if(st==='H'){cls='hist-chip-h';icon='ti-calendar-star';}
+        else if(st==='P'){presentes++;}
         const info=(pt.feriasInfo&&pt.feriasInfo[nome])?pt.feriasInfo[nome]:null;
-        const tip=st==='F'&&info?'Férias · retorna em '+dateBR(info.retorno):(canEdit?'Clique para editar':'');
+        const tip=st==='F'&&info?'Férias · retorna em '+dateBR(info.retorno):st==='B'?'Banco de horas (folga)':st==='H'?'Feriado':(canEdit?'Clique para editar':'');
         const clickAttr=canEdit?' onclick="abrirEditPresenca(\''+date+'\',\''+t+'\',\''+nome.replace(/'/g,"\\'")+'\')"':'';
         chips+='<span class="hist-chip '+cls+(canEdit?' editable':'')+'"'+clickAttr+' title="'+tip+'"><i class="ti '+icon+'" style="font-size:10px"></i> '+nomeCurto+'</span>';
       });
@@ -3486,11 +3528,85 @@ function exportarPremiacao(){
   w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);
 }
 
+
+// === LANÇAR PRESENÇA RETROATIVA ===
+let _prBuf={};
+function abrirPresRetro(){
+  if(!podeEditarPresenca()){showToast('Apenas administradores/gestores podem lançar presença retroativa.','err');return;}
+  const dt=document.getElementById('pr-date');dt.max=today();dt.value=addDaysStr(today(),-1);
+  document.getElementById('pr-turno').innerHTML=turnosAtivos().map(t=>'<option value="'+t.key+'"'+(t.key===selTurnoAtivo?' selected':'')+'>'+t.label+' — '+t.horario+'</option>').join('');
+  document.getElementById('pres-retro-modal').style.display='flex';
+  renderPresRetro();
+}
+function closePresRetro(){document.getElementById('pres-retro-modal').style.display='none';}
+function _prSel(){return{date:document.getElementById('pr-date').value,turno:document.getElementById('pr-turno').value};}
+function renderPresRetro(){
+  const{date,turno}=_prSel();const list=document.getElementById('pr-list'),info=document.getElementById('pr-info');
+  if(!date||!turno){list.innerHTML='';return;}
+  if(date>today()){list.innerHTML='<div class="empty" style="padding:14px 0"><h3>Escolha uma data até hoje</h3></div>';return;}
+  const pt=state.presencas[date]&&state.presencas[date][turno];
+  const atual=(pt&&pt.presenca)||{};
+  _prBuf={};
+  const colabs=colaboradoresAtivos().filter(c=>c.turno===turno);
+  if(!colabs.length){list.innerHTML='<div class="empty" style="padding:14px 0"><h3>Nenhum colaborador nesse turno</h3></div>';info.textContent='';return;}
+  info.textContent=(pt&&pt.savedAt?'Já existe apontamento nessa data — o que você marcar substitui. ':'Sem apontamento nessa data. ')+dateFull(date);
+  list.innerHTML=colabs.map((c,i)=>{
+    const af=afastamentoAtivoParaData(c.nome,date);
+    const nomeCurto=c.nome.split(' ').slice(0,2).join(' ');
+    if(af)return'<div class="pr-row"><div class="n">'+nomeCurto+'</div><span class="pr-fixo" style="color:var(--warn);border-color:var(--warn-bd)">'+af.tipo+'</span></div>';
+    const st=atual[c.nome]||'';
+    if(st==='F')return'<div class="pr-row"><div class="n">'+nomeCurto+'</div><span class="pr-fixo" style="color:var(--purple);border-color:var(--purple-bd)">Férias</span></div>';
+    _prBuf[c.nome]=st;
+    return'<div class="pr-row"><div class="n">'+nomeCurto+'</div><div class="pr-seg" data-i="'+i+'">'+
+      [['P','Presente'],['A','Ausente'],['B','Banco de horas'],['H','Feriado']].map(o=>'<button type="button" class="'+(st===o[0]?'on-'+o[0]:'')+'" data-nome="'+c.nome.replace(/"/g,'&quot;')+'" data-st="'+o[0]+'" onclick="setPresRetro(this)">'+o[1]+'</button>').join('')+'</div></div>';
+  }).join('');
+}
+function setPresRetro(btn){
+  const nome=btn.getAttribute('data-nome'),st=btn.getAttribute('data-st');
+  _prBuf[nome]=(_prBuf[nome]===st)?'':st;
+  btn.parentNode.querySelectorAll('button').forEach(b=>{b.className=(_prBuf[nome]===b.getAttribute('data-st'))?'on-'+b.getAttribute('data-st'):'';});
+}
+function setPresRetroTodos(st){
+  document.querySelectorAll('#pr-list .pr-seg').forEach(seg=>{
+    const b=seg.querySelector('button');if(!b)return;
+    const nome=b.getAttribute('data-nome');
+    if(_prBuf[nome]==='')_prBuf[nome]=st;
+    seg.querySelectorAll('button').forEach(x=>{x.className=(_prBuf[nome]===x.getAttribute('data-st'))?'on-'+x.getAttribute('data-st'):'';});
+  });
+}
+async function salvarPresRetro(){
+  if(!podeEditarPresenca()){showToast('Apenas administradores/gestores podem lançar presença retroativa.','err');return;}
+  const{date,turno}=_prSel();
+  if(!date||!turno||date>today()){showToast('Escolha uma data até hoje e o turno.','warn');return;}
+  const nomes=Object.keys(_prBuf);
+  if(!nomes.length){showToast('Nenhum colaborador para lançar.','warn');return;}
+  if(!nomes.some(n=>_prBuf[n])){showToast('Marque a situação de pelo menos um colaborador.','warn');return;}
+  if(!state.presencas[date])state.presencas[date]={};
+  if(!state.presencas[date][turno])state.presencas[date][turno]={presenca:{}};
+  const pt=state.presencas[date][turno];
+  if(!pt.presenca)pt.presenca={};
+  nomes.forEach(n=>{
+    if(_prBuf[n]){pt.presenca[n]=_prBuf[n];}
+    else delete pt.presenca[n];
+    if(_prBuf[n]!=='F'&&pt.feriasInfo)delete pt.feriasInfo[n];
+  });
+  const agora=new Date().toISOString();
+  pt.savedAt=agora;pt.touchedAt=agora;
+  logAuditoria('Presença retroativa lançada: '+dateBR(date)+' · '+turnoInfo(turno).label);
+  closePresRetro();
+  saveCache();
+  renderPresenca();
+  if(typeof renderPresHist==='function'&&document.getElementById('pres-hist-content'))renderPresHist();
+  if(document.getElementById('abs-content'))renderAbsenteismo();
+  await pushToCloud();
+  showToast('Presença de '+dateBR(date)+' salva!','ok');
+}
+
 // === PERFIL FINANCEIRO: somente visualização ===
 (function(){
   function ro(){return currentRole==='financeiro';}
   window.somenteLeitura=ro;
-  var MUT=['togglePres','setProdPessoa','setMotivoPessoa','adjProdPessoa','setRetroProdPessoa','setRetroMotivoPessoa','adjRetroProdPessoa','cargaSet','cargaAdd','cargaDel','adj','unlockPres','unlockProdPessoas','unlockResetSection','unlockApiSection','salvarEditPresenca','salvarPresenca','salvarProducaoPessoas','lancar','lancarRetroativo','abrirLancamentoRetroativo','abrirEditPresenca','abrirEditMov','salvarEditMov','excluirMov','abrirAfastModal','salvarAfastamento','removerAfastamento','confirmarFerias','cancelarFerias','addColab','editColab','saveColabModal','deleteColabModal','restaurarColab','arquivar','salvarConfigMeta','salvarTurnoExtra','saveConfig','salvarNovoBuffer','zerarBuffer','corrigirBuffer','resetPallets','resetPresencas','resetProducaoIndividual','resetColaboradores','resetTudo','salvarApiKeyNotif','testarNotificacao','enviarWhatsApp','enviarResumoPresenca','premCiclo','premMarcarTodos','premCfgSet','_premSalvar','feriasDoEdit','atualizarRetornoFerias','atualizarTurnosDoModal','togglePres'];
+  var MUT=['togglePres','setProdPessoa','setMotivoPessoa','adjProdPessoa','setRetroProdPessoa','setRetroMotivoPessoa','adjRetroProdPessoa','cargaSet','cargaAdd','cargaDel','adj','unlockPres','unlockProdPessoas','unlockResetSection','unlockApiSection','salvarEditPresenca','salvarPresenca','salvarProducaoPessoas','lancar','lancarRetroativo','abrirLancamentoRetroativo','abrirEditPresenca','abrirPresRetro','salvarPresRetro','setPresRetro','setPresRetroTodos','abrirEditMov','salvarEditMov','excluirMov','abrirAfastModal','salvarAfastamento','removerAfastamento','confirmarFerias','cancelarFerias','addColab','editColab','saveColabModal','deleteColabModal','restaurarColab','arquivar','salvarConfigMeta','salvarTurnoExtra','saveConfig','salvarNovoBuffer','zerarBuffer','corrigirBuffer','resetPallets','resetPresencas','resetProducaoIndividual','resetColaboradores','resetTudo','salvarApiKeyNotif','testarNotificacao','enviarWhatsApp','enviarResumoPresenca','premCiclo','premMarcarTodos','premCfgSet','_premSalvar','feriasDoEdit','atualizarRetornoFerias','atualizarTurnosDoModal','togglePres'];
   var SILENT=['pushToCloud','pushForceToCloud','markPending','saveCache'];
   MUT.forEach(function(n){
     var f=window[n]; if(typeof f!=='function')return;

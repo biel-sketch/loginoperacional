@@ -1000,7 +1000,7 @@ function mergeState(cloud){
   if(cloud.premiacaoCfg)state.premiacaoCfg=mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg);
   if(cloud.bufferAjuste!==undefined)state.bufferAjuste=cloud.bufferAjuste;
   if(cloud.bufferAjusteTs!==undefined)state.bufferAjusteTs=cloud.bufferAjusteTs;
-  reconciliarProducao();
+  if(reconciliarProducao())setTimeout(()=>{try{saveCache();_pushSoon();}catch(e){}},0);
   if(cloud.configTs!==undefined){
     state.metaMensal=cloud.metaMensal;
     state.bufferSaldoInicial=cloud.bufferSaldoInicial||0;
@@ -1198,6 +1198,7 @@ async function pushToCloud(){
             ms.forEach(m=>{
               if(!ex.has(m.ts)){mm[d].push(m);return;}
               if(m.auto){const cm=mm[d].find(x=>x.ts===m.ts);if(cm&&(m.updTs||'')>(cm.updTs||'')){cm.prod=m.prod;cm.updTs=m.updTs;cm.who=m.who;}}
+              else if(m.legadoDup||m.prodLegado!==undefined){const cm=mm[d].find(x=>x.ts===m.ts);if(cm){cm.prod=m.prod;if(m.legadoDup){cm.legadoDup=true;cm.prodLegado=m.prodLegado;}else{delete cm.legadoDup;delete cm.prodLegado;}}}
             });
             mm[d].sort((a,b)=>a.ts.localeCompare(b.ts));
           });
@@ -2128,6 +2129,18 @@ function reconciliarProducao(){
         else if(soma>0){upsertAutoProd(date,turno);mudou=true;}
       });
     });
+    // Regra: onde há produção por colaborador (data+turno), vale ela; o lançamento geral antigo de "Produzidos"
+    // (manual, sem marca de avulso) é guardado em prodLegado e não soma. Sem produção por colaborador, o geral vale.
+    Object.entries(state.movimentos||{}).forEach(([date,ms])=>{
+      (ms||[]).forEach(m=>{
+        if(!m||m.auto==='pessoas'||m.avulso)return;
+        const dia=((state.producaoPessoas||{})[date]||{});
+        const soma=(t)=>Object.values(((dia[t]||{}).pessoas)||{}).reduce((q,r)=>q+((r&&r.prod)||0),0);
+        const cobre=m.turno?soma(m.turno)>0:Object.keys(dia).some(t=>soma(t)>0);
+        if(cobre&&(m.prod||0)>0){m.prodLegado=m.prod;m.prod=0;m.legadoDup=true;mudou=true;}
+        else if(!cobre&&m.legadoDup){m.prod=m.prodLegado||0;delete m.legadoDup;delete m.prodLegado;mudou=true;}
+      });
+    });
   }catch(e){console.warn('reconciliarProducao',e);}
   return mudou;
 }
@@ -2185,6 +2198,7 @@ async function lancar(){
   const who=currentUser?currentUser.user:'Desconhecido';
   if(!state.movimentos[todayD])state.movimentos[todayD]=[];
   const mov={ts:new Date().toISOString(),who,rec,prod,env,desc,turno:selTurnoProd};
+  if(prod>0)mov.avulso=true;
   if(cargas.rec.length||cargas.env.length)mov.carretas={rec:cargas.rec.slice(),env:cargas.env.slice()};
   state.movimentos[todayD].push(mov);
   cargas={rec:[],env:[]};
@@ -2409,7 +2423,7 @@ async function lancarRetroativo(){
                                     const m=(state.movimentos[date]||[])[idx];if(!m)return;
                                       _editMovDate=date;_editMovIdx=idx;
                                         document.getElementById('editmov-rec').value=m.rec||0;
-                                          document.getElementById('editmov-prod').value=m.prod||0;document.getElementById('editmov-prod').disabled=(m.auto==='pessoas');document.getElementById('editmov-prod').title=(m.auto==='pessoas')?'Vem da produção por colaborador (edite lá)':'';
+                                          document.getElementById('editmov-prod').value=m.prod||0;document.getElementById('editmov-prod').disabled=(m.auto==='pessoas'||!!m.legadoDup);document.getElementById('editmov-prod').title=(m.auto==='pessoas')?'Vem da produção por colaborador (edite lá)':(m.legadoDup?'Substituído pela produção por colaborador deste turno':'');
                                             document.getElementById('editmov-env').value=m.env||0;
                                               document.getElementById('editmov-desc').value=m.desc||0;
                                                 document.getElementById('editmov-info').textContent=date.split('-').reverse().join('/')+' · '+timeFmt(m.ts)+' · '+m.who;
@@ -2419,7 +2433,7 @@ async function lancarRetroativo(){
                                                   async function salvarEditMov(){
                                                     if(_editMovDate===null||_editMovIdx===null)return;
                                                       const rec=parseInt(document.getElementById('editmov-rec').value)||0;
-                                                        const prod=(state.movimentos[_editMovDate][_editMovIdx].auto==='pessoas')?(state.movimentos[_editMovDate][_editMovIdx].prod||0):(parseInt(document.getElementById('editmov-prod').value)||0);
+                                                        const prod=(state.movimentos[_editMovDate][_editMovIdx].auto==='pessoas'||state.movimentos[_editMovDate][_editMovIdx].legadoDup)?(state.movimentos[_editMovDate][_editMovIdx].prod||0):(parseInt(document.getElementById('editmov-prod').value)||0);
                                                           const env=parseInt(document.getElementById('editmov-env').value)||0;
                                                             const desc=parseInt(document.getElementById('editmov-desc').value)||0;
                                                               const m=state.movimentos[_editMovDate][_editMovIdx];

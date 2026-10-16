@@ -416,6 +416,7 @@ img,canvas,svg{max-width:100%}
 .os-filtros{display:grid;grid-template-columns:repeat(6,1fr);gap:0 12px}
 .os-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:2px 0 12px}.os-chk{font-size:12px;color:var(--text2);display:flex;gap:6px;align-items:center;cursor:pointer}.os-exp{margin-left:auto;color:var(--cyan);border-color:var(--cyan-bd)}
 .dmode{margin-bottom:12px}.os-dk{grid-template-columns:repeat(4,1fr)}.os-drow{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}.os-dl{flex:1;min-width:0}.os-bar{height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-top:5px}.os-bar div{height:100%;background:var(--cyan)}.os-dv{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0}.os-dv strong{font-size:15px}.os-dv span{font-size:11px;color:var(--text2)}@media(max-width:900px){.os-dk{grid-template-columns:repeat(2,1fr)}}
+.os-selrow{cursor:pointer;align-items:flex-start}.os-selrow>input{margin:4px 10px 0 0;width:18px;height:18px;flex-shrink:0;accent-color:var(--cyan)}
 .os-resumo{font-size:12px;color:var(--text2);margin:6px 0 10px}.os-resumo strong{color:var(--text)}
 .os-row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border)}.os-main{min-width:0;flex:1}
 .os-l1{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px}.os-l2{font-size:12px;color:var(--text);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.os-l3{font-size:11px;color:var(--text2);margin-top:2px}
@@ -711,6 +712,7 @@ img,canvas,svg{max-width:100%}
         <option>Produção de Insumos</option>
         <option>Operação de Empilhadeira</option>
         <option>Inspeção da Qualidade</option>
+        <option>Amarração</option>
       </select>
       <div style="font-size:11px;color:var(--text2);margin-top:4px">Só "Recuperação de Pallets" entra na meta e no ranking de produtividade.</div>
     </div>
@@ -829,7 +831,7 @@ const USERS=[
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
 let state={osAmarracao:[],osClientes:[],osValores:[],premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
-const ATIVIDADES=['Recuperação de Pallets','Produção de Insumos','Operação de Empilhadeira','Inspeção da Qualidade'];
+const ATIVIDADES=['Recuperação de Pallets','Produção de Insumos','Operação de Empilhadeira','Inspeção da Qualidade','Amarração'];
 function produzPallets(c){return !c.atividade||c.atividade==='Recuperação de Pallets';}
 // Situação do colaborador no dia (presença do turno dele + afastamentos): define cor e se entra na produção
 function statusProdDia(c,date){
@@ -1313,9 +1315,9 @@ async function pushToCloud(){
     state.producaoResetTs=merged.producaoResetTs||'';
     state.premiacao=merged.premiacao||{};
     state.premiacaoCfg=merged.premiacaoCfg||{};
-    state.osAmarracao=merged.osAmarracao||[];
-    state.osClientes=merged.osClientes||[];
-    state.osValores=merged.osValores||[];
+    state.osAmarracao=mergeOS(state.osAmarracao,merged.osAmarracao||[]);
+    state.osClientes=mergeOSCli(state.osClientes,merged.osClientes||[]);
+    state.osValores=mergeOSVal(state.osValores,merged.osValores||[]);
     state.bufferAjuste=merged.bufferAjuste||0;
     state.bufferAjusteTs=merged.bufferAjusteTs||'';
     state.metaMensal=merged.metaMensal;
@@ -3715,7 +3717,7 @@ function osEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;
 function osDigits(s){return String(s||'').replace(/\D/g,'');}
 function osPlaca(s){const t=String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');return t.length===7?t.slice(0,3)+'-'+t.slice(3):String(s||'').toUpperCase().trim();}
 function osTurnoAgora(){const h=new Date().getHours();return h>=6&&h<14?'A':(h>=14&&h<22?'B':'C');}
-function osNovoForm(){return{id:'',doc:'',data:today(),turno:osTurnoAgora(),op:'A',veic:'CARRETA',cnpj:'',cavalo:'',carreta:'',carreta2:'',nr:'',qtd:1};}
+function osNovoForm(){return{id:'',doc:'',data:today(),turno:osTurnoAgora(),op:'A',veic:'CARRETA',cnpj:'',cavalo:'',carreta:'',carreta2:'',nr:'',nr2:'',qtd:1};}
 function osLista(){return(state.osAmarracao||[]).filter(r=>r&&!r.del);}
 function osClientesList(){
   const m={};
@@ -3763,11 +3765,15 @@ function osFiltrados(){
     return true;
   }).sort((a,b)=>(b.data.localeCompare(a.data))||((b.ts||'').localeCompare(a.ts||'')));
 }
+let osAba='lancar';
+function osSetAba(a){osAba=a;renderAmarracao();window.scrollTo({top:0});}
 function renderAmarracao(){
   const cont=document.getElementById('os-content');if(!cont)return;
   if(!osForm)osForm=osNovoForm();
   osRange();
-  cont.innerHTML='<div id="os-kpis"></div><div id="os-form"></div><div id="os-lista"></div><div id="os-valores"></div><div id="os-clientes"></div>';
+  const tabs='<div class="vtoggle"><button class="vtog'+(osAba==='lancar'?' active':'')+'" onclick="osSetAba(\'lancar\')"><i class="ti ti-edit" style="font-size:14px;vertical-align:-2px"></i> Lançamentos</button><button class="vtog'+(osAba==='export'?' active':'')+'" onclick="osSetAba(\'export\')"><i class="ti ti-file-export" style="font-size:14px;vertical-align:-2px"></i> Exportação</button></div>';
+  if(osAba==='export'){cont.innerHTML=tabs+'<div id="os-export"></div>';osExpIniciar();return;}
+  cont.innerHTML=tabs+'<div id="os-kpis"></div><div id="os-form"></div><div id="os-lista"></div><div id="os-valores"></div><div id="os-clientes"></div>';
   osRenderKpis();osRenderForm();osRenderLista();osRenderValores();osRenderClientes();
 }
 function osRenderKpis(){
@@ -3785,10 +3791,10 @@ function osRenderForm(){
   const f=osForm,ed=!!f.id,ro=!osPodeLancar();
   const seg=(campo,opts)=>'<div class="os-seg">'+opts.map(([v,l])=>'<button type="button" class="'+(f[campo]===v?'on':'')+'" onclick="osSet(\''+campo+'\',\''+v+'\',true)">'+l+'</button>').join('')+'</div>';
   const cli=osClientesList();
-  const nrLbl=f.op==='A'?'Nº do transporte':'Nº da nota fiscal';
+  const nrLbl=f.op==='D'?'Nº da nota fiscal':'Nº do transporte';
   el.innerHTML='<div class="card"><div class="card-title"><i class="ti ti-link"></i> '+(ed?'Editar lançamento':'Novo lançamento')+'</div>'+
    '<div class="os-grid">'+
-   '<div class="modal-field os-w2"><label>Operação</label>'+seg('op',[['A','Amarração'],['D','Desamarração']])+'</div>'+
+   '<div class="modal-field os-w2"><label>Operação</label>'+seg('op',ed?[['A','Amarração'],['D','Desamarração']]:[['A','Somente amarração'],['D','Somente desamarração'],['AD','Amarração + desamarração']])+'</div>'+
    '<div class="modal-field os-w2"><label>Veículo</label>'+seg('veic',[['CARRETA','Carreta'],['TRUCK','Truck'],['RODOTREM','Rodotrem']])+'</div>'+
    '<div class="modal-field"><label>Nº da OS (documento)</label><input id="os-doc" inputmode="numeric" value="'+osEsc(f.doc)+'" oninput="osSet(\'doc\',this.value)" placeholder="ex.: 156278"></div>'+
    '<div class="modal-field"><label>Data</label><input type="date" id="os-data" value="'+f.data+'" max="'+today()+'" onchange="osSet(\'data\',this.value)"></div>'+
@@ -3798,6 +3804,7 @@ function osRenderForm(){
    (f.veic==='TRUCK'?'':'<div class="modal-field"><label>'+(f.veic==='RODOTREM'?'Carreta 1':'Carreta (placa)')+'</label><input id="os-car" value="'+osEsc(f.carreta)+'" oninput="osSet(\'carreta\',this.value)" autocapitalize="characters" placeholder="AAA-0A00"></div>')+
    (f.veic==='RODOTREM'?'<div class="modal-field"><label>Carreta 2 (opcional)</label><input id="os-car2" value="'+osEsc(f.carreta2)+'" oninput="osSet(\'carreta2\',this.value)" autocapitalize="characters" placeholder="AAA-0A00"></div>':'')+
    '<div class="modal-field"><label>'+nrLbl+'</label><input id="os-nr" inputmode="numeric" value="'+osEsc(f.nr)+'" oninput="osSet(\'nr\',this.value)"></div>'+
+   (f.op==='AD'?'<div class="modal-field"><label>Nº da nota fiscal (desamarração)</label><input id="os-nr2" inputmode="numeric" value="'+osEsc(f.nr2)+'" oninput="osSet(\'nr2\',this.value)"></div>':'')+
    '<div class="modal-field"><label>Quantidade</label><select id="os-qtd" onchange="osSet(\'qtd\',this.value,true)"><option value="1"'+(f.qtd!==2?' selected':'')+'>1</option><option value="2"'+(f.qtd===2?' selected':'')+'>2 (valor em dobro)</option></select></div>'+
    '</div>'+
    '<div class="os-serv" id="os-serv"></div>'+
@@ -3811,8 +3818,8 @@ function osRenderForm(){
 }
 function osAtualizaServ(){
   const el=document.getElementById('os-serv');if(!el)return;
-  const s=OS_SERV[osForm.veic+'|'+osForm.op];
-  el.innerHTML='<i class="ti ti-file-description"></i> Serviço: <strong>'+s.d+'</strong> · código <strong>'+s.c+'</strong>';
+  const ops=osForm.op==='AD'?['A','D']:[osForm.op];
+  el.innerHTML='<i class="ti ti-file-description"></i> '+(ops.length>1?'Serviços: ':'Serviço: ')+ops.map(o=>{const s=OS_SERV[osForm.veic+'|'+o];return '<strong>'+s.d+'</strong> · código <strong>'+s.c+'</strong>';}).join(' &nbsp;+&nbsp; ');
 }
 function osSet(campo,val,rerender){
   osForm[campo]=(campo==='qtd')?(parseInt(val)===2?2:1):val;
@@ -3821,7 +3828,9 @@ function osSet(campo,val,rerender){
 function osSalvar(seguir){
   if(!osPodeLancar()){showToast('Perfil Financeiro: somente visualização.','err');return;}
   const f=osForm;
-  const doc=osDigits(f.doc),cli=osClientesList().find(c=>c.cnpj===f.cnpj),nr=osDigits(f.nr);
+  const doc=osDigits(f.doc),cli=osClientesList().find(c=>c.cnpj===f.cnpj);
+  const ops=f.op==='AD'?['A','D']:[f.op];
+  const nrDe=(o)=>osDigits(f.op==='AD'?(o==='A'?f.nr:f.nr2):f.nr);
   if(!doc){showToast('Informe o número da OS.','warn');return;}
   if(!f.data){showToast('Informe a data.','warn');return;}
   if(!cli){showToast('Selecione o cliente.','warn');return;}
@@ -3830,24 +3839,29 @@ function osSalvar(seguir){
   let car='';
   if(f.veic==='CARRETA'){car=osPlaca(f.carreta);if(!car){showToast('Informe a placa da carreta.','warn');return;}}
   if(f.veic==='RODOTREM'){const a=osPlaca(f.carreta),b=osPlaca(f.carreta2);if(!a){showToast('Rodotrem: informe a carreta 1.','warn');return;}car=b?a+'/'+b:a;}
-  if(!nr){showToast('Informe o '+(f.op==='A'?'nº do transporte':'nº da nota fiscal')+'.','warn');return;}
+  for(const o of ops){if(!nrDe(o)){showToast('Informe o '+(o==='A'?'nº do transporte':'nº da nota fiscal')+'.','warn');return;}}
   const outra=osLista().find(r=>r.doc===doc&&r.id!==f.id&&r.cnpj!==cli.cnpj);
   if(outra){showToast('A OS '+doc+' já pertence a '+outra.cliente+'. O número da OS não pode se repetir entre clientes.','warn',5000);return;}
-  const dup=osLista().find(r=>r.doc===doc&&r.op===f.op&&r.id!==f.id);
-  if(dup){showToast('Já existe '+(f.op==='A'?'amarração':'desamarração')+' lançada para a OS '+doc+' ('+dateBR(dup.data)+').','warn',4500);return;}
+  for(const o of ops){
+    const dup=osLista().find(r=>r.doc===doc&&r.op===o&&r.id!==f.id);
+    if(dup){showToast('Já existe '+(o==='A'?'amarração':'desamarração')+' lançada para a OS '+doc+' ('+dateBR(dup.data)+').','warn',4500);return;}
+  }
   const agora=new Date().toISOString(),who=currentUser?currentUser.user:'Desconhecido';
   if(!state.osAmarracao)state.osAmarracao=[];
-  let r=f.id?state.osAmarracao.find(x=>x.id===f.id):null;
-  const dados={doc,data:f.data,turno:f.turno,op:f.op,veic:f.veic,cliente:cli.nome,cnpj:cli.cnpj,cavalo:cav,carreta:car,nr,qtd:(parseInt(f.qtd)===2?2:1)};
-  if(r){Object.assign(r,dados,{ts:agora,who});delete r.exp;}
-  else{r=Object.assign({id:'os_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),ts:agora,who},dados);state.osAmarracao.push(r);}
-  logAuditoria((f.id?'OS editada: ':'OS lançada: ')+doc+' · '+OS_SERV[f.veic+'|'+f.op].c+' · '+cli.nome);
+  const qtd=(parseInt(f.qtd)===2?2:1);
+  ops.forEach((o,k)=>{
+    const dados={doc,data:f.data,turno:f.turno,op:o,veic:f.veic,cliente:cli.nome,cnpj:cli.cnpj,cavalo:cav,carreta:car,nr:nrDe(o),qtd};
+    let r=f.id?state.osAmarracao.find(x=>x.id===f.id):null;
+    if(r){Object.assign(r,dados,{ts:agora,who});delete r.exp;delete r.lote;}
+    else{r=Object.assign({id:'os_'+Date.now().toString(36)+k+Math.random().toString(36).slice(2,6),ts:agora,who},dados);state.osAmarracao.push(r);}
+    logAuditoria((f.id?'OS editada: ':'OS lançada: ')+doc+' · '+OS_SERV[f.veic+'|'+o].c+' · '+cli.nome);
+  });
   saveCache();pushToCloud();
-  showToast((f.id?'Lançamento atualizado':'OS '+doc+' lançada')+'!','ok');
+  showToast((f.id?'Lançamento atualizado':(ops.length>1?'OS '+doc+' lançada (amarração + desamarração)':'OS '+doc+' lançada'))+'!','ok');
   if(seguir&&!f.id){
-    osForm=Object.assign({},f,{op:'D',nr:'',id:''});
+    osForm=Object.assign({},f,{op:'D',nr:'',nr2:'',id:''});
   }else{
-    osForm=Object.assign(osNovoForm(),{data:f.data,turno:f.turno,veic:f.veic});
+    osForm=Object.assign(osNovoForm(),{data:f.data,turno:f.turno,veic:f.veic,op:f.id?'A':f.op});
   }
   renderAmarracao();
 }
@@ -3855,7 +3869,7 @@ function osEditar(id){
   if(!osPodeLancar())return;
   const r=osLista().find(x=>x.id===id);if(!r)return;
   const [c1,c2]=(r.carreta||'').split('/');
-  osForm={id:r.id,doc:r.doc,data:r.data,turno:r.turno,op:r.op,veic:r.veic,cnpj:r.cnpj,cavalo:r.cavalo,carreta:c1||'',carreta2:c2||'',nr:r.nr,qtd:r.qtd||1};
+  osForm={nr2:'',id:r.id,doc:r.doc,data:r.data,turno:r.turno,op:r.op,veic:r.veic,cnpj:r.cnpj,cavalo:r.cavalo,carreta:c1||'',carreta2:c2||'',nr:r.nr,qtd:r.qtd||1};
   osRenderForm();window.scrollTo({top:0,behavior:'smooth'});
 }
 function osCancelarEdicao(){osForm=osNovoForm();osRenderForm();}
@@ -3908,7 +3922,7 @@ function osRenderLista(){
    '</div>'+
    '<div class="os-tools"><button class="ds-btn" onclick="osFiltroPeriodo(\'hoje\')">Hoje</button><button class="ds-btn" onclick="osFiltroPeriodo(\'mes\')">Este mês</button><button class="ds-btn" onclick="osFiltroPeriodo(\'ant\')">Mês anterior</button>'+
    '<label class="os-chk"><input type="checkbox" '+(f.pend?'checked':'')+' onchange="osFiltroSet(\'pend\',this.checked)"> só não exportadas</label>'+
-   '<button class="ds-btn os-exp" onclick="osExportar()"><i class="ti ti-download"></i> Exportar importação (.xlsx)</button></div>'+
+   '<button class="ds-btn os-exp" onclick="osSetAba(\'export\')"><i class="ti ti-file-export"></i> Ir para Exportação</button></div>'+
    '<div class="os-resumo"><strong>'+rows.length+'</strong> lançamento(s) · '+nA+' amarração(ões) · '+nD+' desamarração(ões) · <strong>'+osBRL(rows.reduce((t,r)=>t+(osValorReg(r)||0),0))+'</strong> no filtro</div>'+
    (rows.length?rows.slice(0,300).map(item).join('')+(rows.length>300?'<div class="os-resumo">Mostrando 300 de '+rows.length+'. Refine o filtro para ver o restante.</div>':''):'<div class="empty" style="padding:22px 0"><i class="ti ti-link-off"></i><h3>Nenhum lançamento no filtro</h3></div>')+
    '</div>';
@@ -4056,20 +4070,110 @@ function osMontaXlsx(linhas){
    ['xl/worksheets/sheet1.xml',osSheetXml(linhas)]];
   return osZip(files);
 }
-function osExportar(){
-  const rows=osFiltrados().slice().sort((a,b)=>a.data.localeCompare(b.data)||(a.ts||'').localeCompare(b.ts||''));
-  if(!rows.length){showToast('Nenhum lançamento no filtro para exportar.','warn');return;}
-  const blob=osMontaXlsx(rows.map(osLinhaExport));
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='importacao_OS_marilia_'+osFiltro.de+'_a_'+osFiltro.ate+'.xlsx';
-  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
-  if(osPodeLancar()){
-    const agora=new Date().toISOString();
-    rows.forEach(r=>{if(!r.exp){r.exp=agora;r.ts=agora;}});
-    logAuditoria('Exportação de OS: '+rows.length+' linha(s) · '+dateBR(osFiltro.de)+' a '+dateBR(osFiltro.ate));
-    saveCache();pushToCloud();osRenderKpis();osRenderLista();
+// ---- Aba Exportação (filtrar, selecionar e baixar CSV/XLSX) ----
+let osExp={de:'',ate:'',turno:'',op:'',veic:'',cli:'',status:'pend',busca:''},osSel=new Set(),osExpMarcar=true;
+function osExpIniciar(){
+  if(!osExp.de){
+    const pend=osLista().filter(r=>!r.exp).map(r=>r.data).sort();
+    osExp.de=pend.length?pend[0]:today().slice(0,8)+'01';osExp.ate=today();
   }
-  showToast(rows.length+' linha(s) exportada(s).','ok');
+  osSel=new Set(osExpFiltrados().map(r=>r.id));
+  osExpRender();
+}
+function osExpFiltrados(){
+  const f=osExp,q=f.busca.trim().toUpperCase();
+  return osLista().filter(r=>{
+    if(r.data<f.de||r.data>f.ate)return false;
+    if(f.turno&&r.turno!==f.turno)return false;
+    if(f.op&&r.op!==f.op)return false;
+    if(f.veic&&r.veic!==f.veic)return false;
+    if(f.cli&&r.cnpj!==f.cli)return false;
+    if(f.status==='pend'&&r.exp)return false;
+    if(f.status==='exp'&&!r.exp)return false;
+    if(q&&!((r.doc||'')+' '+(r.cavalo||'')+' '+(r.carreta||'')+' '+(r.nr||'')+' '+(r.cliente||'')).toUpperCase().includes(q))return false;
+    return true;
+  }).sort((a,b)=>a.data.localeCompare(b.data)||String(a.doc).localeCompare(String(b.doc))||(a.op<b.op?-1:1));
+}
+function osExpSet(campo,val){osExp[campo]=val;osSel=new Set(osExpFiltrados().map(r=>r.id));osExpRender();}
+let _osExpBuscaT=null;
+function osExpBusca(v){osExp.busca=v;clearTimeout(_osExpBuscaT);_osExpBuscaT=setTimeout(()=>{osSel=new Set(osExpFiltrados().map(r=>r.id));osExpRender();},300);}
+function osExpPeriodo(t){
+  const hoje=today();
+  if(t==='hoje'){osExp.de=hoje;osExp.ate=hoje;}
+  else if(t==='mes'){osExp.de=hoje.slice(0,8)+'01';osExp.ate=hoje;}
+  else if(t==='ant'){const d=new Date(+hoje.slice(0,4),+hoje.slice(5,7)-2,1),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0');osExp.de=y+'-'+m+'-01';osExp.ate=y+'-'+m+'-'+String(new Date(y,d.getMonth()+1,0).getDate()).padStart(2,'0');}
+  else if(t==='pend'){const pend=osLista().filter(r=>!r.exp).map(r=>r.data).sort();osExp.status='pend';osExp.de=pend.length?pend[0]:hoje.slice(0,8)+'01';osExp.ate=hoje;}
+  osSel=new Set(osExpFiltrados().map(r=>r.id));osExpRender();
+}
+function osExpToggle(id,on){if(on)osSel.add(id);else osSel.delete(id);osExpResumo();}
+function osExpTodos(on){osSel=on?new Set(osExpFiltrados().map(r=>r.id)):new Set();osExpRender();}
+function osExpResumo(){
+  const el=document.getElementById('os-exp-resumo');if(!el)return;
+  const rows=osExpFiltrados(),sel=rows.filter(r=>osSel.has(r.id));
+  el.innerHTML='<strong>'+sel.length+'</strong> selecionada(s) de '+rows.length+' no filtro · '+sel.filter(r=>r.op==='A').length+' amarração(ões) · '+sel.filter(r=>r.op==='D').length+' desamarração(ões) · <strong>'+osBRL(sel.reduce((t,r)=>t+(osValorReg(r)||0),0))+'</strong>';
+  ['os-exp-csv','os-exp-xlsx'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=!sel.length;});
+}
+function osExpRender(){
+  const el=document.getElementById('os-export');if(!el)return;
+  const f=osExp,rows=osExpFiltrados(),cli=osClientesList();
+  const opt=(v,l,cur)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+l+'</option>';
+  const item=(r)=>{const s=OS_SERV[r.veic+'|'+r.op],v=osValorReg(r);
+    return '<label class="os-row os-selrow'+(r.op==='D'?' d':'')+'"><input type="checkbox" '+(osSel.has(r.id)?'checked':'')+' onchange="osExpToggle(\''+r.id+'\',this.checked)"><div class="os-main">'+
+     '<div class="os-l1"><strong>OS '+osEsc(r.doc)+'</strong><span class="os-chip '+(r.op==='A'?'a':'d')+'">'+s.c+'</span><span class="os-chip t">T'+r.turno+'</span>'+(r.exp?'<span class="os-chip x" title="Exportada em '+osEsc((r.exp||'').slice(0,10))+(r.lote?' · lote '+osEsc(r.lote):'')+'">exportada</span>':'')+'</div>'+
+     '<div class="os-l2">'+osEsc(r.cliente)+'</div>'+
+     '<div class="os-l3">'+dateBR(r.data)+' · '+osEsc(r.cavalo)+(r.carreta?' · '+osEsc(r.carreta):'')+' · '+(r.op==='A'?'Transp. ':'NF ')+osEsc(r.nr)+(r.qtd>1?' · qtd '+r.qtd:'')+(v!==null?' · '+osBRL(v):'')+'</div></div></label>';};
+  el.innerHTML='<div class="card"><div class="card-title"><i class="ti ti-file-export"></i> Exportação para o faturamento</div>'+
+   '<div class="os-resumo">Filtre, marque o que vai no arquivo e baixe. O arquivo segue o layout da aba "importação".</div>'+
+   '<div class="os-filtros">'+
+   '<div class="modal-field"><label>De</label><input type="date" value="'+f.de+'" onchange="osExpSet(\'de\',this.value)"></div>'+
+   '<div class="modal-field"><label>Até</label><input type="date" value="'+f.ate+'" onchange="osExpSet(\'ate\',this.value)"></div>'+
+   '<div class="modal-field"><label>Situação</label><select onchange="osExpSet(\'status\',this.value)">'+opt('pend','Ainda não exportadas',f.status)+opt('exp','Já exportadas',f.status)+opt('todas','Todas',f.status)+'</select></div>'+
+   '<div class="modal-field"><label>Operação</label><select onchange="osExpSet(\'op\',this.value)">'+opt('','Todas',f.op)+opt('A','Amarração',f.op)+opt('D','Desamarração',f.op)+'</select></div>'+
+   '<div class="modal-field"><label>Veículo</label><select onchange="osExpSet(\'veic\',this.value)">'+opt('','Todos',f.veic)+opt('CARRETA','Carreta',f.veic)+opt('TRUCK','Truck',f.veic)+opt('RODOTREM','Rodotrem',f.veic)+'</select></div>'+
+   '<div class="modal-field"><label>Turno</label><select onchange="osExpSet(\'turno\',this.value)">'+opt('','Todos',f.turno)+['A','B','C'].map(t=>opt(t,'Turno '+t,f.turno)).join('')+'</select></div>'+
+   '<div class="modal-field"><label>Cliente</label><select onchange="osExpSet(\'cli\',this.value)">'+opt('','Todos',f.cli)+cli.map(c=>opt(c.cnpj,osEsc(c.nome),f.cli)).join('')+'</select></div>'+
+   '<div class="modal-field"><label>Buscar</label><input value="'+osEsc(f.busca)+'" placeholder="OS, placa ou nº" oninput="osExpBusca(this.value)"></div>'+
+   '</div>'+
+   '<div class="os-tools"><button class="ds-btn" onclick="osExpPeriodo(\'pend\')">Pendentes</button><button class="ds-btn" onclick="osExpPeriodo(\'hoje\')">Hoje</button><button class="ds-btn" onclick="osExpPeriodo(\'mes\')">Este mês</button><button class="ds-btn" onclick="osExpPeriodo(\'ant\')">Mês anterior</button>'+
+   '<button class="ds-btn" onclick="osExpTodos(true)">Marcar todas</button><button class="ds-btn" onclick="osExpTodos(false)">Limpar seleção</button></div>'+
+   '<div class="os-resumo" id="os-exp-resumo"></div>'+
+   (rows.length?rows.slice(0,400).map(item).join('')+(rows.length>400?'<div class="os-resumo">Mostrando 400 de '+rows.length+'. Refine o filtro.</div>':''):'<div class="empty" style="padding:22px 0"><i class="ti ti-file-off"></i><h3>Nada no filtro</h3></div>')+
+   '<label class="os-chk" style="margin:12px 0 8px"><input type="checkbox" '+(osExpMarcar?'checked':'')+' onchange="osExpMarcar=this.checked"> marcar como exportadas ao baixar</label>'+
+   '<div class="os-btns"><button class="btn btn-primary" id="os-exp-csv" onclick="osBaixar(\'csv\')"><i class="ti ti-file-type-csv" style="font-size:16px"></i> Baixar CSV</button><button class="btn btn-ghost" id="os-exp-xlsx" onclick="osBaixar(\'xlsx\')"><i class="ti ti-file-spreadsheet" style="font-size:16px"></i> Baixar Excel (.xlsx)</button></div>'+
+   (osPodeLancar()&&osExp.status!=='pend'?'<button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="osExpDesmarcar()"><i class="ti ti-arrow-back-up" style="font-size:14px"></i> Voltar selecionadas para pendentes</button>':'')+
+   '</div>';
+  osExpResumo();
+}
+function osCsvCampo(v){v=v===null||v===undefined?'':String(v);return /[;"\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function osCsvLinha(r){
+  const s=OS_SERV[r.veic+'|'+r.op];
+  return[r.doc,dateBR(r.data),r.cliente,r.cnpj,s.d,s.d,s.c,r.qtd||1,r.cavalo,r.carreta?r.carreta.split('/')[0]:'',r.op==='A'?r.nr:'',r.op==='D'?r.nr:'',dateBR(r.data),'',({A:1,B:2,C:3})[r.turno]||1];
+}
+function osBaixar(tipo){
+  const rows=osExpFiltrados().filter(r=>osSel.has(r.id));
+  if(!rows.length){showToast('Selecione ao menos um lançamento.','warn');return;}
+  let blob,ext;
+  if(tipo==='csv'){
+    const linhas=[OS_COLS.map(osCsvCampo).join(';')].concat(rows.map(r=>osCsvLinha(r).map(osCsvCampo).join(';')));
+    blob=new Blob(['\ufeff'+linhas.join('\r\n')+'\r\n'],{type:'text/csv;charset=utf-8'});ext='csv';
+  }else{blob=osMontaXlsx(rows.map(osLinhaExport));ext='xlsx';}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='importacao_OS_marilia_'+osExp.de+'_a_'+osExp.ate+'.'+ext;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+  if(osExpMarcar&&osPodeLancar()){
+    const agora=new Date().toISOString(),lote=agora.slice(0,16).replace(/[-:T]/g,'');
+    rows.forEach(r=>{if(!r.exp){r.exp=agora;r.lote=lote;r.ts=agora;}});
+    logAuditoria('Exportação de OS ('+ext.toUpperCase()+'): '+rows.length+' linha(s) · lote '+lote);
+    saveCache();pushToCloud();osSel=new Set(osExpFiltrados().map(r=>r.id));osExpRender();
+  }
+  showToast(rows.length+' linha(s) exportada(s) em '+ext.toUpperCase()+'.','ok');
+}
+function osExpDesmarcar(){
+  if(!osPodeLancar())return;
+  const rows=osExpFiltrados().filter(r=>osSel.has(r.id)&&r.exp);
+  if(!rows.length){showToast('Nenhuma exportada selecionada.','warn');return;}
+  const agora=new Date().toISOString();rows.forEach(r=>{delete r.exp;delete r.lote;r.ts=agora;});
+  logAuditoria('OS voltaram para pendentes: '+rows.length);saveCache();pushToCloud();osExpRender();showToast(rows.length+' voltaram para pendentes.','ok');
 }
 
 // === PERFIL FINANCEIRO: somente visualização ===

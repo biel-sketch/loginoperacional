@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>FEMSA Aparecida — Painel Operacional</title>
+<title>FEMSA Marília — Painel Operacional</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -384,6 +384,11 @@ img,canvas,svg{max-width:100%}
 .pm-cfg label{font-size:11px;color:var(--text2);font-weight:600;display:flex;flex-direction:column;gap:4px}
 .pm-leg{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
 @media(max-width:768px){.pm-kpis{grid-template-columns:repeat(2,1fr)}.pm-tbl th:first-child,.pm-tbl td:first-child{min-width:120px;max-width:120px}.pm{min-width:52px}.pm-nm{white-space:normal;font-size:12px;line-height:1.25}}
+.pbr-row{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 10px;border-radius:9px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.25)}
+.pbr-row label{font-size:11px;font-weight:700;color:#a78bfa;letter-spacing:.04em;white-space:nowrap}
+.pbr-row small{font-size:10px;color:var(--text3);flex:1;min-width:0}
+.pbr-row input{width:84px;flex:none;text-align:center;font-size:16px;font-weight:700;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:inherit}
+.pbr-row input:disabled{opacity:.7}
 .pc-b{background:rgba(34,211,238,.10);border-color:rgba(34,211,238,.4)}.pc-b .pc-n,.pc-b .pc-s,.pc-b .pc-c{color:#22d3ee}
 .pc-h{background:rgba(251,146,60,.10);border-color:rgba(251,146,60,.4)}.pc-h .pc-n,.pc-h .pc-s,.pc-h .pc-c{color:#fb923c}
 .st-chip.st-b{background:rgba(34,211,238,.10);border-color:rgba(34,211,238,.4);color:#22d3ee}
@@ -410,7 +415,7 @@ img,canvas,svg{max-width:100%}
   <div class="login-box"><div class="login-card">
     <div style="text-align:center;margin-bottom:20px">
       <img id="login-logo-img" src="" alt="Logo" style="height:72px;object-fit:contain;margin:0 auto 10px;display:block">
-      <div style="font-size:20px;font-weight:700;color:var(--text)">FEMSA <span id="login-unit-name">Aparecida</span></div>
+      <div style="font-size:20px;font-weight:700;color:var(--text)">FEMSA <span id="login-unit-name">Marília</span></div>
       <div style="font-size:13px;color:var(--text2);margin-top:4px;margin-bottom:20px">Entre com seu usuário e senha</div>
     </div>
     <div class="field"><label>Usuário</label><input type="text" id="login-user" placeholder="Seu nome..." autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pw').focus()"></div>
@@ -428,7 +433,7 @@ img,canvas,svg{max-width:100%}
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-logo">
         <img id="sidebar-logo-img" src="" alt="Logo">
-        <div class="sidebar-unit" id="sidebar-unit-name">Aparecida</div>
+        <div class="sidebar-unit" id="sidebar-unit-name">Marília</div>
       </div>
       <nav class="sidebar-nav" id="sidebar-nav">
         <button class="snav-item" id="snav-dashboard"   onclick="goTo('dashboard')"><i class="ti ti-chart-bar"></i>Dashboard</button>
@@ -773,8 +778,8 @@ const LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1
 
 <script>
 const META_DIARIA=2400,SYNC_INTERVAL=180000;
-const FB_URL='https://painel-operacional-96032-default-rtdb.firebaseio.com/aparecida.json';
-const LS_CACHE='femsa_cache',LS_UNIT='femsa_unit';
+const FB_URL='https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia.json';
+const LS_CACHE='marilia_cache',LS_UNIT='marilia_unit';
 const USERS=[
   {user:'Gustavo',   senha:'LoginBH26',  role:'gestor'},
   {user:'Marcelo',    senha:'L@ginBH',   role:'gestor'},
@@ -784,7 +789,7 @@ const USERS=[
   {user:'Simone',    senha:'Login@982',  role:'admin'},
   {user:'João',      senha:'Login@982',  role:'superadmin'},
   {user:'Gabriel',   senha:'L@gin982',   role:'superadmin'},
-  {user:'lançamentos', senha:'login@aparecida', role:'lancamentos'},
+  {user:'lançamentos', senha:'login@marilia', role:'lancamentos'},
   {user:'Financeiro', senha:'L@gin982', role:'financeiro'},
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
@@ -805,7 +810,7 @@ function statusProdDia(c,date){
   return{k:'',lbl:'',fora:false};
 }
 function stChip(st,extra){return st.k?'<span class="st-chip st-'+st.k+'">'+st.lbl+(extra||'')+'</span>':'';}
-let currentUser=null,currentRole=null,unitName='Aparecida';
+let currentUser=null,currentRole=null,unitName='Marília';
 // Firebase - no api key or bin id vars needed
 let isSyncing=false,lastSync=null,syncTimer=null,resetLock=false;
 function colaboradoresAtivos(){ return state.colaboradores.filter(c=>c.ativo!==false); }
@@ -1008,7 +1013,7 @@ function mergeState(cloud){
     state.configTs=cloud.configTs;
   }
 }
-function saveCache(){try{localStorage.setItem(LS_CACHE,JSON.stringify(state));localStorage.setItem('femsa_cache_ts',Date.now());}catch(e){}}
+function saveCache(){try{localStorage.setItem(LS_CACHE,JSON.stringify(state));localStorage.setItem('marilia_cache_ts',Date.now());}catch(e){}}
 
 // === SISTEMA DE NOTIFICAÇÕES WHATSAPP ===
 
@@ -1030,14 +1035,14 @@ function notifKey(tipo, hora){
 
 function jaDisparou(tipo, hora){
   const key = notifKey(tipo, hora);
-  const stored = localStorage.getItem('femsa_notif_'+key);
+  const stored = localStorage.getItem('marilia_notif_'+key);
   return _notifFired[key] || stored === '1';
 }
 
 function marcarDisparado(tipo, hora){
   const key = notifKey(tipo, hora);
   _notifFired[key] = true;
-  try{ localStorage.setItem('femsa_notif_'+key, '1'); }catch(e){}
+  try{ localStorage.setItem('marilia_notif_'+key, '1'); }catch(e){}
 }
 
 async function enviarWhatsApp(linhas){
@@ -1073,7 +1078,7 @@ function verificarAusencia(){
       _notifFired[key] = true;
       const hora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
       enviarWhatsApp([
-        'FEMSA Aparecida - Ausencia alta',
+        'FEMSA Marília - Ausencia alta',
         'Quadro: '+quadro+' | Presentes: '+presentes+' | Ausentes: '+ausentes+' ('+Math.round(pct*100)+'%)',
         ausentesNomes.length ? 'Ausentes: '+ausentesNomes.join(', ') : '',
         todayD.split('-').reverse().join('/')+' as '+hora
@@ -1099,7 +1104,7 @@ async function enviarResumoPresenca(hora){
   });
   const turnoLabel = hora===7?'07h (entrada A)':hora===9?'09h (A em operacao)':hora===15?'15h (entrada B)':'17h (B em operacao)';
   await enviarWhatsApp([
-    'FEMSA Aparecida - Presenca '+turnoLabel,
+    'FEMSA Marília - Presenca '+turnoLabel,
     'Quadro: '+quadro+' | Presentes: '+presentes+' | Ausentes: '+ausentes,
     ausentesNomes.length ? 'Ausentes: '+ausentesNomes.join(', ') : 'Todos presentes!',
     todayD.split('-').reverse().join('/')
@@ -1121,7 +1126,7 @@ async function enviarResumoProducao(hora){
   const pct = Math.min(100, Math.round(tP/META_DIARIA*100));
   const statusMeta = tP>=META_DIARIA?'Meta atingida!':pct>=80?'Quase la!':'Em andamento';
   await enviarWhatsApp([
-    'FEMSA Aparecida - Producao '+hora+'h',
+    'FEMSA Marília - Producao '+hora+'h',
     'Produzidos: '+tP+' | Enviados: '+tE,
     'Recebidos: '+tR+(tD?' | Descarte: '+tD:''),
     'Buffer (estoque): '+(buffer>=0?'+':'')+buffer,
@@ -1195,7 +1200,7 @@ async function pushToCloud(){
             const ex=new Set(mm[d].map(m=>m.ts));
             ms.forEach(m=>{
               if(!ex.has(m.ts)){mm[d].push(m);return;}
-              if(m.auto){const cm=mm[d].find(x=>x.ts===m.ts);if(cm&&(m.updTs||'')>(cm.updTs||'')){cm.prod=m.prod;cm.updTs=m.updTs;cm.who=m.who;}}
+              if(m.auto){const cm=mm[d].find(x=>x.ts===m.ts);if(cm&&(m.updTs||'')>(cm.updTs||'')){cm.prod=m.prod;cm.pbr2=m.pbr2;cm.updTs=m.updTs;cm.who=m.who;}}
             });
             mm[d].sort((a,b)=>a.ts.localeCompare(b.ts));
           });
@@ -1442,7 +1447,7 @@ function launchApp(){
   ['sidebar-logo-img','topbar-logo','login-logo-img'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LOGO_B64;});
   setSyncDot('syncing','Conectando...');
   // Força timestamp fresco para o hub saber que o painel esta aberto
-  try{localStorage.setItem('femsa_cache_ts', Date.now());}catch(e){}
+  try{localStorage.setItem('marilia_cache_ts', Date.now());}catch(e){}
   saveCache();
   renderAll();
   syncFromCloud().then(()=>{scheduleNextSync();}).catch(scheduleNextSync);
@@ -1451,7 +1456,7 @@ function launchApp(){
 }
 
 function boot(){
-  unitName=localStorage.getItem(LS_UNIT)||'Aparecida';
+  unitName=localStorage.getItem(LS_UNIT)||'Marília';
   try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.premiacao)state.premiacao=p.premiacao;if(p.premiacaoCfg)state.premiacaoCfg=p.premiacaoCfg;}}catch(e){}
   if(!state.colaboradores||!state.colaboradores.length)state.colaboradores=DEFAULT_COLABS;
   try{
@@ -1471,7 +1476,7 @@ function boot(){
 }
 // Restaura apikey de notificação salva
 try{
-  const savedKey = localStorage.getItem('femsa_notif_apikey_0');
+  const savedKey = localStorage.getItem('marilia_notif_apikey_0');
   if(savedKey && NOTIF_RECIPIENTS[0]) NOTIF_RECIPIENTS[0].apikey = savedKey;
 }catch(e){}
 window.addEventListener('DOMContentLoaded',boot);
@@ -1662,7 +1667,7 @@ function renderDia(){
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;color:var(--text2)">'+dateFull(selDate)+'</div>'+lastTag+'</div>'+
     '<div class="sec">Pallets — totais acumulados</div>'+
     '<div class="kpi-grid">'+
-    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+tP+'</div><div class="kpi-sub">'+movs.length+' lançamento(s)</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+tP+'</div><div class="kpi-sub">'+movs.length+' lançamento(s) · PBR2: '+_pbrDia(selDate)+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-truck" style="font-size:12px"></i> Recebidos</div><div class="kpi-val">'+tR+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-send" style="font-size:12px"></i> Enviados</div><div class="kpi-val">'+tE+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-trash" style="font-size:12px"></i> Descarte</div><div class="kpi-val'+(tD>0?' red':'')+'">'+tD+'</div>'+'</div>'+
@@ -1688,13 +1693,13 @@ function mesRangeDefault(){
 }
 function sumPeriodoDatas(de,ate){
   const ds=Object.keys(state.movimentos).filter(d=>d>=de&&d<=ate).sort();
-  let tP=0,tR=0,tE=0,tD=0,n=0;
-  ds.forEach(d=>{state.movimentos[d].forEach(m=>{tP+=(m.prod||0);tR+=(m.rec||0);tE+=(m.env||0);tD+=(m.desc||0);n++;});});
-  return{tP,tR,tE,tD,n,buf:tP-tE,days:ds.length};
+  let tP=0,tR=0,tE=0,tD=0,n=0,tB=0;
+  ds.forEach(d=>{state.movimentos[d].forEach(m=>{tB+=(m.pbr2||0);tP+=(m.prod||0);tR+=(m.rec||0);tE+=(m.env||0);tD+=(m.desc||0);n++;});});
+  return{tP,tR,tE,tD,n,tB,buf:tP-tE,days:ds.length};
 }
 function kpiRowResumo(m){
   return'<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">'+
-    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+m.tP+'</div><div class="kpi-sub">'+m.n+' lançamento(s) · '+m.days+' dia(s)</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+m.tP+'</div><div class="kpi-sub">'+m.n+' lançamento(s) · '+m.days+' dia(s) · PBR2: '+(m.tB||0)+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-truck" style="font-size:12px"></i> Recebidos</div><div class="kpi-val">'+m.tR+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-send" style="font-size:12px"></i> Enviados</div><div class="kpi-val">'+m.tE+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-trash" style="font-size:12px"></i> Descarte</div><div class="kpi-val'+(m.tD>0?' red':'')+'">'+m.tD+'</div>'+'</div>'+
@@ -2101,11 +2106,12 @@ function _prodPessoasPendente(date){return _prodPessoasLive(date)-_prodAutoSalvo
 function upsertAutoProd(date,turno){
   const dia=(state.producaoPessoas[date]||{})[turno];
   const soma=Object.values((dia&&dia.pessoas)||{}).reduce((s,r)=>s+((r&&r.prod)||0),0);
+  const somaPbr=Object.values((dia&&dia.pessoas)||{}).reduce((s,r)=>s+((r&&r.pbr2)||0),0);
   if(!state.movimentos[date])state.movimentos[date]=[];
   const agora=new Date().toISOString(), who=currentUser?currentUser.user:'Desconhecido';
   let m=state.movimentos[date].find(x=>x.auto==='pessoas'&&x.turno===turno);
-  if(m){ m.prod=soma;m.updTs=agora;m.who=who; }
-  else if(soma>0){ state.movimentos[date].push({ts:agora,updTs:agora,who,rec:0,prod:soma,env:0,desc:0,turno,auto:'pessoas'}); }
+  if(m){ m.prod=soma;m.pbr2=somaPbr;m.updTs=agora;m.who=who; }
+  else if(soma>0){ state.movimentos[date].push({ts:agora,updTs:agora,who,rec:0,prod:soma,pbr2:somaPbr,env:0,desc:0,turno,auto:'pessoas'}); }
 }
 function refreshProdLive(){
   const todayD=today(),movs=state.movimentos[todayD]||[];
@@ -2113,12 +2119,12 @@ function refreshProdLive(){
   const live=_prodPessoasLive(todayD), pend=_prodPessoasPendente(todayD);
   const el=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   el('tl-prod',(manual+live).toLocaleString('pt-BR'));
-  el('tl-prod-sub',live.toLocaleString('pt-BR')+' dos colaboradores'+(manual?' + '+manual.toLocaleString('pt-BR')+' avulso':'')+(pend?' · '+Math.abs(pend)+' ainda não salvo':''));
+  el('tl-prod-sub',live.toLocaleString('pt-BR')+' dos colaboradores · PBR2 '+_pbrDia(todayD).toLocaleString('pt-BR')+(manual?' + '+manual.toLocaleString('pt-BR')+' avulso':'')+(pend?' · '+Math.abs(pend)+' ainda não salvo':''));
   el('tt-prod',(manual+live)+' hoje');
   if(typeof selTurnoProd!=='undefined'&&selTurnoProd){
     const dia=((state.producaoPessoas[todayD]||{})[selTurnoProd]);
     const t=Object.values((dia&&dia.pessoas)||{}).reduce((s,r)=>s+((r&&r.prod)||0),0);
-    el('prod-total-badge',t.toLocaleString('pt-BR')+' no turno');
+    el('prod-total-badge',t.toLocaleString('pt-BR')+' no turno · '+_pbrTurno(todayD,selTurnoProd).toLocaleString('pt-BR')+' PBR2');
   }
   updBuf();
 }
@@ -2211,6 +2217,7 @@ function renderProdPessoas(){
       '<div class="prow-nome"><div class="n">'+c.nome+'</div><div class="m" style="color:'+(abaixo?'var(--text3)':'var(--green)')+'">'+stChip(st)+' '+(abaixo?'meta '+info.metaPorPessoa+' · faltam '+falta:'meta batida ✓')+'</div></div>'+
       '<div class="num-wrap"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" inputmode="numeric" min="0" '+(saved?'disabled':'')+' value="'+(reg.prod||'')+'" placeholder="0" onfocus="this.select()" oninput="setProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderProdPessoas()"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
       '</div>'+
+      '<div class="pbr-row"><label>PBR2</label><small>dos '+(reg.prod||0)+' produzidos</small><input type="number" inputmode="numeric" min="0" max="'+(reg.prod||0)+'" '+(saved?'disabled':'')+' value="'+(reg.pbr2||'')+'" placeholder="0" onfocus="this.select()" onchange="setPbr2Pessoa(\''+nomeJs+'\',this.value)"></div>'+
       (abaixo&&!saved?'<select id="motivo-'+safeId+'" onchange="setMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
         MOTIVOS_NAO_META.map(m=>'<option value="'+m+'" '+(reg.motivo===m?'selected':'')+'>'+m+'</option>').join('')+
       '</select>':'')+
@@ -2224,11 +2231,33 @@ function renderProdPessoas(){
   );
   refreshProdLive();
 }
+function _pbrTurno(date,turno){const dia=state.producaoPessoas[date]&&state.producaoPessoas[date][turno];return Object.values((dia&&dia.pessoas)||{}).reduce((t,r)=>t+((r&&r.pbr2)||0),0);}
+function _pbrDia(date){let t=0;Object.values((state.producaoPessoas||{})[date]||{}).forEach(tv=>{Object.values((tv&&tv.pessoas)||{}).forEach(r=>{t+=(r&&r.pbr2)||0;});});return t;}
+function setPbr2Pessoa(nome,val){
+  const dia=_prodBuf();
+  if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
+  const r=dia.pessoas[nome];
+  r.pbr2=Math.max(0,parseInt(val)||0);
+  if(r.pbr2>(r.prod||0)){r.pbr2=r.prod||0;showToast('PBR2 não pode passar do total produzido de '+nome+'.','warn');}
+  dia.touchedAt=new Date().toISOString();
+  renderProdPessoas();
+}
+function setRetroPbr2Pessoa(nome,val){
+  const{date,turno}=_retroSel();
+  const dia=_prodBuf(date,turno);
+  if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
+  const r=dia.pessoas[nome];
+  r.pbr2=Math.max(0,parseInt(val)||0);
+  if(r.pbr2>(r.prod||0)){r.pbr2=r.prod||0;showToast('PBR2 não pode passar do total produzido de '+nome+'.','warn');}
+  dia.touchedAt=new Date().toISOString();
+  renderRetroProdPessoas();
+}
 function selTurnoProd_(t){selTurnoProd=t;renderProdPessoas();}
 function setProdPessoa(nome,val,rerender){
   const dia=_prodBuf();
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
   dia.pessoas[nome].prod=Math.max(0,parseInt(val)||0);
+  if((dia.pessoas[nome].pbr2||0)>dia.pessoas[nome].prod)dia.pessoas[nome].pbr2=dia.pessoas[nome].prod;
   dia.touchedAt=new Date().toISOString();
   if(rerender!==false)renderProdPessoas();else refreshProdLive();
 }
@@ -2236,6 +2265,7 @@ function adjProdPessoa(nome,d){
   const dia=_prodBuf();
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
   dia.pessoas[nome].prod=Math.max(0,(dia.pessoas[nome].prod||0)+d);
+  if((dia.pessoas[nome].pbr2||0)>dia.pessoas[nome].prod)dia.pessoas[nome].pbr2=dia.pessoas[nome].prod;
   dia.touchedAt=new Date().toISOString();
   renderProdPessoas();
 }
@@ -2309,6 +2339,7 @@ function renderRetroProdPessoas(){
         '<div style="font-size:13px;font-weight:600;color:var(--text);min-width:0">'+c.nome+' '+stChip(st)+'</div>'+
         '<div class="num-wrap" style="width:150px"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" value="'+(reg.prod||'')+'" placeholder="0" oninput="setRetroProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderRetroProdPessoas()"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
         '</div>'+
+        '<div class="pbr-row"><label>PBR2</label><small>dos '+(reg.prod||0)+' produzidos</small><input type="number" min="0" max="'+(reg.prod||0)+'" value="'+(reg.pbr2||'')+'" placeholder="0" onchange="setRetroPbr2Pessoa(\''+nomeJs+'\',this.value)"></div>'+
         (abaixo?'<select style="width:100%;margin-top:6px;padding:7px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px" onchange="setRetroMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
           MOTIVOS_NAO_META.map(m=>'<option value="'+m+'" '+(reg.motivo===m?'selected':'')+'>'+m+'</option>').join('')+
         '</select>':'')+
@@ -2320,6 +2351,7 @@ function setRetroProdPessoa(nome,val,rerender){
   const dia=_prodBuf(date,turno);
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
   dia.pessoas[nome].prod=Math.max(0,parseInt(val)||0);
+  if((dia.pessoas[nome].pbr2||0)>dia.pessoas[nome].prod)dia.pessoas[nome].pbr2=dia.pessoas[nome].prod;
   dia.touchedAt=new Date().toISOString();
   if(rerender!==false)renderRetroProdPessoas();
 }
@@ -2328,6 +2360,7 @@ function adjRetroProdPessoa(nome,d){
   const dia=_prodBuf(date,turno);
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
   dia.pessoas[nome].prod=Math.max(0,(dia.pessoas[nome].prod||0)+d);
+  if((dia.pessoas[nome].pbr2||0)>dia.pessoas[nome].prod)dia.pessoas[nome].pbr2=dia.pessoas[nome].prod;
   dia.touchedAt=new Date().toISOString();
   renderRetroProdPessoas();
 }
@@ -2898,7 +2931,7 @@ function unlockApiSection(){
 }
 function saveConfig(){
   var k=document.getElementById('cfg-key-in').value.trim();
-  var u=document.getElementById('cfg-unit-in').value.trim()||'Aparecida';
+  var u=document.getElementById('cfg-unit-in').value.trim()||'Marília';
   // Firebase - no API key config needed
   unitName=u;localStorage.setItem(LS_UNIT,u);
   showToast('Configuração salva!','ok');
@@ -2913,7 +2946,7 @@ async function testarNotificacao(){
   if(result) result.textContent = 'Enviando...';
   if(result) result.style.color = 'var(--warn)';
   const erros = await enviarWhatsApp([
-    'FEMSA Aparecida - Teste de notificacao',
+    'FEMSA Marília - Teste de notificacao',
     'Se voce recebeu esta mensagem, as notificacoes estao funcionando!',
     new Date().toLocaleString('pt-BR')
   ]);
@@ -2932,7 +2965,7 @@ function salvarApiKeyNotif(){
   const key = (document.getElementById('notif-apikey')||{value:''}).value.trim();
   if(!key){ showToast('Cole a chave antes de salvar','warn'); return; }
   NOTIF_RECIPIENTS[0].apikey = key;
-  try{ localStorage.setItem('femsa_notif_apikey_0', key); }catch(e){}
+  try{ localStorage.setItem('marilia_notif_apikey_0', key); }catch(e){}
   showToast('Chave salva! Notificações ativas ✅','ok');
   renderConfig();
 }
@@ -3038,7 +3071,7 @@ function calcRelatorioMensal(mes){
   var map={};
   function reg(turnoKey,nome){
     var k=turnoKey+'|'+nome;
-    if(!map[k]){var cc=state.colaboradores.find(function(c){return c.nome===nome;});map[k]={turno:turnoKey,nome:nome,prod:0,presencas:0,faltas:0,diasProd:0,semProd:!!(cc&&!produzPallets(cc))};}
+    if(!map[k]){var cc=state.colaboradores.find(function(c){return c.nome===nome;});map[k]={turno:turnoKey,nome:nome,prod:0,pbr2:0,presencas:0,faltas:0,diasProd:0,semProd:!!(cc&&!produzPallets(cc))};}
     return map[k];
   }
   turnosAtivos().forEach(function(t){
@@ -3058,7 +3091,7 @@ function calcRelatorioMensal(mes){
       if(!dia||!dia.pessoas)return;
       Object.entries(dia.pessoas).forEach(function(e2){
         var nome=e2[0],pr=e2[1]||{};
-        var r=reg(t.key,nome);r.prod+=(pr.prod||0);if(pr.prod>0)r.diasProd++;
+        var r=reg(t.key,nome);r.prod+=(pr.prod||0);r.pbr2+=(pr.pbr2||0);if(pr.prod>0)r.diasProd++;
       });
     });
   });
@@ -3074,9 +3107,9 @@ function exportarRelatorioMensal(mesArg){
   var rows=calcRelatorioMensal(mes);
   if(!rows.length){showToast('Nenhum dado de presen\u00E7a ou produ\u00E7\u00E3o nesse m\u00EAs.','warn');return;}
   var mesLabel=_mesLabel(mes);
-  var csv='M\u00EAs referente;Turno;Colaborador;Produ\u00E7\u00E3o do m\u00EAs;Presen\u00E7as do m\u00EAs;Faltas do m\u00EAs\n';
+  var csv='M\u00EAs referente;Turno;Colaborador;Produ\u00E7\u00E3o do m\u00EAs;PBR2 do m\u00EAs;Presen\u00E7as do m\u00EAs;Faltas do m\u00EAs\n';
   rows.forEach(function(r){
-    csv+='"'+mesLabel+'";"'+turnoInfo(r.turno).label+'";"'+r.nome+'";'+((r.semProd&&!r.prod)?'':r.prod)+';'+r.presencas+';'+r.faltas+'\n';
+    csv+='"'+mesLabel+'";"'+turnoInfo(r.turno).label+'";"'+r.nome+'";'+((r.semProd&&!r.prod)?'':r.prod)+';'+(r.pbr2||0)+';'+r.presencas+';'+r.faltas+'\n';
   });
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='relatorio_mensal_'+mes+'.csv';a.click();URL.revokeObjectURL(a.href);
@@ -3102,18 +3135,18 @@ function renderRelMensal(soTabela){
   var filt=rows.filter(function(r){return (!relTurno||r.turno===relTurno)&&(!relBusca||r.nome.toLowerCase().indexOf(relBusca.toLowerCase())>=0);});
   if(relOrd==='prod')filt.sort(function(a,b){return b.prod-a.prod;});
   else if(relOrd==='faltas')filt.sort(function(a,b){return b.faltas-a.faltas||a.nome.localeCompare(b.nome);});
-  var tP=0,tPr=0,tF=0;filt.forEach(function(r){tP+=r.prod;tPr+=r.presencas;tF+=r.faltas;});
+  var tP=0,tPr=0,tF=0,tB2=0;filt.forEach(function(r){tB2+=r.pbr2;tP+=r.prod;tPr+=r.presencas;tF+=r.faltas;});
   var pctF=(tPr+tF)>0?Math.round(tF/(tPr+tF)*100):0;
   var tabela;
   if(!rows.length)tabela='<div class="empty"><i class="ti ti-database-off"></i><h3>Sem dados em '+_mesLabel(relMes)+'</h3><p>Nenhuma presença ou produção lançada nesse mês.</p></div>';
   else if(!filt.length)tabela='<div class="empty" style="padding:28px 12px"><i class="ti ti-search-off"></i><h3>Nenhum colaborador encontrado</h3></div>';
   else{
-    tabela='<div class="rel-wrap"><table class="rel-tbl"><thead><tr><th>T.</th><th>Colaborador</th><th class="n"><span class="lg">Produção</span><span class="sm">Prod.</span></th><th class="n"><span class="lg">Presenças</span><span class="sm">Pres.</span></th><th class="n"><span class="lg">Faltas</span><span class="sm">Falt.</span></th><th class="n"><span class="lg">% falta</span><span class="sm">%</span></th></tr></thead><tbody>';
+    tabela='<div class="rel-wrap"><table class="rel-tbl"><thead><tr><th>T.</th><th>Colaborador</th><th class="n"><span class="lg">Produção</span><span class="sm">Prod.</span></th><th class="n"><span class="lg">PBR2</span><span class="sm">PBR2</span></th><th class="n"><span class="lg">Presenças</span><span class="sm">Pres.</span></th><th class="n"><span class="lg">Faltas</span><span class="sm">Falt.</span></th><th class="n"><span class="lg">% falta</span><span class="sm">%</span></th></tr></thead><tbody>';
     filt.forEach(function(r){
       var pf=(r.presencas+r.faltas)>0?Math.round(r.faltas/(r.presencas+r.faltas)*100):0;
-      tabela+='<tr><td class="t">'+turnoInfo(r.turno).label.replace('Turno ','')+'</td><td class="nm">'+r.nome+'</td><td class="n'+(r.prod>0?' g':' z')+'">'+(r.semProd&&!r.prod?'—':r.prod.toLocaleString('pt-BR'))+'</td><td class="n">'+r.presencas+'</td><td class="n'+(r.faltas>0?' r':' z')+'">'+r.faltas+'</td><td class="n'+(pf>=15?' r':pf>=8?' w':' z')+'">'+(r.presencas+r.faltas>0?pf+'%':'—')+'</td></tr>';
+      tabela+='<tr><td class="t">'+turnoInfo(r.turno).label.replace('Turno ','')+'</td><td class="nm">'+r.nome+'</td><td class="n'+(r.prod>0?' g':' z')+'">'+(r.semProd&&!r.prod?'—':r.prod.toLocaleString('pt-BR'))+'</td><td class="n">'+(r.pbr2?r.pbr2.toLocaleString('pt-BR'):'—')+'</td><td class="n">'+r.presencas+'</td><td class="n'+(r.faltas>0?' r':' z')+'">'+r.faltas+'</td><td class="n'+(pf>=15?' r':pf>=8?' w':' z')+'">'+(r.presencas+r.faltas>0?pf+'%':'—')+'</td></tr>';
     });
-    tabela+='</tbody><tfoot><tr><td></td><td class="nm">Total ('+filt.length+')</td><td class="n g">'+tP.toLocaleString('pt-BR')+'</td><td class="n">'+tPr+'</td><td class="n r">'+tF+'</td><td class="n">'+pctF+'%</td></tr></tfoot></table></div>';
+    tabela+='</tbody><tfoot><tr><td></td><td class="nm">Total ('+filt.length+')</td><td class="n g">'+tP.toLocaleString('pt-BR')+'</td><td class="n">'+tB2.toLocaleString('pt-BR')+'</td><td class="n">'+tPr+'</td><td class="n r">'+tF+'</td><td class="n">'+pctF+'%</td></tr></tfoot></table></div>';
   }
   if(soTabela===true){var tb=document.getElementById('rel-tabela');if(tb){tb.innerHTML=tabela;return;}}
   var mesAtual=today().slice(0,7);
@@ -3122,7 +3155,7 @@ function renderRelMensal(soTabela){
     '<div class="rel-mes">'+_mesLabel(relMes)+'</div>'+
     '<button class="ds-btn" onclick="relMesDelta(1)" '+(relMes>=mesAtual?'disabled style="opacity:.35"':'')+' aria-label="Próximo mês"><i class="ti ti-chevron-right"></i></button>'+
     '<button class="ds-btn rel-xls" onclick="exportarRelatorioMensal(relMes)"><i class="ti ti-download"></i> Excel</button></div>'+
-    '<div class="rel-kpis"><div class="kpi"><div class="kpi-lbl">Produção do mês</div><div class="kpi-val green">'+tP.toLocaleString('pt-BR')+'</div></div>'+
+    '<div class="rel-kpis"><div class="kpi"><div class="kpi-lbl">Produção do mês</div><div class="kpi-val green">'+tP.toLocaleString('pt-BR')+'</div><div class="kpi-sub">PBR2: '+tB2.toLocaleString('pt-BR')+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Presenças</div><div class="kpi-val">'+tPr+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Faltas</div><div class="kpi-val'+(tF?' red':'')+'">'+tF+'</div><div class="kpi-sub'+(pctF>=15?' red':pctF>=8?' warn':'')+'">'+pctF+'% de absenteísmo</div></div></div>'+
     '<div class="card"><div class="rel-filtros"><div class="day-btns" style="margin:0">'+
@@ -3143,7 +3176,7 @@ function exportarPDF(){
     var b=p-e;totP+=p;totR+=r;totE+=e;totD+=dd;
     return'<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:8px 10px">'+d+'</td><td style="padding:8px 10px;text-align:right;color:'+(p>=META_DIARIA?'#059669':'#dc2626')+';font-weight:600">'+p+'</td><td style="padding:8px 10px;text-align:right">'+r+'</td><td style="padding:8px 10px;text-align:right">'+e+'</td><td style="padding:8px 10px;text-align:right;color:#dc2626">'+dd+'</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:'+(b>=0?'#1d4ed8':'#dc2626')+'">'+(b>=0?'+':'')+b+'</td><td style="padding:8px 10px;text-align:center">'+(p>=META_DIARIA?'✓':'✗')+'</td></tr>';
   }).join('');
-  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FEMSA</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111}h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#6b7280;font-size:13px;margin-bottom:24px}.kpi-row{display:flex;gap:16px;margin-bottom:24px}.kpi{flex:1;background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb}.kpi-l{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}.kpi-v{font-size:24px;font-weight:700}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:8px 10px;background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#374151}@media print{body{padding:16px}}</style></head><body><h1>FEMSA Aparecida — Relatório Operacional</h1><div class="sub">Gerado em '+new Date().toLocaleString('pt-BR')+' · Meta: '+META_DIARIA+' pallets/dia</div><div class="kpi-row"><div class="kpi"><div class="kpi-l">Produzido</div><div class="kpi-v">'+totP+'</div></div><div class="kpi"><div class="kpi-l">Recebido</div><div class="kpi-v">'+totR+'</div></div><div class="kpi"><div class="kpi-l">Enviado</div><div class="kpi-v">'+totE+'</div></div><div class="kpi"><div class="kpi-l">Descarte</div><div class="kpi-v" style="color:#dc2626">'+totD+'</div></div><div class="kpi"><div class="kpi-l">Buffer</div><div class="kpi-v" style="color:'+(totP-totE>=0?'#1d4ed8':'#dc2626')+'">'+(totP-totE>=0?'+':'')+(totP-totE)+'</div></div></div><table><thead><tr><th>Data</th><th style="text-align:right">Produzidos</th><th style="text-align:right">Recebidos</th><th style="text-align:right">Enviados</th><th style="text-align:right">Descarte</th><th style="text-align:right">Buffer</th><th style="text-align:center">Meta</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
+  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FEMSA</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111}h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#6b7280;font-size:13px;margin-bottom:24px}.kpi-row{display:flex;gap:16px;margin-bottom:24px}.kpi{flex:1;background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb}.kpi-l{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}.kpi-v{font-size:24px;font-weight:700}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:8px 10px;background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#374151}@media print{body{padding:16px}}</style></head><body><h1>FEMSA Marília — Relatório Operacional</h1><div class="sub">Gerado em '+new Date().toLocaleString('pt-BR')+' · Meta: '+META_DIARIA+' pallets/dia</div><div class="kpi-row"><div class="kpi"><div class="kpi-l">Produzido</div><div class="kpi-v">'+totP+'</div></div><div class="kpi"><div class="kpi-l">Recebido</div><div class="kpi-v">'+totR+'</div></div><div class="kpi"><div class="kpi-l">Enviado</div><div class="kpi-v">'+totE+'</div></div><div class="kpi"><div class="kpi-l">Descarte</div><div class="kpi-v" style="color:#dc2626">'+totD+'</div></div><div class="kpi"><div class="kpi-l">Buffer</div><div class="kpi-v" style="color:'+(totP-totE>=0?'#1d4ed8':'#dc2626')+'">'+(totP-totE>=0?'+':'')+(totP-totE)+'</div></div></div><table><thead><tr><th>Data</th><th style="text-align:right">Produzidos</th><th style="text-align:right">Recebidos</th><th style="text-align:right">Enviados</th><th style="text-align:right">Descarte</th><th style="text-align:right">Buffer</th><th style="text-align:center">Meta</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
   var w=window.open('','_blank');w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);
 }
 
@@ -3173,7 +3206,7 @@ function renderTV(){
   var bufColor=tBuf>=0?'var(--cyan)':'var(--red)';
   var barBg=tP>=META_DIARIA?'var(--green)':pct>=80?'var(--warn)':'#2a7fd4';
   document.getElementById('tv-content').innerHTML=
-    '<div class="tv-header"><img src="'+LOGO_B64+'" alt="Logo"><div><h1>FEMSA Aparecida — Dashboard Operacional</h1><div class="tv-date">'+dt+' &nbsp;·&nbsp; '+hr+'</div></div></div>'+
+    '<div class="tv-header"><img src="'+LOGO_B64+'" alt="Logo"><div><h1>FEMSA Marília — Dashboard Operacional</h1><div class="tv-date">'+dt+' &nbsp;·&nbsp; '+hr+'</div></div></div>'+
     '<div class="tv-kpi-row">'+
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Produzidos</div><div class="tv-kpi-val" style="color:'+(tP>=META_DIARIA?'var(--green)':'var(--text)')+'">'+tP+'</div><div class="tv-kpi-sub">Meta: '+META_DIARIA+' · '+pct+'%</div><div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barBg+';border-radius:3px"></div></div></div>'+
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Recebidos</div><div class="tv-kpi-val">'+tR+'</div></div>'+
@@ -3520,7 +3553,7 @@ function exportarPremiacao(){
       +'<td style="font-weight:800;white-space:nowrap">'+premBrl(f.total)+'</td></tr>';
   }).join('');
   const html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Premiação '+premMesNome(mes)+'</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#111;font-size:11px}h1{font-size:20px;margin:0 0 4px}.sub{color:#6b7280;font-size:11px;margin-bottom:14px}.k{display:flex;gap:12px;margin-bottom:14px}.k div{flex:1;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px}.k b{display:block;font-size:16px;margin-top:2px}table{width:100%;border-collapse:collapse}th{background:#f3f4f6;font-size:9px;text-transform:uppercase;letter-spacing:.05em;padding:6px;border:1px solid #e5e7eb}td{padding:5px 6px;border:1px solid #e5e7eb;text-align:center}tr{page-break-inside:avoid}thead{display:table-header-group}.l{margin-top:10px;color:#6b7280;font-size:9px}</style></head><body>'
-   +'<h1>FEMSA Aparecida — Premiação · '+premMesNome(mes)+'</h1><div class="sub">'+(premTurno?'Turno '+premTurno+' · ':'Todos os turnos · ')+'Gerado em '+new Date().toLocaleString('pt-BR')+'</div>'
+   +'<h1>FEMSA Marília — Premiação · '+premMesNome(mes)+'</h1><div class="sub">'+(premTurno?'Turno '+premTurno+' · ':'Todos os turnos · ')+'Gerado em '+new Date().toLocaleString('pt-BR')+'</div>'
    +'<div class="k"><div>Total a pagar<b>'+premBrl(soma)+'</b></div><div>Máximo possível<b>'+premBrl(max)+'</b></div><div>Colaboradores<b>'+lista.length+'</b></div></div>'
    +'<table><thead><tr><th style="text-align:left">Colaborador</th>'+PREM_ITENS.map(it=>'<th>'+it.n+'<br>R$ '+(cfg.valores[it.k]||0).toLocaleString('pt-BR')+'</th>').join('')+'<th>Total</th></tr></thead><tbody>'+linhas+'<tr><td style="text-align:left;font-weight:800">Total</td>'+PREM_ITENS.map(()=>'<td></td>').join('')+'<td style="font-weight:800">'+premBrl(soma)+'</td></tr></tbody></table>'
    +'<div class="l">Pontos abaixo de cada resultado = semanas 1 a 4 (✓ OK, ✗ NOK, · sem lançamento, – não se aplica). Cada NOK tira o valor do item; Assiduidade é perdida com '+cfg.assLimite+' ou mais semanas NOK.</div></body></html>';

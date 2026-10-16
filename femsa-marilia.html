@@ -415,6 +415,7 @@ img,canvas,svg{max-width:100%}
 .os-kpis{grid-template-columns:repeat(5,1fr)}
 .os-filtros{display:grid;grid-template-columns:repeat(6,1fr);gap:0 12px}
 .os-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:2px 0 12px}.os-chk{font-size:12px;color:var(--text2);display:flex;gap:6px;align-items:center;cursor:pointer}.os-exp{margin-left:auto;color:var(--cyan);border-color:var(--cyan-bd)}
+.dmode{margin-bottom:12px}.os-dk{grid-template-columns:repeat(4,1fr)}.os-drow{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}.os-dl{flex:1;min-width:0}.os-bar{height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-top:5px}.os-bar div{height:100%;background:var(--cyan)}.os-dv{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0}.os-dv strong{font-size:15px}.os-dv span{font-size:11px;color:var(--text2)}@media(max-width:900px){.os-dk{grid-template-columns:repeat(2,1fr)}}
 .os-resumo{font-size:12px;color:var(--text2);margin:6px 0 10px}.os-resumo strong{color:var(--text)}
 .os-row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border)}.os-main{min-width:0;flex:1}
 .os-l1{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px}.os-l2{font-size:12px;color:var(--text);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.os-l3{font-size:11px;color:var(--text2);margin-top:2px}
@@ -500,7 +501,12 @@ img,canvas,svg{max-width:100%}
       <div class="screens-wrap">
         <div><div id="app-toast" class="toast"></div></div>
         <div class="screen active" id="sc-dashboard">
-          <div class="vtoggle">
+          <div class="vtoggle dmode" id="dmode">
+            <button class="vtog active" id="dm-pal" onclick="setDM('pal')"><i class="ti ti-package" style="font-size:14px;vertical-align:-2px"></i> Paletes</button>
+            <button class="vtog" id="dm-os" onclick="setDM('os')"><i class="ti ti-link" style="font-size:14px;vertical-align:-2px"></i> OS (Amarração)</button>
+          </div>
+          <div id="dv-os" style="display:none"></div>
+          <div class="vtoggle" id="dvtoggle">
             <button class="vtog active" onclick="setDV('dia')">Dia</button>
             <button class="vtog" onclick="setDV('mes')">Mês</button>
             <button class="vtog" onclick="setDV('log')">Log</button>
@@ -822,7 +828,7 @@ const USERS=[
   {user:'Financeiro', senha:'L@gin982', role:'financeiro'},
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
-let state={osAmarracao:[],osClientes:[],premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
+let state={osAmarracao:[],osClientes:[],osValores:[],premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
 const ATIVIDADES=['Recuperação de Pallets','Produção de Insumos','Operação de Empilhadeira','Inspeção da Qualidade'];
 function produzPallets(c){return !c.atividade||c.atividade==='Recuperação de Pallets';}
 // Situação do colaborador no dia (presença do turno dele + afastamentos): define cor e se entra na produção
@@ -850,7 +856,7 @@ function logAuditoria(acao){
   if(!state.auditoria)state.auditoria=[];
   state.auditoria.push({ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',acao});
 }
-let selDate=null,selTurnoAtivo='A',dashView='dia';
+let selDate=null,selTurnoAtivo='A',dashView='dia',dashMode='pal';
 let charts={},countdownTimer=null,syncCountdown=0,tvTimer=null;
 
 function today(){
@@ -1034,6 +1040,7 @@ function mergeState(cloud){
   if(cloud.premiacaoCfg)state.premiacaoCfg=mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg);
   if(cloud.osAmarracao)state.osAmarracao=mergeOS(state.osAmarracao,cloud.osAmarracao);
   if(cloud.osClientes)state.osClientes=mergeOSCli(state.osClientes,cloud.osClientes);
+  if(cloud.osValores)state.osValores=mergeOSVal(state.osValores,cloud.osValores);
   if(cloud.bufferAjuste!==undefined)state.bufferAjuste=cloud.bufferAjuste;
   if(cloud.bufferAjusteTs!==undefined)state.bufferAjusteTs=cloud.bufferAjusteTs;
   if(reconciliarProducao())setTimeout(()=>{try{saveCache();_pushSoon();}catch(e){}},0);
@@ -1221,7 +1228,7 @@ async function pushToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
     // Read current cloud state for smart merge
-    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{},osAmarracao:state.osAmarracao||[],osClientes:state.osClientes||[]};
+    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{},osAmarracao:state.osAmarracao||[],osClientes:state.osClientes||[],osValores:state.osValores||[]};
     try{
       const r=await fetch(FB_URL);
       if(r.ok){
@@ -1290,7 +1297,7 @@ async function pushToCloud(){
           const bufferSaldoInicial=usaConfigLocal?(state.bufferSaldoInicial||0):(cloud.bufferSaldoInicial||0);
           const turnoExtra=usaConfigLocal?(state.turnoExtra||{ativo:false,horario:'',inicioMin:null}):(cloud.turnoExtra||{ativo:false,horario:'',inicioMin:null});
           const configTs=usaConfigLocal?localConfigTs:cloudConfigTs;
-          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,afastamentos:mergedAfast,bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,turnoExtra,configTs,presencasResetTs:presResetTs,producaoResetTs:prodResetTs,premiacao:mergePrem(state.premiacao,cloud.premiacao),premiacaoCfg:mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg),osAmarracao:mergeOS(state.osAmarracao,cloud.osAmarracao),osClientes:mergeOSCli(state.osClientes,cloud.osClientes)};
+          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,afastamentos:mergedAfast,bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,turnoExtra,configTs,presencasResetTs:presResetTs,producaoResetTs:prodResetTs,premiacao:mergePrem(state.premiacao,cloud.premiacao),premiacaoCfg:mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg),osAmarracao:mergeOS(state.osAmarracao,cloud.osAmarracao),osClientes:mergeOSCli(state.osClientes,cloud.osClientes),osValores:mergeOSVal(state.osValores,cloud.osValores)};
         }
       }
     }catch(e){}
@@ -1308,6 +1315,7 @@ async function pushToCloud(){
     state.premiacaoCfg=merged.premiacaoCfg||{};
     state.osAmarracao=merged.osAmarracao||[];
     state.osClientes=merged.osClientes||[];
+    state.osValores=merged.osValores||[];
     state.bufferAjuste=merged.bufferAjuste||0;
     state.bufferAjusteTs=merged.bufferAjusteTs||'';
     state.metaMensal=merged.metaMensal;
@@ -1496,7 +1504,7 @@ function launchApp(){
 
 function boot(){
   unitName=localStorage.getItem(LS_UNIT)||'Marília';
-  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.premiacao)state.premiacao=p.premiacao;if(p.premiacaoCfg)state.premiacaoCfg=p.premiacaoCfg;if(p.osAmarracao)state.osAmarracao=p.osAmarracao;if(p.osClientes)state.osClientes=p.osClientes;}}catch(e){}
+  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.premiacao)state.premiacao=p.premiacao;if(p.premiacaoCfg)state.premiacaoCfg=p.premiacaoCfg;if(p.osAmarracao)state.osAmarracao=p.osAmarracao;if(p.osClientes)state.osClientes=p.osClientes;if(p.osValores)state.osValores=p.osValores;}}catch(e){}
   if(!state.colaboradores||!state.colaboradores.length)state.colaboradores=DEFAULT_COLABS;
   try{
     const raw=sessionStorage.getItem('femsa_session')||localStorage.getItem('femsa_session');
@@ -1540,6 +1548,15 @@ setInterval(()=>{
 
 <script>
 // DASHBOARD
+function setDM(m){
+  dashMode=m;
+  const pal=m==='pal';
+  document.getElementById('dm-pal').classList.toggle('active',pal);document.getElementById('dm-os').classList.toggle('active',!pal);
+  document.getElementById('dvtoggle').style.display=pal?'flex':'none';
+  document.getElementById('dv-os').style.display=pal?'none':'block';
+  ['dv-dia','dv-mes','dv-log','dv-rel'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=pal?(id==='dv-'+dashView?'block':'none'):'none';});
+  if(pal)renderDash();else osDashRender();
+}
 function setDV(v){
   dashView=v;
   document.querySelectorAll('#sc-dashboard .vtog').forEach(b=>b.classList.toggle('active',(b.getAttribute('onclick')||'').indexOf("'"+v+"'")>=0));
@@ -1550,6 +1567,7 @@ function setDV(v){
   if(v==='mes')renderMes();if(v==='log')renderLog();if(v==='rel')renderRelMensal();
 }
 function renderDash(){
+  if(dashMode==='os'){osDashRender();return;}
   const dates=allDates();
   // Always default to today for a new day, fall back to latest with data
 const todayStr=today();
@@ -2943,7 +2961,7 @@ async function pushForceToCloud(){
   // que a nuvem realmente zerou antes de reportar sucesso.
   resetLock=true;
   setSyncDot('syncing','Salvando...');
-  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{},osAmarracao:state.osAmarracao||[],osClientes:state.osClientes||[]};
+  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{},osAmarracao:state.osAmarracao||[],osClientes:state.osClientes||[],osValores:state.osValores||[]};
   let ok=false;
   for(let tentativa=0;tentativa<3&&!ok;tentativa++){
     try{
@@ -3690,13 +3708,8 @@ const OS_SERV={
   'RODOTREM|A':{d:'RODOTREM - SIDER AMARRACAO',c:'RSA'},'RODOTREM|D':{d:'RODOTREM - SIDER DESAMARRACAO',c:'RSD'}
 };
 const OS_VEIC={CARRETA:'Carreta',TRUCK:'Truck',RODOTREM:'Rodotrem'};
-const OS_CLIENTES_BASE=[
- ['RITMO LOGISTICA S A','12898982000917'],['GHELERE TRANSPORTES LTDA','75958926000274'],['GESC- LOGISTICA E TRANSPORTES LTDA','06150229000199'],
- ['TRANSPORTE RODOVIARIOLTDA 1500 LTDA BA','09576958000604'],['DEL POZO TRANSPORTES RODOVIARIOS LTDA','76642743000127'],['DIOGO BRAMBILA LTDA','14460993000270'],
- ['CARSTEN SERVICOS E TRANSPORTES LTDA','01674405000178'],['LETRANS TRANSPORTES RODOVIARIOS DE CARGAS LTDA','34940438000171'],['WHLOG TRANSPORTES E LOGISTICA LTDA','11972381000197'],
- ['DINON TRANSPORTES LTDA','01655996000306'],['AXON TRANSPORTE S A','03357962000190'],['SPAL INDUSTRIA BRASILEIRA DE BEBIDAS S A','61186888013686'],
- ['TRANSPORTADORA CICLON LTDA','56045396000148'],['TRANSPORTES CAVALINHO LT','88473731001096'],['R C A TRANSPORTES LTDA','07932466000174'],['YESCO ADMINISTRADORA DE BENS S A','15032773000550']
-];
+const OS_CLIENTES_RESET='2026-10-16T13:00:00.000Z'; // cadastro zerado: só valem clientes cadastrados depois disso
+
 let osForm=null,osFiltro={de:'',ate:'',turno:'',op:'',cli:'',busca:'',pend:false};
 function osEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function osDigits(s){return String(s||'').replace(/\D/g,'');}
@@ -3706,8 +3719,7 @@ function osNovoForm(){return{id:'',doc:'',data:today(),turno:osTurnoAgora(),op:'
 function osLista(){return(state.osAmarracao||[]).filter(r=>r&&!r.del);}
 function osClientesList(){
   const m={};
-  OS_CLIENTES_BASE.forEach(([nome,cnpj])=>{m[cnpj]={nome,cnpj,ts:''};});
-  (state.osClientes||[]).forEach(c=>{if(c&&c.cnpj&&(!m[c.cnpj]||(c.ts||'')>=(m[c.cnpj].ts||'')))m[c.cnpj]=c;});
+  (state.osClientes||[]).forEach(c=>{if(c&&c.cnpj&&(c.ts||'')>OS_CLIENTES_RESET&&(!m[c.cnpj]||(c.ts||'')>=(m[c.cnpj].ts||'')))m[c.cnpj]=c;});
   return Object.values(m).filter(c=>!c.del).sort((a,b)=>a.nome.localeCompare(b.nome));
 }
 function mergeOS(a,b){
@@ -3715,6 +3727,19 @@ function mergeOS(a,b){
   [...(a||[]),...(b||[])].forEach(r=>{if(!r||!r.id)return;const x=m[r.id];if(!x||(r.ts||'')>(x.ts||''))m[r.id]=r;});
   return Object.values(m);
 }
+function mergeOSVal(a,b){
+  const m={};
+  [...(a||[]),...(b||[])].forEach(c=>{if(!c||!c.k)return;const x=m[c.k];if(!x||(c.ts||'')>(x.ts||''))m[c.k]=c;});
+  return Object.values(m);
+}
+// valor unitário de um serviço: específico do cliente (CNPJ|COD) tem prioridade sobre o geral (COD)
+function osValorUnit(cnpj,cod){
+  const L=state.osValores||[];
+  const g=(k)=>{const x=L.find(y=>y.k===k&&!y.del);return x&&x.v!==null&&x.v!==undefined&&x.v!==''?Number(x.v):null;};
+  const e=g(cnpj+'|'+cod);return e!==null?e:g(cod);
+}
+function osValorReg(r){const u=osValorUnit(r.cnpj,OS_SERV[r.veic+'|'+r.op].c);return u===null?null:u*(r.qtd||1);}
+function osBRL(v){return v===null||v===undefined?'—':v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 function mergeOSCli(a,b){
   const m={};
   [...(a||[]),...(b||[])].forEach(c=>{if(!c||!c.cnpj)return;const x=m[c.cnpj];if(!x||(c.ts||'')>(x.ts||''))m[c.cnpj]=c;});
@@ -3742,8 +3767,8 @@ function renderAmarracao(){
   const cont=document.getElementById('os-content');if(!cont)return;
   if(!osForm)osForm=osNovoForm();
   osRange();
-  cont.innerHTML='<div id="os-kpis"></div><div id="os-form"></div><div id="os-lista"></div><div id="os-clientes"></div>';
-  osRenderKpis();osRenderForm();osRenderLista();osRenderClientes();
+  cont.innerHTML='<div id="os-kpis"></div><div id="os-form"></div><div id="os-lista"></div><div id="os-valores"></div><div id="os-clientes"></div>';
+  osRenderKpis();osRenderForm();osRenderLista();osRenderValores();osRenderClientes();
 }
 function osRenderKpis(){
   const el=document.getElementById('os-kpis');if(!el)return;
@@ -3773,7 +3798,7 @@ function osRenderForm(){
    (f.veic==='TRUCK'?'':'<div class="modal-field"><label>'+(f.veic==='RODOTREM'?'Carreta 1':'Carreta (placa)')+'</label><input id="os-car" value="'+osEsc(f.carreta)+'" oninput="osSet(\'carreta\',this.value)" autocapitalize="characters" placeholder="AAA-0A00"></div>')+
    (f.veic==='RODOTREM'?'<div class="modal-field"><label>Carreta 2 (opcional)</label><input id="os-car2" value="'+osEsc(f.carreta2)+'" oninput="osSet(\'carreta2\',this.value)" autocapitalize="characters" placeholder="AAA-0A00"></div>':'')+
    '<div class="modal-field"><label>'+nrLbl+'</label><input id="os-nr" inputmode="numeric" value="'+osEsc(f.nr)+'" oninput="osSet(\'nr\',this.value)"></div>'+
-   '<div class="modal-field"><label>Quantidade</label><input id="os-qtd" type="number" min="1" inputmode="numeric" value="'+f.qtd+'" oninput="osSet(\'qtd\',this.value)"></div>'+
+   '<div class="modal-field"><label>Quantidade</label><select id="os-qtd" onchange="osSet(\'qtd\',this.value,true)"><option value="1"'+(f.qtd!==2?' selected':'')+'>1</option><option value="2"'+(f.qtd===2?' selected':'')+'>2 (valor em dobro)</option></select></div>'+
    '</div>'+
    '<div class="os-serv" id="os-serv"></div>'+
    '<div class="os-btns">'+
@@ -3790,7 +3815,7 @@ function osAtualizaServ(){
   el.innerHTML='<i class="ti ti-file-description"></i> Serviço: <strong>'+s.d+'</strong> · código <strong>'+s.c+'</strong>';
 }
 function osSet(campo,val,rerender){
-  osForm[campo]=(campo==='qtd')?(parseInt(val)||1):val;
+  osForm[campo]=(campo==='qtd')?(parseInt(val)===2?2:1):val;
   if(rerender)osRenderForm();else if(campo==='op'||campo==='veic')osAtualizaServ();
 }
 function osSalvar(seguir){
@@ -3806,12 +3831,14 @@ function osSalvar(seguir){
   if(f.veic==='CARRETA'){car=osPlaca(f.carreta);if(!car){showToast('Informe a placa da carreta.','warn');return;}}
   if(f.veic==='RODOTREM'){const a=osPlaca(f.carreta),b=osPlaca(f.carreta2);if(!a){showToast('Rodotrem: informe a carreta 1.','warn');return;}car=b?a+'/'+b:a;}
   if(!nr){showToast('Informe o '+(f.op==='A'?'nº do transporte':'nº da nota fiscal')+'.','warn');return;}
+  const outra=osLista().find(r=>r.doc===doc&&r.id!==f.id&&r.cnpj!==cli.cnpj);
+  if(outra){showToast('A OS '+doc+' já pertence a '+outra.cliente+'. O número da OS não pode se repetir entre clientes.','warn',5000);return;}
   const dup=osLista().find(r=>r.doc===doc&&r.op===f.op&&r.id!==f.id);
   if(dup){showToast('Já existe '+(f.op==='A'?'amarração':'desamarração')+' lançada para a OS '+doc+' ('+dateBR(dup.data)+').','warn',4500);return;}
   const agora=new Date().toISOString(),who=currentUser?currentUser.user:'Desconhecido';
   if(!state.osAmarracao)state.osAmarracao=[];
   let r=f.id?state.osAmarracao.find(x=>x.id===f.id):null;
-  const dados={doc,data:f.data,turno:f.turno,op:f.op,veic:f.veic,cliente:cli.nome,cnpj:cli.cnpj,cavalo:cav,carreta:car,nr,qtd:Math.max(1,parseInt(f.qtd)||1)};
+  const dados={doc,data:f.data,turno:f.turno,op:f.op,veic:f.veic,cliente:cli.nome,cnpj:cli.cnpj,cavalo:cav,carreta:car,nr,qtd:(parseInt(f.qtd)===2?2:1)};
   if(r){Object.assign(r,dados,{ts:agora,who});delete r.exp;}
   else{r=Object.assign({id:'os_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),ts:agora,who},dados);state.osAmarracao.push(r);}
   logAuditoria((f.id?'OS editada: ':'OS lançada: ')+doc+' · '+OS_SERV[f.veic+'|'+f.op].c+' · '+cli.nome);
@@ -3867,7 +3894,7 @@ function osRenderLista(){
     return '<div class="os-row'+(r.op==='D'?' d':'')+'"><div class="os-main">'+
       '<div class="os-l1"><strong>OS '+osEsc(r.doc)+'</strong><span class="os-chip '+(r.op==='A'?'a':'d')+'">'+s.c+'</span><span class="os-chip t">T'+r.turno+'</span>'+(r.exp?'<span class="os-chip x" title="Exportada em '+osEsc((r.exp||'').slice(0,10))+'">exportada</span>':'')+'</div>'+
       '<div class="os-l2">'+osEsc(r.cliente)+'</div>'+
-      '<div class="os-l3">'+dateBR(r.data)+' · '+osEsc(r.cavalo)+(r.carreta?' · '+osEsc(r.carreta):'')+' · '+(r.op==='A'?'Transp. ':'NF ')+osEsc(r.nr)+(r.qtd>1?' · qtd '+r.qtd:'')+'</div></div>'+
+      '<div class="os-l3">'+dateBR(r.data)+' · '+osEsc(r.cavalo)+(r.carreta?' · '+osEsc(r.carreta):'')+' · '+(r.op==='A'?'Transp. ':'NF ')+osEsc(r.nr)+(r.qtd>1?' · qtd '+r.qtd:'')+'</div>'+(osValorReg(r)!==null?'<div class="os-l3" style="color:var(--cyan);font-weight:600">'+osBRL(osValorReg(r))+'</div>':'')+'</div>'+
       (canEdit?'<div class="os-act">'+(r.op==='A'&&!jaTemD(r)?'<button class="ds-btn" onclick="osDesamarrar(\''+r.id+'\')" title="Lançar desamarração desta OS"><i class="ti ti-arrows-exchange"></i></button>':'')+'<button class="ds-btn" onclick="osEditar(\''+r.id+'\')" title="Editar"><i class="ti ti-edit"></i></button><button class="ds-btn" onclick="osExcluir(\''+r.id+'\')" title="Excluir"><i class="ti ti-trash"></i></button></div>':'')+'</div>';
   };
   el.innerHTML='<div class="card"><div class="card-title"><i class="ti ti-list-details"></i> Lançamentos</div>'+
@@ -3882,12 +3909,68 @@ function osRenderLista(){
    '<div class="os-tools"><button class="ds-btn" onclick="osFiltroPeriodo(\'hoje\')">Hoje</button><button class="ds-btn" onclick="osFiltroPeriodo(\'mes\')">Este mês</button><button class="ds-btn" onclick="osFiltroPeriodo(\'ant\')">Mês anterior</button>'+
    '<label class="os-chk"><input type="checkbox" '+(f.pend?'checked':'')+' onchange="osFiltroSet(\'pend\',this.checked)"> só não exportadas</label>'+
    '<button class="ds-btn os-exp" onclick="osExportar()"><i class="ti ti-download"></i> Exportar importação (.xlsx)</button></div>'+
-   '<div class="os-resumo"><strong>'+rows.length+'</strong> lançamento(s) · '+nA+' amarração(ões) · '+nD+' desamarração(ões)</div>'+
+   '<div class="os-resumo"><strong>'+rows.length+'</strong> lançamento(s) · '+nA+' amarração(ões) · '+nD+' desamarração(ões) · <strong>'+osBRL(rows.reduce((t,r)=>t+(osValorReg(r)||0),0))+'</strong> no filtro</div>'+
    (rows.length?rows.slice(0,300).map(item).join('')+(rows.length>300?'<div class="os-resumo">Mostrando 300 de '+rows.length+'. Refine o filtro para ver o restante.</div>':''):'<div class="empty" style="padding:22px 0"><i class="ti ti-link-off"></i><h3>Nenhum lançamento no filtro</h3></div>')+
    '</div>';
 }
 let _osBuscaT=null;
 function osBusca(v){osFiltro.busca=v;clearTimeout(_osBuscaT);_osBuscaT=setTimeout(osRenderLista,250);}
+// ---- Tabela de valores ----
+function osRenderValores(){
+  const el=document.getElementById('os-valores');if(!el)return;
+  const canEdit=osPodeLancar()&&podeEditarPresenca();
+  const cods=[['CSA','CARRETA SIDER - AMARRACAO'],['CSD','CARRETA SIDER - DESAMARRACAO'],['TSA','TRUCK SIDER - AMARRACAO'],['TSD','TRUCK SIDER - DESAMARRACAO'],['RSA','RODOTREM - SIDER AMARRACAO'],['RSD','RODOTREM - SIDER DESAMARRACAO']];
+  el.innerHTML='<details class="card os-cli"><summary><i class="ti ti-currency-real"></i> Valores por operação</summary><div style="margin-top:10px">'+
+   '<div class="os-resumo">Valor cobrado por serviço. Multiplica pela quantidade do lançamento.'+(canEdit?'':' Somente administradores e gestores editam.')+'</div>'+
+   cods.map(([c,d])=>{const v=osValorUnit('',c);return '<div class="os-crow"><div style="min-width:0"><div style="font-size:13px;font-weight:600">'+c+'</div><div style="font-size:11px;color:var(--text2)">'+d+'</div></div>'+
+    '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--text2)">R$</span><input type="number" step="0.01" min="0" inputmode="decimal" style="width:110px;padding:7px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);text-align:right" value="'+(v===null?'':v)+'" placeholder="0,00" '+(canEdit?'':'disabled')+' onchange="osSetValor(\''+c+'\',this.value)"></div></div>';}).join('')+
+   '</div></details>';
+}
+function osSetValor(cod,val){
+  if(!osPodeLancar()||!podeEditarPresenca())return;
+  const v=String(val).trim()===''?null:Math.max(0,Number(String(val).replace(',','.'))||0);
+  if(!state.osValores)state.osValores=[];
+  state.osValores=state.osValores.filter(x=>x.k!==cod);
+  state.osValores.push({k:cod,v:v,ts:new Date().toISOString(),del:v===null});
+  logAuditoria('Valor de OS '+cod+' = '+(v===null?'(vazio)':osBRL(v)));
+  saveCache();pushToCloud();osRenderLista();osRenderValores();
+  showToast('Valor salvo.','ok');
+}
+// ---- Dashboard de OS ----
+let osDash={modo:'dia',dia:'',mes:''};
+function osDashSet(k,v){osDash[k]=v;osDashRender();}
+function osDashMesDelta(n){
+  const p=(osDash.mes||today().slice(0,7)).split('-').map(Number);const d=new Date(p[0],p[1]-1+n,1);
+  const m=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(m>today().slice(0,7))return;osDash.mes=m;osDashRender();
+}
+function osDashRender(){
+  const el=document.getElementById('dv-os');if(!el)return;
+  if(!osDash.dia)osDash.dia=today();if(!osDash.mes)osDash.mes=today().slice(0,7);
+  const L=osLista(),dia=osDash.modo==='dia';
+  const datas=[...new Set(L.map(r=>r.data))].sort().slice(-8);
+  if(!datas.includes(today()))datas.push(today());
+  const rows=L.filter(r=>dia?r.data===osDash.dia:r.data.startsWith(osDash.mes));
+  const nA=rows.filter(r=>r.op==='A').length,nD=rows.length-nA;
+  const qA=rows.filter(r=>r.op==='A').reduce((t,r)=>t+(r.qtd||1),0),qD=rows.filter(r=>r.op==='D').reduce((t,r)=>t+(r.qtd||1),0);
+  const nOS=new Set(rows.map(r=>r.doc)).size;
+  const semValor=rows.filter(r=>osValorReg(r)===null).length;
+  const total=rows.reduce((t,r)=>t+(osValorReg(r)||0),0);
+  const k=(l,v,s,c)=>'<div class="kpi"><div class="kpi-lbl">'+l+'</div><div class="kpi-val'+(c?' '+c:'')+'">'+v+'</div>'+(s?'<div class="kpi-sub">'+s+'</div>':'')+'</div>';
+  const agr=(fn)=>{const m={};rows.forEach(r=>{const key=fn(r);(m[key]=m[key]||{n:0,q:0,v:0,sv:0});m[key].n++;m[key].q+=(r.qtd||1);const v=osValorReg(r);if(v===null)m[key].sv++;else m[key].v+=v;});return m;};
+  const tbl=(titulo,m,lbl)=>{
+    const ks=Object.keys(m).sort((a,b)=>m[b].v-m[a].v||m[b].n-m[a].n);
+    if(!ks.length)return'';
+    const max=Math.max(1,...ks.map(x=>m[x].n));
+    return'<div class="card"><div class="card-title">'+titulo+'</div>'+ks.map(x=>'<div class="os-drow"><div class="os-dl"><div style="font-size:13px;font-weight:600">'+osEsc(lbl(x))+'</div><div class="os-bar"><div style="width:'+Math.max(3,Math.round(m[x].n/max*100))+'%"></div></div></div><div class="os-dv"><strong>'+m[x].n+'</strong><span>'+(m[x].sv===m[x].n?'sem valor':osBRL(m[x].v))+'</span></div></div>').join('')+'</div>';
+  };
+  const descServ={};Object.values(OS_SERV).forEach(x=>descServ[x.c]=x.d);
+  const nav=dia?
+    '<div class="day-btns">'+datas.map(d=>'<button class="ds-btn'+(d===osDash.dia?' active':'')+'" onclick="osDashSet(\'dia\',\''+d+'\')">'+dateFmt(d)+'</button>').join('')+'</div>':
+    '<div class="rel-head"><button class="ds-btn" onclick="osDashMesDelta(-1)" aria-label="Mês anterior"><i class="ti ti-chevron-left"></i></button><div class="rel-mes">'+_mesLabel(osDash.mes)+'</div><button class="ds-btn" onclick="osDashMesDelta(1)" '+(osDash.mes>=today().slice(0,7)?'disabled style="opacity:.35"':'')+' aria-label="Próximo mês"><i class="ti ti-chevron-right"></i></button></div>';
+  el.innerHTML='<div class="vtoggle"><button class="vtog'+(dia?' active':'')+'" onclick="osDashSet(\'modo\',\'dia\')">Dia</button><button class="vtog'+(!dia?' active':'')+'" onclick="osDashSet(\'modo\',\'mes\')">Mês</button></div>'+nav+
+   '<div class="kpi-grid os-dk">'+k('Amarrações',qA,nA+' lançamento(s)','green')+k('Desamarrações',qD,nD+' lançamento(s)','blue')+k('OS distintas',nOS,rows.length+' serviço(s)')+k('Valor total',osBRL(total),semValor?semValor+' sem valor definido':'conforme tabela de valores','')+'</div>'+
+   (rows.length?tbl('Por serviço',agr(r=>OS_SERV[r.veic+'|'+r.op].c),x=>x+' · '+descServ[x])+tbl('Por cliente',agr(r=>r.cliente||'—'),x=>x)+tbl('Por turno',agr(r=>'Turno '+r.turno),x=>x)+(dia?'':tbl('Por dia',agr(r=>r.data),x=>dateBR(x))):'<div class="empty"><i class="ti ti-link-off"></i><h3>Nenhuma OS '+(dia?'neste dia':'neste mês')+'</h3></div>');
+}
 // ---- Clientes ----
 function osRenderClientes(){
   const el=document.getElementById('os-clientes');if(!el)return;

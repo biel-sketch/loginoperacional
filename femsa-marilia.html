@@ -407,6 +407,22 @@ img,canvas,svg{max-width:100%}
 .pr-seg button.on-H{background:rgba(251,146,60,.10);border-color:rgba(251,146,60,.4);color:#fb923c}
 .pr-fixo{font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px;border:1px solid var(--border);color:var(--text2)}
 @media(max-width:600px){.pr-seg{width:100%}.pr-seg button{flex:1}}
+/* === AMARRAÇÃO (OS) === */
+.os-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0 14px}.os-w2{grid-column:span 2}
+.os-seg{display:flex;gap:6px;flex-wrap:wrap}.os-seg button{flex:1 1 90px;padding:10px 12px;border-radius:9px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}.os-seg button.on{background:var(--cyan-bg);border-color:var(--cyan-bd);color:var(--cyan)}
+.os-serv{font-size:12px;color:var(--text2);margin:2px 0 14px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}.os-serv strong{color:var(--text)}
+.os-btns{display:flex;gap:10px;flex-wrap:wrap}.os-btns .btn{flex:1 1 200px;width:auto}
+.os-kpis{grid-template-columns:repeat(5,1fr)}
+.os-filtros{display:grid;grid-template-columns:repeat(6,1fr);gap:0 12px}
+.os-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:2px 0 12px}.os-chk{font-size:12px;color:var(--text2);display:flex;gap:6px;align-items:center;cursor:pointer}.os-exp{margin-left:auto;color:var(--cyan);border-color:var(--cyan-bd)}
+.os-resumo{font-size:12px;color:var(--text2);margin:6px 0 10px}.os-resumo strong{color:var(--text)}
+.os-row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border)}.os-main{min-width:0;flex:1}
+.os-l1{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px}.os-l2{font-size:12px;color:var(--text);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.os-l3{font-size:11px;color:var(--text2);margin-top:2px}
+.os-chip{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;border:1px solid var(--border)}.os-chip.a{color:var(--green);background:var(--green-bg);border-color:var(--green-bd)}.os-chip.d{color:var(--purple);background:var(--purple-bg);border-color:var(--purple-bd)}.os-chip.t{color:var(--cyan);background:var(--cyan-bg);border-color:var(--cyan-bd)}.os-chip.x{color:var(--text2)}
+.os-act{display:flex;gap:6px;flex-shrink:0}
+.os-cli summary{cursor:pointer;font-weight:700;font-size:14px;display:flex;gap:8px;align-items:center}.os-crow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border)}
+@media(max-width:900px){.os-kpis{grid-template-columns:repeat(2,1fr)}.os-filtros{grid-template-columns:repeat(2,1fr)}.os-grid{grid-template-columns:repeat(2,1fr)}.os-exp{margin-left:0;width:100%;justify-content:center}}
+@media(max-width:480px){.os-grid{grid-template-columns:1fr}.os-w2{grid-column:auto}.os-row{align-items:flex-start}.os-act{flex-direction:column}}
 #snav-premiacao,#bn-premiacao{display:none!important}
 </style>
 </head>
@@ -440,6 +456,7 @@ img,canvas,svg{max-width:100%}
         <button class="snav-item" id="snav-dashboard"   onclick="goTo('dashboard')"><i class="ti ti-chart-bar"></i>Dashboard</button>
         <button class="snav-item" id="snav-presenca"    onclick="goTo('presenca')"><i class="ti ti-users"></i>Presença</button>
         <button class="snav-item" id="snav-operacao"    onclick="goTo('operacao')"><i class="ti ti-truck-delivery"></i>Operação</button>
+        <button class="snav-item" id="snav-amarracao"   onclick="goTo('amarracao')"><i class="ti ti-link"></i>Amarração</button>
         <button class="snav-item" id="snav-absenteismo" onclick="goTo('absenteismo')"><i class="ti ti-user-off"></i>Absenteísmo</button>
         <button class="snav-item" id="snav-premiacao"   onclick="goTo('premiacao')"><i class="ti ti-trophy"></i>Premiação</button>
         <button class="snav-item" id="snav-equipe"      onclick="goTo('equipe')"><i class="ti ti-id-badge"></i>Equipe</button>
@@ -570,6 +587,7 @@ img,canvas,svg{max-width:100%}
           <div class="sec">Histórico de absenteísmo</div>
           <div id="abs-content"><div class="empty"><i class="ti ti-loader"></i><h3>Carregando...</h3></div></div>
         </div>
+        <div class="screen" id="sc-amarracao"><div id="os-content"></div></div>
         <div class="screen" id="sc-premiacao">
           <div class="sec">Premiação</div>
           <div id="prem-content"></div>
@@ -586,6 +604,7 @@ img,canvas,svg{max-width:100%}
     <button class="bn" id="bn-dashboard"   onclick="goTo('dashboard')"><i class="ti ti-chart-bar"></i><span>Dashboard</span></button>
     <button class="bn" id="bn-presenca"    onclick="goTo('presenca')"><i class="ti ti-users"></i><span>Presença</span></button>
     <button class="bn" id="bn-operacao"    onclick="goTo('operacao')"><i class="ti ti-truck-delivery"></i><span>Operação</span></button>
+    <button class="bn" id="bn-amarracao"   onclick="goTo('amarracao')"><i class="ti ti-link"></i><span>Amarração</span></button>
     <button class="bn" id="bn-absenteismo" onclick="goTo('absenteismo')"><i class="ti ti-user-off"></i><span>Ausências</span></button>
     <button class="bn" id="bn-premiacao"   onclick="goTo('premiacao')"><i class="ti ti-trophy"></i><span>Prêmio</span></button>
     <button class="bn" id="bn-equipe"      onclick="goTo('equipe')"><i class="ti ti-id-badge"></i><span>Equipe</span></button>
@@ -595,6 +614,15 @@ img,canvas,svg{max-width:100%}
 
 <!-- MODAL COLABORADOR -->
 <!-- MODAL EDITAR LANCAMENTO (pallets) -->
+ <div id="os-cli-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)osFecharCliente()">
+ <div class="modal-box">
+ <div class="modal-title"><i class="ti ti-building" style="color:var(--cyan)"></i>Novo cliente</div>
+ <div class="modal-field"><label>Razão social</label><input id="os-cli-nome" autocapitalize="characters"></div>
+ <div class="modal-field"><label>CNPJ / CPF (só números)</label><input id="os-cli-cnpj" inputmode="numeric"></div>
+ <div class="modal-btns"><button class="modal-btn-ghost" onclick="osFecharCliente()">Cancelar</button></div>
+ <button class="btn btn-primary" style="margin-top:10px" onclick="osSalvarCliente()"><i class="ti ti-check" style="font-size:16px"></i> Salvar cliente</button>
+ </div>
+ </div>
  <div id="editmov-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEditMovModal()">
  <div class="modal-box">
  <div class="modal-title"><i class="ti ti-edit" style="color:var(--cyan)"></i>Editar lançamento</div>
@@ -794,7 +822,7 @@ const USERS=[
   {user:'Financeiro', senha:'L@gin982', role:'financeiro'},
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
-let state={premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
+let state={osAmarracao:[],osClientes:[],premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
 const ATIVIDADES=['Recuperação de Pallets','Produção de Insumos','Operação de Empilhadeira','Inspeção da Qualidade'];
 function produzPallets(c){return !c.atividade||c.atividade==='Recuperação de Pallets';}
 // Situação do colaborador no dia (presença do turno dele + afastamentos): define cor e se entra na produção
@@ -1004,6 +1032,8 @@ function mergeState(cloud){
   }
   if(cloud.premiacao)state.premiacao=mergePrem(state.premiacao,cloud.premiacao);
   if(cloud.premiacaoCfg)state.premiacaoCfg=mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg);
+  if(cloud.osAmarracao)state.osAmarracao=mergeOS(state.osAmarracao,cloud.osAmarracao);
+  if(cloud.osClientes)state.osClientes=mergeOSCli(state.osClientes,cloud.osClientes);
   if(cloud.bufferAjuste!==undefined)state.bufferAjuste=cloud.bufferAjuste;
   if(cloud.bufferAjusteTs!==undefined)state.bufferAjusteTs=cloud.bufferAjusteTs;
   if(reconciliarProducao())setTimeout(()=>{try{saveCache();_pushSoon();}catch(e){}},0);
@@ -1191,7 +1221,7 @@ async function pushToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
     // Read current cloud state for smart merge
-    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{}};
+    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{},osAmarracao:state.osAmarracao||[],osClientes:state.osClientes||[]};
     try{
       const r=await fetch(FB_URL);
       if(r.ok){
@@ -1260,7 +1290,7 @@ async function pushToCloud(){
           const bufferSaldoInicial=usaConfigLocal?(state.bufferSaldoInicial||0):(cloud.bufferSaldoInicial||0);
           const turnoExtra=usaConfigLocal?(state.turnoExtra||{ativo:false,horario:'',inicioMin:null}):(cloud.turnoExtra||{ativo:false,horario:'',inicioMin:null});
           const configTs=usaConfigLocal?localConfigTs:cloudConfigTs;
-          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,afastamentos:mergedAfast,bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,turnoExtra,configTs,presencasResetTs:presResetTs,producaoResetTs:prodResetTs,premiacao:mergePrem(state.premiacao,cloud.premiacao),premiacaoCfg:mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg)};
+          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,afastamentos:mergedAfast,bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,turnoExtra,configTs,presencasResetTs:presResetTs,producaoResetTs:prodResetTs,premiacao:mergePrem(state.premiacao,cloud.premiacao),premiacaoCfg:mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg),osAmarracao:mergeOS(state.osAmarracao,cloud.osAmarracao),osClientes:mergeOSCli(state.osClientes,cloud.osClientes)};
         }
       }
     }catch(e){}
@@ -1276,6 +1306,8 @@ async function pushToCloud(){
     state.producaoResetTs=merged.producaoResetTs||'';
     state.premiacao=merged.premiacao||{};
     state.premiacaoCfg=merged.premiacaoCfg||{};
+    state.osAmarracao=merged.osAmarracao||[];
+    state.osClientes=merged.osClientes||[];
     state.bufferAjuste=merged.bufferAjuste||0;
     state.bufferAjusteTs=merged.bufferAjusteTs||'';
     state.metaMensal=merged.metaMensal;
@@ -1366,7 +1398,7 @@ function showScreen(s){
   if(s==='app'){document.getElementById('app').style.display='block';document.getElementById('bnav').style.display='block';}
 }
 
-const SCREEN_TITLES={dashboard:'Dashboard',presenca:'Presença',operacao:'Operação',absenteismo:'Absenteísmo',premiacao:'Premiação',equipe:'Equipe',config:'Configurações'};
+const SCREEN_TITLES={dashboard:'Dashboard',presenca:'Presença',operacao:'Operação',absenteismo:'Absenteísmo',amarracao:'Amarração / Desamarração',premiacao:'Premiação',equipe:'Equipe',config:'Configurações'};
 function goTo(sc){
   if(!telasPermitidas().includes(sc))sc='operacao';
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -1379,6 +1411,7 @@ function goTo(sc){
   if(sc==='presenca')renderPresenca();
   if(sc==='operacao')renderOperacao();
   if(sc==='absenteismo')renderAbsenteismo();
+  if(sc==='amarracao')renderAmarracao();
   if(sc==='premiacao')renderPremiacao();
   if(sc==='equipe')renderEquipe();
   if(sc==='config')renderConfig();
@@ -1392,6 +1425,7 @@ function renderAll(){
   if(id==='presenca')renderPresenca();
   if(id==='operacao')renderOperacao();
   if(id==='absenteismo')renderAbsenteismo();
+  if(id==='amarracao')renderAmarracao();
   if(id==='premiacao')renderPremiacao();
   if(id==='equipe')renderEquipe();
   if(id==='config')renderConfig();
@@ -1411,13 +1445,13 @@ function updateUserDisplay(){
 }
 
 function telasPermitidas(){
-  if(currentRole==='lancamentos')return['presenca','operacao'];
-  return['dashboard','presenca','operacao','absenteismo','premiacao','equipe','config'];
+  if(currentRole==='lancamentos')return['presenca','operacao','amarracao'];
+  return['dashboard','presenca','operacao','amarracao','absenteismo','premiacao','equipe','config'];
 }
 function buildNav(){
   if(!currentRole&&currentUser)currentRole=currentUser.role;
   const permitidas=telasPermitidas();
-  ['dashboard','presenca','operacao','absenteismo','premiacao','equipe','config'].forEach(id=>{
+  ['dashboard','presenca','operacao','amarracao','absenteismo','premiacao','equipe','config'].forEach(id=>{
     const permitido=permitidas.includes(id);
     const sn=document.getElementById('snav-'+id);if(sn)sn.style.display=permitido?'flex':'none';
     const bn=document.getElementById('bn-'+id);if(bn)bn.style.display=permitido?'flex':'none';
@@ -1462,7 +1496,7 @@ function launchApp(){
 
 function boot(){
   unitName=localStorage.getItem(LS_UNIT)||'Marília';
-  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.premiacao)state.premiacao=p.premiacao;if(p.premiacaoCfg)state.premiacaoCfg=p.premiacaoCfg;}}catch(e){}
+  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.premiacao)state.premiacao=p.premiacao;if(p.premiacaoCfg)state.premiacaoCfg=p.premiacaoCfg;if(p.osAmarracao)state.osAmarracao=p.osAmarracao;if(p.osClientes)state.osClientes=p.osClientes;}}catch(e){}
   if(!state.colaboradores||!state.colaboradores.length)state.colaboradores=DEFAULT_COLABS;
   try{
     const raw=sessionStorage.getItem('femsa_session')||localStorage.getItem('femsa_session');
@@ -2909,7 +2943,7 @@ async function pushForceToCloud(){
   // que a nuvem realmente zerou antes de reportar sucesso.
   resetLock=true;
   setSyncDot('syncing','Salvando...');
-  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{}};
+  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{},osAmarracao:state.osAmarracao||[],osClientes:state.osClientes||[]};
   let ok=false;
   for(let tentativa=0;tentativa<3&&!ok;tentativa++){
     try{
@@ -3649,11 +3683,317 @@ async function salvarPresRetro(){
   showToast('Presença de '+dateBR(date)+' salva!','ok');
 }
 
+// ===== AMARRAÇÃO / DESAMARRAÇÃO (OS) =====
+const OS_SERV={
+  'CARRETA|A':{d:'CARRETA SIDER - AMARRACAO',c:'CSA'},'CARRETA|D':{d:'CARRETA SIDER - DESAMARRACAO',c:'CSD'},
+  'TRUCK|A':{d:'TRUCK SIDER - AMARRACAO',c:'TSA'},'TRUCK|D':{d:'TRUCK SIDER - DESAMARRACAO',c:'TSD'},
+  'RODOTREM|A':{d:'RODOTREM - SIDER AMARRACAO',c:'RSA'},'RODOTREM|D':{d:'RODOTREM - SIDER DESAMARRACAO',c:'RSD'}
+};
+const OS_VEIC={CARRETA:'Carreta',TRUCK:'Truck',RODOTREM:'Rodotrem'};
+const OS_CLIENTES_BASE=[
+ ['RITMO LOGISTICA S A','12898982000917'],['GHELERE TRANSPORTES LTDA','75958926000274'],['GESC- LOGISTICA E TRANSPORTES LTDA','06150229000199'],
+ ['TRANSPORTE RODOVIARIOLTDA 1500 LTDA BA','09576958000604'],['DEL POZO TRANSPORTES RODOVIARIOS LTDA','76642743000127'],['DIOGO BRAMBILA LTDA','14460993000270'],
+ ['CARSTEN SERVICOS E TRANSPORTES LTDA','01674405000178'],['LETRANS TRANSPORTES RODOVIARIOS DE CARGAS LTDA','34940438000171'],['WHLOG TRANSPORTES E LOGISTICA LTDA','11972381000197'],
+ ['DINON TRANSPORTES LTDA','01655996000306'],['AXON TRANSPORTE S A','03357962000190'],['SPAL INDUSTRIA BRASILEIRA DE BEBIDAS S A','61186888013686'],
+ ['TRANSPORTADORA CICLON LTDA','56045396000148'],['TRANSPORTES CAVALINHO LT','88473731001096'],['R C A TRANSPORTES LTDA','07932466000174'],['YESCO ADMINISTRADORA DE BENS S A','15032773000550']
+];
+let osForm=null,osFiltro={de:'',ate:'',turno:'',op:'',cli:'',busca:'',pend:false};
+function osEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function osDigits(s){return String(s||'').replace(/\D/g,'');}
+function osPlaca(s){const t=String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');return t.length===7?t.slice(0,3)+'-'+t.slice(3):String(s||'').toUpperCase().trim();}
+function osTurnoAgora(){const h=new Date().getHours();return h>=6&&h<14?'A':(h>=14&&h<22?'B':'C');}
+function osNovoForm(){return{id:'',doc:'',data:today(),turno:osTurnoAgora(),op:'A',veic:'CARRETA',cnpj:'',cavalo:'',carreta:'',carreta2:'',nr:'',qtd:1};}
+function osLista(){return(state.osAmarracao||[]).filter(r=>r&&!r.del);}
+function osClientesList(){
+  const m={};
+  OS_CLIENTES_BASE.forEach(([nome,cnpj])=>{m[cnpj]={nome,cnpj,ts:''};});
+  (state.osClientes||[]).forEach(c=>{if(c&&c.cnpj&&(!m[c.cnpj]||(c.ts||'')>=(m[c.cnpj].ts||'')))m[c.cnpj]=c;});
+  return Object.values(m).filter(c=>!c.del).sort((a,b)=>a.nome.localeCompare(b.nome));
+}
+function mergeOS(a,b){
+  const m={};
+  [...(a||[]),...(b||[])].forEach(r=>{if(!r||!r.id)return;const x=m[r.id];if(!x||(r.ts||'')>(x.ts||''))m[r.id]=r;});
+  return Object.values(m);
+}
+function mergeOSCli(a,b){
+  const m={};
+  [...(a||[]),...(b||[])].forEach(c=>{if(!c||!c.cnpj)return;const x=m[c.cnpj];if(!x||(c.ts||'')>(x.ts||''))m[c.cnpj]=c;});
+  return Object.values(m);
+}
+function osPodeLancar(){return typeof somenteLeitura==='function'?!somenteLeitura():true;}
+function osRange(){
+  const hoje=today();
+  if(!osFiltro.de)osFiltro.de=hoje.slice(0,8)+'01';
+  if(!osFiltro.ate)osFiltro.ate=hoje;
+}
+function osFiltrados(){
+  osRange();const f=osFiltro;const q=f.busca.trim().toUpperCase();
+  return osLista().filter(r=>{
+    if(r.data<f.de||r.data>f.ate)return false;
+    if(f.turno&&r.turno!==f.turno)return false;
+    if(f.op&&r.op!==f.op)return false;
+    if(f.cli&&r.cnpj!==f.cli)return false;
+    if(f.pend&&r.exp)return false;
+    if(q&&!((r.doc||'')+' '+(r.cavalo||'')+' '+(r.carreta||'')+' '+(r.nr||'')+' '+(r.cliente||'')).toUpperCase().includes(q))return false;
+    return true;
+  }).sort((a,b)=>(b.data.localeCompare(a.data))||((b.ts||'').localeCompare(a.ts||'')));
+}
+function renderAmarracao(){
+  const cont=document.getElementById('os-content');if(!cont)return;
+  if(!osForm)osForm=osNovoForm();
+  osRange();
+  cont.innerHTML='<div id="os-kpis"></div><div id="os-form"></div><div id="os-lista"></div><div id="os-clientes"></div>';
+  osRenderKpis();osRenderForm();osRenderLista();osRenderClientes();
+}
+function osRenderKpis(){
+  const el=document.getElementById('os-kpis');if(!el)return;
+  const hoje=today(),mes=hoje.slice(0,7);
+  const cnt=(fn)=>osLista().filter(fn).length;
+  const hA=cnt(r=>r.data===hoje&&r.op==='A'),hD=cnt(r=>r.data===hoje&&r.op==='D');
+  const mA=cnt(r=>r.data.startsWith(mes)&&r.op==='A'),mD=cnt(r=>r.data.startsWith(mes)&&r.op==='D');
+  const pend=cnt(r=>!r.exp);
+  const k=(l,v,s,c)=>'<div class="kpi"><div class="kpi-lbl">'+l+'</div><div class="kpi-val'+(c?' '+c:'')+'">'+v+'</div>'+(s?'<div class="kpi-sub">'+s+'</div>':'')+'</div>';
+  el.innerHTML='<div class="kpi-grid os-kpis">'+k('Amarrações hoje',hA,'',"green")+k('Desamarrações hoje',hD,'',"blue")+k('Total do dia',hA+hD,'')+k('Mês · amar./desam.',mA+' / '+mD,(mA+mD)+' serviços')+k('A exportar',pend,'ainda não exportados',pend?'red':'')+'</div>';
+}
+function osRenderForm(){
+  const el=document.getElementById('os-form');if(!el)return;
+  const f=osForm,ed=!!f.id,ro=!osPodeLancar();
+  const seg=(campo,opts)=>'<div class="os-seg">'+opts.map(([v,l])=>'<button type="button" class="'+(f[campo]===v?'on':'')+'" onclick="osSet(\''+campo+'\',\''+v+'\',true)">'+l+'</button>').join('')+'</div>';
+  const cli=osClientesList();
+  const nrLbl=f.op==='A'?'Nº do transporte':'Nº da nota fiscal';
+  el.innerHTML='<div class="card"><div class="card-title"><i class="ti ti-link"></i> '+(ed?'Editar lançamento':'Novo lançamento')+'</div>'+
+   '<div class="os-grid">'+
+   '<div class="modal-field os-w2"><label>Operação</label>'+seg('op',[['A','Amarração'],['D','Desamarração']])+'</div>'+
+   '<div class="modal-field os-w2"><label>Veículo</label>'+seg('veic',[['CARRETA','Carreta'],['TRUCK','Truck'],['RODOTREM','Rodotrem']])+'</div>'+
+   '<div class="modal-field"><label>Nº da OS (documento)</label><input id="os-doc" inputmode="numeric" value="'+osEsc(f.doc)+'" oninput="osSet(\'doc\',this.value)" placeholder="ex.: 156278"></div>'+
+   '<div class="modal-field"><label>Data</label><input type="date" id="os-data" value="'+f.data+'" max="'+today()+'" onchange="osSet(\'data\',this.value)"></div>'+
+   '<div class="modal-field"><label>Turno</label><select id="os-turno" onchange="osSet(\'turno\',this.value)">'+['A','B','C'].map(t=>'<option value="'+t+'"'+(f.turno===t?' selected':'')+'>Turno '+t+'</option>').join('')+'</select></div>'+
+   '<div class="modal-field os-w2"><label>Cliente</label><div style="display:flex;gap:8px"><select id="os-cli" style="flex:1;min-width:0" onchange="osSet(\'cnpj\',this.value)"><option value="">Selecione o cliente…</option>'+cli.map(c=>'<option value="'+c.cnpj+'"'+(f.cnpj===c.cnpj?' selected':'')+'>'+osEsc(c.nome)+'</option>').join('')+'</select><button type="button" class="ds-btn" onclick="osAbrirCliente()" title="Novo cliente"><i class="ti ti-plus"></i></button></div></div>'+
+   '<div class="modal-field"><label>Cavalo (placa)</label><input id="os-cav" value="'+osEsc(f.cavalo)+'" oninput="osSet(\'cavalo\',this.value)" autocapitalize="characters" placeholder="AAA-0A00"></div>'+
+   (f.veic==='TRUCK'?'':'<div class="modal-field"><label>'+(f.veic==='RODOTREM'?'Carreta 1':'Carreta (placa)')+'</label><input id="os-car" value="'+osEsc(f.carreta)+'" oninput="osSet(\'carreta\',this.value)" autocapitalize="characters" placeholder="AAA-0A00"></div>')+
+   (f.veic==='RODOTREM'?'<div class="modal-field"><label>Carreta 2 (opcional)</label><input id="os-car2" value="'+osEsc(f.carreta2)+'" oninput="osSet(\'carreta2\',this.value)" autocapitalize="characters" placeholder="AAA-0A00"></div>':'')+
+   '<div class="modal-field"><label>'+nrLbl+'</label><input id="os-nr" inputmode="numeric" value="'+osEsc(f.nr)+'" oninput="osSet(\'nr\',this.value)"></div>'+
+   '<div class="modal-field"><label>Quantidade</label><input id="os-qtd" type="number" min="1" inputmode="numeric" value="'+f.qtd+'" oninput="osSet(\'qtd\',this.value)"></div>'+
+   '</div>'+
+   '<div class="os-serv" id="os-serv"></div>'+
+   '<div class="os-btns">'+
+   '<button class="btn btn-primary" onclick="osSalvar(false)"><i class="ti ti-check" style="font-size:16px"></i> '+(ed?'Salvar alterações':'Lançar')+'</button>'+
+   (!ed&&f.op==='A'?'<button class="btn btn-ghost" onclick="osSalvar(true)"><i class="ti ti-arrows-exchange" style="font-size:16px"></i> Lançar e seguir p/ desamarração</button>':'')+
+   (ed?'<button class="btn btn-ghost" onclick="osCancelarEdicao()">Cancelar edição</button>':'')+
+   '</div></div>';
+  osAtualizaServ();
+  if(ro)el.querySelectorAll('input,select,button').forEach(e=>{e.disabled=true;});
+}
+function osAtualizaServ(){
+  const el=document.getElementById('os-serv');if(!el)return;
+  const s=OS_SERV[osForm.veic+'|'+osForm.op];
+  el.innerHTML='<i class="ti ti-file-description"></i> Serviço: <strong>'+s.d+'</strong> · código <strong>'+s.c+'</strong>';
+}
+function osSet(campo,val,rerender){
+  osForm[campo]=(campo==='qtd')?(parseInt(val)||1):val;
+  if(rerender)osRenderForm();else if(campo==='op'||campo==='veic')osAtualizaServ();
+}
+function osSalvar(seguir){
+  if(!osPodeLancar()){showToast('Perfil Financeiro: somente visualização.','err');return;}
+  const f=osForm;
+  const doc=osDigits(f.doc),cli=osClientesList().find(c=>c.cnpj===f.cnpj),nr=osDigits(f.nr);
+  if(!doc){showToast('Informe o número da OS.','warn');return;}
+  if(!f.data){showToast('Informe a data.','warn');return;}
+  if(!cli){showToast('Selecione o cliente.','warn');return;}
+  const cav=osPlaca(f.cavalo);
+  if(!cav){showToast('Informe a placa do cavalo.','warn');return;}
+  let car='';
+  if(f.veic==='CARRETA'){car=osPlaca(f.carreta);if(!car){showToast('Informe a placa da carreta.','warn');return;}}
+  if(f.veic==='RODOTREM'){const a=osPlaca(f.carreta),b=osPlaca(f.carreta2);if(!a){showToast('Rodotrem: informe a carreta 1.','warn');return;}car=b?a+'/'+b:a;}
+  if(!nr){showToast('Informe o '+(f.op==='A'?'nº do transporte':'nº da nota fiscal')+'.','warn');return;}
+  const dup=osLista().find(r=>r.doc===doc&&r.op===f.op&&r.id!==f.id);
+  if(dup){showToast('Já existe '+(f.op==='A'?'amarração':'desamarração')+' lançada para a OS '+doc+' ('+dateBR(dup.data)+').','warn',4500);return;}
+  const agora=new Date().toISOString(),who=currentUser?currentUser.user:'Desconhecido';
+  if(!state.osAmarracao)state.osAmarracao=[];
+  let r=f.id?state.osAmarracao.find(x=>x.id===f.id):null;
+  const dados={doc,data:f.data,turno:f.turno,op:f.op,veic:f.veic,cliente:cli.nome,cnpj:cli.cnpj,cavalo:cav,carreta:car,nr,qtd:Math.max(1,parseInt(f.qtd)||1)};
+  if(r){Object.assign(r,dados,{ts:agora,who});delete r.exp;}
+  else{r=Object.assign({id:'os_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),ts:agora,who},dados);state.osAmarracao.push(r);}
+  logAuditoria((f.id?'OS editada: ':'OS lançada: ')+doc+' · '+OS_SERV[f.veic+'|'+f.op].c+' · '+cli.nome);
+  saveCache();pushToCloud();
+  showToast((f.id?'Lançamento atualizado':'OS '+doc+' lançada')+'!','ok');
+  if(seguir&&!f.id){
+    osForm=Object.assign({},f,{op:'D',nr:'',id:''});
+  }else{
+    osForm=Object.assign(osNovoForm(),{data:f.data,turno:f.turno,veic:f.veic});
+  }
+  renderAmarracao();
+}
+function osEditar(id){
+  if(!osPodeLancar())return;
+  const r=osLista().find(x=>x.id===id);if(!r)return;
+  const [c1,c2]=(r.carreta||'').split('/');
+  osForm={id:r.id,doc:r.doc,data:r.data,turno:r.turno,op:r.op,veic:r.veic,cnpj:r.cnpj,cavalo:r.cavalo,carreta:c1||'',carreta2:c2||'',nr:r.nr,qtd:r.qtd||1};
+  osRenderForm();window.scrollTo({top:0,behavior:'smooth'});
+}
+function osCancelarEdicao(){osForm=osNovoForm();osRenderForm();}
+function osDesamarrar(id){
+  if(!osPodeLancar())return;
+  const r=osLista().find(x=>x.id===id);if(!r)return;
+  const [c1,c2]=(r.carreta||'').split('/');
+  osForm={id:'',doc:r.doc,data:today(),turno:osTurnoAgora(),op:'D',veic:r.veic,cnpj:r.cnpj,cavalo:r.cavalo,carreta:c1||'',carreta2:c2||'',nr:'',qtd:1};
+  osRenderForm();window.scrollTo({top:0,behavior:'smooth'});
+}
+function osExcluir(id){
+  if(!osPodeLancar()){showToast('Perfil Financeiro: somente visualização.','err');return;}
+  const r=(state.osAmarracao||[]).find(x=>x.id===id);if(!r)return;
+  if(!confirm('Excluir a OS '+r.doc+' ('+OS_SERV[r.veic+'|'+r.op].c+')?'))return;
+  r.del=true;r.ts=new Date().toISOString();
+  logAuditoria('OS excluída: '+r.doc+' · '+OS_SERV[r.veic+'|'+r.op].c);
+  saveCache();pushToCloud();if(osForm&&osForm.id===id)osForm=osNovoForm();
+  renderAmarracao();showToast('Lançamento removido.','ok');
+}
+function osFiltroSet(campo,val){osFiltro[campo]=val;osRenderLista();}
+function osFiltroPeriodo(tipo){
+  const hoje=today();
+  if(tipo==='mes'){osFiltro.de=hoje.slice(0,8)+'01';osFiltro.ate=hoje;}
+  else if(tipo==='hoje'){osFiltro.de=hoje;osFiltro.ate=hoje;}
+  else if(tipo==='ant'){const d=new Date(hoje.slice(0,4),+hoje.slice(5,7)-2,1);const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0');osFiltro.de=y+'-'+m+'-01';osFiltro.ate=y+'-'+m+'-'+String(new Date(y,d.getMonth()+1,0).getDate()).padStart(2,'0');}
+  osRenderLista();
+}
+function osRenderLista(){
+  const el=document.getElementById('os-lista');if(!el)return;
+  osRange();const f=osFiltro,rows=osFiltrados(),canEdit=osPodeLancar();
+  const nA=rows.filter(r=>r.op==='A').length,nD=rows.length-nA;
+  const cli=osClientesList();
+  const jaTemD=(r)=>osLista().some(x=>x.doc===r.doc&&x.op==='D');
+  const item=(r)=>{
+    const s=OS_SERV[r.veic+'|'+r.op];
+    return '<div class="os-row'+(r.op==='D'?' d':'')+'"><div class="os-main">'+
+      '<div class="os-l1"><strong>OS '+osEsc(r.doc)+'</strong><span class="os-chip '+(r.op==='A'?'a':'d')+'">'+s.c+'</span><span class="os-chip t">T'+r.turno+'</span>'+(r.exp?'<span class="os-chip x" title="Exportada em '+osEsc((r.exp||'').slice(0,10))+'">exportada</span>':'')+'</div>'+
+      '<div class="os-l2">'+osEsc(r.cliente)+'</div>'+
+      '<div class="os-l3">'+dateBR(r.data)+' · '+osEsc(r.cavalo)+(r.carreta?' · '+osEsc(r.carreta):'')+' · '+(r.op==='A'?'Transp. ':'NF ')+osEsc(r.nr)+(r.qtd>1?' · qtd '+r.qtd:'')+'</div></div>'+
+      (canEdit?'<div class="os-act">'+(r.op==='A'&&!jaTemD(r)?'<button class="ds-btn" onclick="osDesamarrar(\''+r.id+'\')" title="Lançar desamarração desta OS"><i class="ti ti-arrows-exchange"></i></button>':'')+'<button class="ds-btn" onclick="osEditar(\''+r.id+'\')" title="Editar"><i class="ti ti-edit"></i></button><button class="ds-btn" onclick="osExcluir(\''+r.id+'\')" title="Excluir"><i class="ti ti-trash"></i></button></div>':'')+'</div>';
+  };
+  el.innerHTML='<div class="card"><div class="card-title"><i class="ti ti-list-details"></i> Lançamentos</div>'+
+   '<div class="os-filtros">'+
+   '<div class="modal-field"><label>De</label><input type="date" value="'+f.de+'" onchange="osFiltroSet(\'de\',this.value)"></div>'+
+   '<div class="modal-field"><label>Até</label><input type="date" value="'+f.ate+'" onchange="osFiltroSet(\'ate\',this.value)"></div>'+
+   '<div class="modal-field"><label>Turno</label><select onchange="osFiltroSet(\'turno\',this.value)"><option value="">Todos</option>'+['A','B','C'].map(t=>'<option value="'+t+'"'+(f.turno===t?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
+   '<div class="modal-field"><label>Operação</label><select onchange="osFiltroSet(\'op\',this.value)"><option value="">Todas</option><option value="A"'+(f.op==='A'?' selected':'')+'>Amarração</option><option value="D"'+(f.op==='D'?' selected':'')+'>Desamarração</option></select></div>'+
+   '<div class="modal-field"><label>Cliente</label><select onchange="osFiltroSet(\'cli\',this.value)"><option value="">Todos</option>'+cli.map(c=>'<option value="'+c.cnpj+'"'+(f.cli===c.cnpj?' selected':'')+'>'+osEsc(c.nome)+'</option>').join('')+'</select></div>'+
+   '<div class="modal-field"><label>Buscar</label><input value="'+osEsc(f.busca)+'" placeholder="OS, placa ou nº" oninput="osBusca(this.value)"></div>'+
+   '</div>'+
+   '<div class="os-tools"><button class="ds-btn" onclick="osFiltroPeriodo(\'hoje\')">Hoje</button><button class="ds-btn" onclick="osFiltroPeriodo(\'mes\')">Este mês</button><button class="ds-btn" onclick="osFiltroPeriodo(\'ant\')">Mês anterior</button>'+
+   '<label class="os-chk"><input type="checkbox" '+(f.pend?'checked':'')+' onchange="osFiltroSet(\'pend\',this.checked)"> só não exportadas</label>'+
+   '<button class="ds-btn os-exp" onclick="osExportar()"><i class="ti ti-download"></i> Exportar importação (.xlsx)</button></div>'+
+   '<div class="os-resumo"><strong>'+rows.length+'</strong> lançamento(s) · '+nA+' amarração(ões) · '+nD+' desamarração(ões)</div>'+
+   (rows.length?rows.slice(0,300).map(item).join('')+(rows.length>300?'<div class="os-resumo">Mostrando 300 de '+rows.length+'. Refine o filtro para ver o restante.</div>':''):'<div class="empty" style="padding:22px 0"><i class="ti ti-link-off"></i><h3>Nenhum lançamento no filtro</h3></div>')+
+   '</div>';
+}
+let _osBuscaT=null;
+function osBusca(v){osFiltro.busca=v;clearTimeout(_osBuscaT);_osBuscaT=setTimeout(osRenderLista,250);}
+// ---- Clientes ----
+function osRenderClientes(){
+  const el=document.getElementById('os-clientes');if(!el)return;
+  const cli=osClientesList(),canEdit=osPodeLancar()&&podeEditarPresenca();
+  el.innerHTML='<details class="card os-cli"><summary><i class="ti ti-building"></i> Clientes ('+cli.length+')</summary><div style="margin-top:10px">'+
+   cli.map(c=>'<div class="os-crow"><div style="min-width:0"><div style="font-size:13px;font-weight:600">'+osEsc(c.nome)+'</div><div style="font-size:11px;color:var(--text2)">CNPJ '+osEsc(c.cnpj)+'</div></div>'+(canEdit?'<button class="ds-btn" onclick="osRemoverCliente(\''+c.cnpj+'\')" title="Remover"><i class="ti ti-trash"></i></button>':'')+'</div>').join('')+
+   (osPodeLancar()?'<button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="osAbrirCliente()"><i class="ti ti-plus"></i> Novo cliente</button>':'')+
+   '</div></details>';
+}
+function osAbrirCliente(){
+  if(!osPodeLancar())return;
+  document.getElementById('os-cli-nome').value='';document.getElementById('os-cli-cnpj').value='';
+  document.getElementById('os-cli-modal').style.display='flex';
+}
+function osFecharCliente(){document.getElementById('os-cli-modal').style.display='none';}
+function osSalvarCliente(){
+  if(!osPodeLancar())return;
+  const nome=document.getElementById('os-cli-nome').value.trim().toUpperCase(),cnpj=osDigits(document.getElementById('os-cli-cnpj').value);
+  if(!nome){showToast('Informe o nome do cliente.','warn');return;}
+  if(cnpj.length!==14&&cnpj.length!==11){showToast('CNPJ deve ter 14 dígitos (CPF, 11).','warn');return;}
+  if(!state.osClientes)state.osClientes=[];
+  const cnpjN=cnpj.length===11?cnpj:cnpj.padStart(14,'0');
+  state.osClientes=state.osClientes.filter(c=>c.cnpj!==cnpjN);
+  state.osClientes.push({nome,cnpj:cnpjN,ts:new Date().toISOString()});
+  osForm=osForm||osNovoForm();osForm.cnpj=cnpjN;
+  logAuditoria('Cliente de OS cadastrado: '+nome);
+  saveCache();pushToCloud();osFecharCliente();renderAmarracao();showToast('Cliente cadastrado!','ok');
+}
+function osRemoverCliente(cnpj){
+  if(!osPodeLancar()||!podeEditarPresenca())return;
+  const c=osClientesList().find(x=>x.cnpj===cnpj);if(!c)return;
+  if(!confirm('Remover o cliente '+c.nome+' da lista? Os lançamentos já feitos não mudam.'))return;
+  state.osClientes=(state.osClientes||[]).filter(x=>x.cnpj!==cnpj);
+  state.osClientes.push({nome:c.nome,cnpj,ts:new Date().toISOString(),del:true});
+  saveCache();pushToCloud();renderAmarracao();
+}
+// ---- Exportação XLSX (mesmo layout da aba "importação") ----
+const OS_COLS=['Documento','Emissao','Cliente','CNPJ/CPF','Descriçao da OS','Serviço','Codigo Serviço','Quantidade Original','1 Cavalo','2 Carreta','4 Nr Transporte','5 Nr da Nota Fiscal','9 Data Prestacao Servico','10 Motorista','TURNO'];
+function osSerial(iso){const p=iso.split('-').map(Number);return Math.round((Date.UTC(p[0],p[1]-1,p[2])-Date.UTC(1899,11,30))/864e5);}
+function osLinhaExport(r){
+  const s=OS_SERV[r.veic+'|'+r.op],nrv=/^\d+$/.test(r.nr)?Number(r.nr):r.nr;
+  return[{s:String(r.doc)},{d:osSerial(r.data)},{s:r.cliente},{s:r.cnpj},{s:s.d},{s:s.d},{s:s.c},{n:r.qtd||1},{s:r.cavalo},r.carreta?{s:r.carreta.split('/')[0]}:null,
+    r.op==='A'?{n:nrv}:null,r.op==='D'?{n:nrv}:null,{d:osSerial(r.data)},null,{n:({A:1,B:2,C:3})[r.turno]||1}];
+}
+function osColLetra(i){return String.fromCharCode(65+i);}
+function osXmlEsc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');}
+function osSheetXml(linhas){
+  let x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>'+
+   [12,12,42,18,32,32,14,10,12,22,15,15,14,14,8].map((w,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>').join('')+'</cols><sheetData>';
+  const row=(n,cells)=>'<row r="'+n+'">'+cells.map((c,i)=>{
+    if(!c)return'';const ref=osColLetra(i)+n;
+    if(c.h!==undefined)return'<c r="'+ref+'" s="2" t="inlineStr"><is><t>'+osXmlEsc(c.h)+'</t></is></c>';
+    if(c.s!==undefined)return'<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+osXmlEsc(c.s)+'</t></is></c>';
+    if(c.d!==undefined)return'<c r="'+ref+'" s="1"><v>'+c.d+'</v></c>';
+    return'<c r="'+ref+'"><v>'+c.n+'</v></c>';}).join('')+'</row>';
+  x+=row(1,OS_COLS.map(h=>({h})));
+  linhas.forEach((l,i)=>{x+=row(i+2,l);});
+  return x+'</sheetData></worksheet>';
+}
+function osCrc32(u8){let c,crc=-1;if(!osCrc32.t){osCrc32.t=[];for(let n=0;n<256;n++){c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;osCrc32.t[n]=c;}}for(let i=0;i<u8.length;i++)crc=osCrc32.t[(crc^u8[i])&255]^(crc>>>8);return(crc^-1)>>>0;}
+function osZip(files){
+  const enc=new TextEncoder(),parts=[],cen=[];let off=0;
+  const d=new Date(),dt=((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate(),tm=(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1);
+  const u16=(v)=>[v&255,(v>>8)&255],u32=(v)=>[v&255,(v>>8)&255,(v>>16)&255,(v>>24)&255];
+  files.forEach(([name,txt])=>{
+    const nm=enc.encode(name),data=enc.encode(txt),crc=osCrc32(data);
+    const lh=new Uint8Array([0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(0),...u16(tm),...u16(dt),...u32(crc),...u32(data.length),...u32(data.length),...u16(nm.length),...u16(0)]);
+    parts.push(lh,nm,data);
+    cen.push(new Uint8Array([0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(tm),...u16(dt),...u32(crc),...u32(data.length),...u32(data.length),...u16(nm.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nm);
+    off+=lh.length+nm.length+data.length;
+  });
+  let cs=0;cen.forEach(p=>cs+=p.length);
+  const end=new Uint8Array([0x50,0x4b,5,6,...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cs),...u32(off),...u16(0)]);
+  return new Blob([...parts,...cen,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function osMontaXlsx(linhas){
+  const files=[
+   ['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+   ['_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+   ['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="importação" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+   ['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+   ['xl/styles.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'],
+   ['xl/worksheets/sheet1.xml',osSheetXml(linhas)]];
+  return osZip(files);
+}
+function osExportar(){
+  const rows=osFiltrados().slice().sort((a,b)=>a.data.localeCompare(b.data)||(a.ts||'').localeCompare(b.ts||''));
+  if(!rows.length){showToast('Nenhum lançamento no filtro para exportar.','warn');return;}
+  const blob=osMontaXlsx(rows.map(osLinhaExport));
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='importacao_OS_marilia_'+osFiltro.de+'_a_'+osFiltro.ate+'.xlsx';
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+  if(osPodeLancar()){
+    const agora=new Date().toISOString();
+    rows.forEach(r=>{if(!r.exp){r.exp=agora;r.ts=agora;}});
+    logAuditoria('Exportação de OS: '+rows.length+' linha(s) · '+dateBR(osFiltro.de)+' a '+dateBR(osFiltro.ate));
+    saveCache();pushToCloud();osRenderKpis();osRenderLista();
+  }
+  showToast(rows.length+' linha(s) exportada(s).','ok');
+}
+
 // === PERFIL FINANCEIRO: somente visualização ===
 (function(){
   function ro(){return currentRole==='financeiro';}
   window.somenteLeitura=ro;
-  var MUT=['togglePres','setProdPessoa','setMotivoPessoa','adjProdPessoa','setRetroProdPessoa','setRetroMotivoPessoa','adjRetroProdPessoa','cargaSet','cargaAdd','cargaDel','adj','unlockPres','unlockProdPessoas','unlockResetSection','unlockApiSection','salvarEditPresenca','salvarPresenca','salvarProducaoPessoas','lancar','lancarRetroativo','abrirLancamentoRetroativo','abrirEditPresenca','abrirPresRetro','salvarPresRetro','setPresRetro','setPresRetroTodos','abrirEditMov','salvarEditMov','excluirMov','abrirAfastModal','salvarAfastamento','removerAfastamento','confirmarFerias','cancelarFerias','addColab','editColab','saveColabModal','deleteColabModal','restaurarColab','arquivar','salvarConfigMeta','salvarTurnoExtra','saveConfig','salvarNovoBuffer','zerarBuffer','corrigirBuffer','resetPallets','resetPresencas','resetProducaoIndividual','resetColaboradores','resetTudo','salvarApiKeyNotif','testarNotificacao','enviarWhatsApp','enviarResumoPresenca','premCiclo','premMarcarTodos','premCfgSet','_premSalvar','feriasDoEdit','atualizarRetornoFerias','atualizarTurnosDoModal','togglePres'];
+  var MUT=['osSalvar','osEditar','osExcluir','osDesamarrar','osSalvarCliente','osAbrirCliente','osRemoverCliente','togglePres','setProdPessoa','setMotivoPessoa','adjProdPessoa','setRetroProdPessoa','setRetroMotivoPessoa','adjRetroProdPessoa','cargaSet','cargaAdd','cargaDel','adj','unlockPres','unlockProdPessoas','unlockResetSection','unlockApiSection','salvarEditPresenca','salvarPresenca','salvarProducaoPessoas','lancar','lancarRetroativo','abrirLancamentoRetroativo','abrirEditPresenca','abrirPresRetro','salvarPresRetro','setPresRetro','setPresRetroTodos','abrirEditMov','salvarEditMov','excluirMov','abrirAfastModal','salvarAfastamento','removerAfastamento','confirmarFerias','cancelarFerias','addColab','editColab','saveColabModal','deleteColabModal','restaurarColab','arquivar','salvarConfigMeta','salvarTurnoExtra','saveConfig','salvarNovoBuffer','zerarBuffer','corrigirBuffer','resetPallets','resetPresencas','resetProducaoIndividual','resetColaboradores','resetTudo','salvarApiKeyNotif','testarNotificacao','enviarWhatsApp','enviarResumoPresenca','premCiclo','premMarcarTodos','premCfgSet','_premSalvar','feriasDoEdit','atualizarRetornoFerias','atualizarTurnosDoModal','togglePres'];
   var SILENT=['pushToCloud','pushForceToCloud','markPending','saveCache'];
   MUT.forEach(function(n){
     var f=window[n]; if(typeof f!=='function')return;

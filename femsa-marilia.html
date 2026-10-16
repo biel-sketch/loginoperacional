@@ -417,11 +417,12 @@ img,canvas,svg{max-width:100%}
 .os-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:2px 0 12px}.os-chk{font-size:12px;color:var(--text2);display:flex;gap:6px;align-items:center;cursor:pointer}.os-exp{margin-left:auto;color:var(--cyan);border-color:var(--cyan-bd)}
 .dmode{margin-bottom:12px}.os-dk{grid-template-columns:repeat(4,1fr)}.os-drow{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}.os-dl{flex:1;min-width:0}.os-bar{height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-top:5px}.os-bar div{height:100%;background:var(--cyan)}.os-dv{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0}.os-dv strong{font-size:15px}.os-dv span{font-size:11px;color:var(--text2)}@media(max-width:900px){.os-dk{grid-template-columns:repeat(2,1fr)}}
 .os-selrow{cursor:pointer;align-items:flex-start}.os-selrow>input{margin:4px 10px 0 0;width:18px;height:18px;flex-shrink:0;accent-color:var(--cyan)}
+.os-subtabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;padding-bottom:4px}.os-subtabs .ds-btn{white-space:nowrap;flex-shrink:0}.os-subtabs .ds-btn.active{color:var(--cyan);border-color:var(--cyan-bd);background:var(--cyan-bg)}.os-xl{margin-left:auto}.os-scroll{overflow-x:auto;max-width:100%}.os-tbl td,.os-tbl th{white-space:nowrap}.os-tbl .d{color:#6db3ff}.os-tbl .tt{font-weight:700}.os-piv .nm{position:sticky;left:0;background:var(--bg2);z-index:1;min-width:220px}.os-piv tfoot td{font-weight:700;border-top:1px solid var(--border2)}.os-tbl tfoot td{font-weight:700;border-top:1px solid var(--border2)}.os-tbl th.c{text-align:center}
 .os-resumo{font-size:12px;color:var(--text2);margin:6px 0 10px}.os-resumo strong{color:var(--text)}
 .os-row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border)}.os-main{min-width:0;flex:1}
 .os-l1{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px}.os-l2{font-size:12px;color:var(--text);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.os-l3{font-size:11px;color:var(--text2);margin-top:2px}
 .os-chip{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;border:1px solid var(--border)}.os-chip.a{color:var(--green);background:var(--green-bg);border-color:var(--green-bd)}.os-chip.d{color:var(--purple);background:var(--purple-bg);border-color:var(--purple-bd)}.os-chip.t{color:var(--cyan);background:var(--cyan-bg);border-color:var(--cyan-bd)}.os-chip.x{color:var(--text2)}
-.os-act{display:flex;gap:6px;flex-shrink:0}
+.os-act{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
 .os-cli summary{cursor:pointer;font-weight:700;font-size:14px;display:flex;gap:8px;align-items:center}.os-crow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border)}
 @media(max-width:900px){.os-kpis{grid-template-columns:repeat(2,1fr)}.os-filtros{grid-template-columns:repeat(2,1fr)}.os-grid{grid-template-columns:repeat(2,1fr)}.os-exp{margin-left:0;width:100%;justify-content:center}}
 @media(max-width:480px){.os-grid{grid-template-columns:1fr}.os-w2{grid-column:auto}.os-row{align-items:flex-start}.os-act{flex-direction:column}}
@@ -3735,9 +3736,10 @@ function mergeOSVal(a,b){
   return Object.values(m);
 }
 // valor unitário de um serviço: específico do cliente (CNPJ|COD) tem prioridade sobre o geral (COD)
+const OS_VALORES_BASE={};
 function osValorUnit(cnpj,cod){
   const L=state.osValores||[];
-  const g=(k)=>{const x=L.find(y=>y.k===k&&!y.del);return x&&x.v!==null&&x.v!==undefined&&x.v!==''?Number(x.v):null;};
+  const g=(k)=>{const x=L.find(y=>y.k===k);if(x)return(!x.del&&x.v!==null&&x.v!==undefined&&x.v!=='')?Number(x.v):null;return(k===cod&&OS_VALORES_BASE[cod]!==undefined)?OS_VALORES_BASE[cod]:null;};
   const e=g(cnpj+'|'+cod);return e!==null?e:g(cod);
 }
 function osValorReg(r){const u=osValorUnit(r.cnpj,OS_SERV[r.veic+'|'+r.op].c);return u===null?null:u*(r.qtd||1);}
@@ -3909,7 +3911,7 @@ function osRenderLista(){
       '<div class="os-l1"><strong>OS '+osEsc(r.doc)+'</strong><span class="os-chip '+(r.op==='A'?'a':'d')+'">'+s.c+'</span><span class="os-chip t">T'+r.turno+'</span>'+(r.exp?'<span class="os-chip x" title="Exportada em '+osEsc((r.exp||'').slice(0,10))+'">exportada</span>':'')+'</div>'+
       '<div class="os-l2">'+osEsc(r.cliente)+'</div>'+
       '<div class="os-l3">'+dateBR(r.data)+' · '+osEsc(r.cavalo)+(r.carreta?' · '+osEsc(r.carreta):'')+' · '+(r.op==='A'?'Transp. ':'NF ')+osEsc(r.nr)+(r.qtd>1?' · qtd '+r.qtd:'')+'</div>'+(osValorReg(r)!==null?'<div class="os-l3" style="color:var(--cyan);font-weight:600">'+osBRL(osValorReg(r))+'</div>':'')+'</div>'+
-      (canEdit?'<div class="os-act">'+(r.op==='A'&&!jaTemD(r)?'<button class="ds-btn" onclick="osDesamarrar(\''+r.id+'\')" title="Lançar desamarração desta OS"><i class="ti ti-arrows-exchange"></i></button>':'')+'<button class="ds-btn" onclick="osEditar(\''+r.id+'\')" title="Editar"><i class="ti ti-edit"></i></button><button class="ds-btn" onclick="osExcluir(\''+r.id+'\')" title="Excluir"><i class="ti ti-trash"></i></button></div>':'')+'</div>';
+      (canEdit?'<div class="os-act">'+(r.op==='A'&&!jaTemD(r)?'<button class="ds-btn" onclick="osDesamarrar(\''+r.id+'\')" title="Lançar desamarração desta OS"><i class="ti ti-arrows-exchange"></i> Desamarrar</button>':'')+'<button class="ds-btn" onclick="osEditar(\''+r.id+'\')" title="Editar OS"><i class="ti ti-edit"></i> Editar</button><button class="ds-btn" onclick="osExcluir(\''+r.id+'\')" title="Excluir OS" style="color:var(--red,#e5484d)"><i class="ti ti-trash"></i> Excluir</button></div>':'')+'</div>';
   };
   el.innerHTML='<div class="card"><div class="card-title"><i class="ti ti-list-details"></i> Lançamentos</div>'+
    '<div class="os-filtros">'+
@@ -3951,26 +3953,69 @@ function osSetValor(cod,val){
   showToast('Valor salvo.','ok');
 }
 // ---- Dashboard de OS ----
-let osDash={modo:'dia',dia:'',mes:''};
+let osDash={de:'',ate:'',view:'resumo',busca:''};
+function osDashIni(){if(!osDash.de){osDash.de=today().slice(0,8)+'01';osDash.ate=today();}}
 function osDashSet(k,v){osDash[k]=v;osDashRender();}
-function osDashMesDelta(n){
-  const p=(osDash.mes||today().slice(0,7)).split('-').map(Number);const d=new Date(p[0],p[1]-1+n,1);
-  const m=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(m>today().slice(0,7))return;osDash.mes=m;osDashRender();
+let _osDBT=null;
+function osDashBusca(v){osDash.busca=v;clearTimeout(_osDBT);_osDBT=setTimeout(osDashRender,250);}
+function osDashPeriodo(t){
+  const hoje=today();
+  if(t==='hoje'){osDash.de=hoje;osDash.ate=hoje;}
+  else if(t==='mes'){osDash.de=hoje.slice(0,8)+'01';osDash.ate=hoje;}
+  else if(t==='ant'){const d=new Date(+hoje.slice(0,4),+hoje.slice(5,7)-2,1),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0');osDash.de=y+'-'+m+'-01';osDash.ate=y+'-'+m+'-'+String(new Date(y,d.getMonth()+1,0).getDate()).padStart(2,'0');}
+  else if(t==='tudo'){const ds=osLista().map(r=>r.data).sort();osDash.de=ds.length?ds[0]:hoje;osDash.ate=hoje;}
+  osDashRender();
 }
+function osDashRows(){osDashIni();return osLista().filter(r=>r.data>=osDash.de&&r.data<=osDash.ate);}
+// agrupa por OS (uma linha por OS, como na planilha ACOMPANHAMENTO)
+function osAcompLinhas(rows){
+  const m={};
+  rows.forEach(r=>{(m[r.doc]=m[r.doc]||{doc:r.doc,a:null,d:null});if(r.op==='A')m[r.doc].a=r;else m[r.doc].d=r;});
+  return Object.values(m).map(x=>{
+    const b=x.a||x.d,vs=[x.a,x.d].filter(Boolean).map(osValorReg);
+    const tem=vs.some(v=>v!==null);
+    return{doc:x.doc,data:[x.a,x.d].filter(Boolean).map(r=>r.data).sort()[0],cliente:b.cliente,cnpj:b.cnpj,cavalo:b.cavalo,carreta:b.carreta?b.carreta.split('/')[0]:'',
+      gA:x.a?OS_SERV[x.a.veic+'|A'].d:'',gD:x.d?OS_SERV[x.d.veic+'|D'].d:'',nrT:x.a?x.a.nr:'',nf:x.d?x.d.nr:'',valor:tem?vs.reduce((t,v)=>t+(v||0),0):null};
+  }).sort((a,b)=>a.cliente.localeCompare(b.cliente)||a.data.localeCompare(b.data)||String(a.doc).localeCompare(String(b.doc)));
+}
+function osPivot(rows){
+  const dates=[...new Set(rows.map(r=>r.data))].sort(),clients=[...new Set(rows.map(r=>r.cliente))].sort((a,b)=>a.localeCompare(b));
+  const c={},v={};
+  rows.forEach(r=>{
+    const k=r.cliente,d=r.data;
+    ((c[k]=c[k]||{})[d]=c[k][d]||{A:0,D:0})[r.op]++;
+    (v[k]=v[k]||{})[d]=(v[k][d]||0)+(osValorReg(r)||0);
+  });
+  return{dates,clients,c,v};
+}
+function osDm(d){return d.slice(8)+'/'+d.slice(5,7);}
 function osDashRender(){
   const el=document.getElementById('dv-os');if(!el)return;
-  if(!osDash.dia)osDash.dia=today();if(!osDash.mes)osDash.mes=today().slice(0,7);
-  const L=osLista(),dia=osDash.modo==='dia';
-  const datas=[...new Set(L.map(r=>r.data))].sort().slice(-8);
-  if(!datas.includes(today()))datas.push(today());
-  const rows=L.filter(r=>dia?r.data===osDash.dia:r.data.startsWith(osDash.mes));
+  osDashIni();
+  const rows=osDashRows(),V=osDash.view;
+  const subs=[['resumo','Resumo'],['acomp','Acompanhamento'],['oper','Data × Operação'],['valor','Data × Valor'],['apont','Apontamento']];
+  const head='<div class="card os-dfil"><div class="os-filtros" style="grid-template-columns:repeat(2,1fr) auto">'+
+   '<div class="modal-field"><label>De</label><input type="date" value="'+osDash.de+'" onchange="osDashSet(\'de\',this.value)"></div>'+
+   '<div class="modal-field"><label>Até</label><input type="date" value="'+osDash.ate+'" onchange="osDashSet(\'ate\',this.value)"></div>'+
+   '<div class="os-tools" style="margin:0;align-self:end"><button class="ds-btn" onclick="osDashPeriodo(\'hoje\')">Hoje</button><button class="ds-btn" onclick="osDashPeriodo(\'mes\')">Este mês</button><button class="ds-btn" onclick="osDashPeriodo(\'ant\')">Mês anterior</button><button class="ds-btn" onclick="osDashPeriodo(\'tudo\')">Tudo</button></div></div></div>'+
+   '<div class="os-subtabs">'+subs.map(([k,l])=>'<button class="ds-btn'+(V===k?' active':'')+'" onclick="osDashSet(\'view\',\''+k+'\')">'+l+'</button>').join('')+'<button class="ds-btn os-xl" onclick="osBaixarAcomp()"><i class="ti ti-file-spreadsheet"></i> Baixar planilha</button></div>';
+  let corpo='';
+  if(!rows.length)corpo='<div class="empty"><i class="ti ti-link-off"></i><h3>Nenhuma OS no período</h3></div>';
+  else if(V==='acomp')corpo=osViewAcomp(rows);
+  else if(V==='oper')corpo=osViewOper(rows);
+  else if(V==='valor')corpo=osViewValor(rows);
+  else if(V==='apont')corpo=osViewApont(rows);
+  else corpo=osViewResumo(rows);
+  el.innerHTML=head+corpo;
+}
+function osViewResumo(rows){
   const nA=rows.filter(r=>r.op==='A').length,nD=rows.length-nA;
   const qA=rows.filter(r=>r.op==='A').reduce((t,r)=>t+(r.qtd||1),0),qD=rows.filter(r=>r.op==='D').reduce((t,r)=>t+(r.qtd||1),0);
   const nOS=new Set(rows.map(r=>r.doc)).size;
   const semValor=rows.filter(r=>osValorReg(r)===null).length;
   const total=rows.reduce((t,r)=>t+(osValorReg(r)||0),0);
   const k=(l,v,s,c)=>'<div class="kpi"><div class="kpi-lbl">'+l+'</div><div class="kpi-val'+(c?' '+c:'')+'">'+v+'</div>'+(s?'<div class="kpi-sub">'+s+'</div>':'')+'</div>';
-  const agr=(fn)=>{const m={};rows.forEach(r=>{const key=fn(r);(m[key]=m[key]||{n:0,q:0,v:0,sv:0});m[key].n++;m[key].q+=(r.qtd||1);const v=osValorReg(r);if(v===null)m[key].sv++;else m[key].v+=v;});return m;};
+  const agr=(fn)=>{const m={};rows.forEach(r=>{const key=fn(r);(m[key]=m[key]||{n:0,v:0,sv:0});m[key].n++;const v=osValorReg(r);if(v===null)m[key].sv++;else m[key].v+=v;});return m;};
   const tbl=(titulo,m,lbl)=>{
     const ks=Object.keys(m).sort((a,b)=>m[b].v-m[a].v||m[b].n-m[a].n);
     if(!ks.length)return'';
@@ -3978,12 +4023,96 @@ function osDashRender(){
     return'<div class="card"><div class="card-title">'+titulo+'</div>'+ks.map(x=>'<div class="os-drow"><div class="os-dl"><div style="font-size:13px;font-weight:600">'+osEsc(lbl(x))+'</div><div class="os-bar"><div style="width:'+Math.max(3,Math.round(m[x].n/max*100))+'%"></div></div></div><div class="os-dv"><strong>'+m[x].n+'</strong><span>'+(m[x].sv===m[x].n?'sem valor':osBRL(m[x].v))+'</span></div></div>').join('')+'</div>';
   };
   const descServ={};Object.values(OS_SERV).forEach(x=>descServ[x.c]=x.d);
-  const nav=dia?
-    '<div class="day-btns">'+datas.map(d=>'<button class="ds-btn'+(d===osDash.dia?' active':'')+'" onclick="osDashSet(\'dia\',\''+d+'\')">'+dateFmt(d)+'</button>').join('')+'</div>':
-    '<div class="rel-head"><button class="ds-btn" onclick="osDashMesDelta(-1)" aria-label="Mês anterior"><i class="ti ti-chevron-left"></i></button><div class="rel-mes">'+_mesLabel(osDash.mes)+'</div><button class="ds-btn" onclick="osDashMesDelta(1)" '+(osDash.mes>=today().slice(0,7)?'disabled style="opacity:.35"':'')+' aria-label="Próximo mês"><i class="ti ti-chevron-right"></i></button></div>';
-  el.innerHTML='<div class="vtoggle"><button class="vtog'+(dia?' active':'')+'" onclick="osDashSet(\'modo\',\'dia\')">Dia</button><button class="vtog'+(!dia?' active':'')+'" onclick="osDashSet(\'modo\',\'mes\')">Mês</button></div>'+nav+
-   '<div class="kpi-grid os-dk">'+k('Amarrações',qA,nA+' lançamento(s)','green')+k('Desamarrações',qD,nD+' lançamento(s)','blue')+k('OS distintas',nOS,rows.length+' serviço(s)')+k('Valor total',osBRL(total),semValor?semValor+' sem valor definido':'conforme tabela de valores','')+'</div>'+
-   (rows.length?tbl('Por serviço',agr(r=>OS_SERV[r.veic+'|'+r.op].c),x=>x+' · '+descServ[x])+tbl('Por cliente',agr(r=>r.cliente||'—'),x=>x)+tbl('Por turno',agr(r=>'Turno '+r.turno),x=>x)+(dia?'':tbl('Por dia',agr(r=>r.data),x=>dateBR(x))):'<div class="empty"><i class="ti ti-link-off"></i><h3>Nenhuma OS '+(dia?'neste dia':'neste mês')+'</h3></div>');
+  const dias=new Set(rows.map(r=>r.data)).size;
+  return '<div class="kpi-grid os-dk">'+k('Amarrações',nA,qA!==nA?qA+' com quantidade':'serviços','green')+k('Desamarrações',nD,qD!==nD?qD+' com quantidade':'serviços','blue')+k('OS distintas',nOS,rows.length+' serviço(s)')+k('Valor total',osBRL(total),semValor?semValor+' sem valor definido':'conforme tabela de valores')+'</div>'+
+   tbl('Por serviço',agr(r=>OS_SERV[r.veic+'|'+r.op].c),x=>x+' · '+descServ[x])+tbl('Por cliente',agr(r=>r.cliente||'—'),x=>x)+tbl('Por turno',agr(r=>'Turno '+r.turno),x=>x)+(dias>1?tbl('Por dia',agr(r=>r.data),x=>dateBR(x)):'');
+}
+function osViewAcomp(rows){
+  const q=osDash.busca.trim().toUpperCase();
+  let L=osAcompLinhas(rows);
+  if(q)L=L.filter(x=>(x.doc+' '+x.cliente+' '+x.cavalo+' '+x.carreta+' '+x.nrT+' '+x.nf).toUpperCase().includes(q));
+  const tot=L.reduce((t,x)=>t+(x.valor||0),0);
+  return '<div class="card"><div class="card-title"><i class="ti ti-table"></i> Acompanhamento <span class="os-resumo" style="margin:0 0 0 8px">'+L.length+' OS · <strong>'+osBRL(tot)+'</strong></span></div>'+
+   '<div class="modal-field" style="max-width:320px;margin-bottom:10px"><input value="'+osEsc(osDash.busca)+'" placeholder="Buscar OS, cliente, placa ou nº" oninput="osDashBusca(this.value)"></div>'+
+   '<div class="os-scroll"><table class="rel-tbl os-tbl"><thead><tr><th>Nr OS</th><th>Data do serviço</th><th>Transportadoras</th><th>Cavalo</th><th>Carreta</th><th>Motorista</th><th>Amarração</th><th>Desamarração</th><th>Nr Transporte</th><th>Nota Fiscal</th><th class="n">Valor</th></tr></thead><tbody>'+
+   L.slice(0,600).map(x=>'<tr><td>'+osEsc(x.doc)+'</td><td>'+dateBR(x.data)+'</td><td>'+osEsc(x.cliente)+'</td><td>'+osEsc(x.cavalo)+'</td><td>'+osEsc(x.carreta)+'</td><td></td><td>'+osEsc(x.gA)+'</td><td>'+osEsc(x.gD)+'</td><td>'+osEsc(x.nrT)+'</td><td>'+osEsc(x.nf)+'</td><td class="n">'+(x.valor===null?'—':osBRL(x.valor))+'</td></tr>').join('')+
+   '</tbody><tfoot><tr><td colspan="10">Total ('+L.length+')</td><td class="n">'+osBRL(tot)+'</td></tr></tfoot></table></div>'+(L.length>600?'<div class="os-resumo">Mostrando 600 de '+L.length+'. Refine o período.</div>':'')+'</div>';
+}
+function osViewOper(rows){
+  const P=osPivot(rows);
+  let tA=0,tD=0;const colT={};P.dates.forEach(d=>colT[d]={A:0,D:0});
+  const linhas=P.clients.map(k=>{
+    let a=0,d2=0;
+    const cels=P.dates.map(d=>{const x=(P.c[k]||{})[d]||{A:0,D:0};a+=x.A;d2+=x.D;colT[d].A+=x.A;colT[d].D+=x.D;return '<td class="n">'+(x.A||'')+'</td><td class="n d">'+(x.D||'')+'</td>';}).join('');
+    tA+=a;tD+=d2;
+    return '<tr><td class="nm">'+osEsc(k)+'</td>'+cels+'<td class="n tt">'+(a||'')+'</td><td class="n tt d">'+(d2||'')+'</td></tr>';
+  }).join('');
+  return '<div class="card"><div class="card-title"><i class="ti ti-table"></i> Data × Operação</div><div class="os-scroll"><table class="rel-tbl os-tbl os-piv"><thead><tr><th class="nm" rowspan="2">Transportadoras</th>'+P.dates.map(d=>'<th colspan="2" class="c">'+osDm(d)+'</th>').join('')+'<th class="c" colspan="2">Total</th></tr><tr>'+P.dates.map(()=>'<th class="n">Am.</th><th class="n d">Des.</th>').join('')+'<th class="n">Am.</th><th class="n d">Des.</th></tr></thead><tbody>'+linhas+
+   '</tbody><tfoot><tr><td class="nm">Total geral</td>'+P.dates.map(d=>'<td class="n">'+colT[d].A+'</td><td class="n d">'+colT[d].D+'</td>').join('')+'<td class="n tt">'+tA+'</td><td class="n tt d">'+tD+'</td></tr></tfoot></table></div></div>';
+}
+function osViewValor(rows){
+  const P=osPivot(rows);let tg=0;const colT={};P.dates.forEach(d=>colT[d]=0);
+  const fm=(v)=>v?v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'';
+  const linhas=P.clients.map(k=>{
+    let t=0;
+    const cels=P.dates.map(d=>{const x=(P.v[k]||{})[d]||0;t+=x;colT[d]+=x;return '<td class="n">'+fm(x)+'</td>';}).join('');
+    tg+=t;return '<tr><td class="nm">'+osEsc(k)+'</td>'+cels+'<td class="n tt">'+fm(t)+'</td></tr>';
+  }).join('');
+  return '<div class="card"><div class="card-title"><i class="ti ti-currency-real"></i> Data × Valor</div><div class="os-scroll"><table class="rel-tbl os-tbl os-piv"><thead><tr><th class="nm">Transportadoras</th>'+P.dates.map(d=>'<th class="n">'+osDm(d)+'</th>').join('')+'<th class="n">Total geral</th></tr></thead><tbody>'+linhas+
+   '</tbody><tfoot><tr><td class="nm">Total geral</td>'+P.dates.map(d=>'<td class="n">'+fm(colT[d])+'</td>').join('')+'<td class="n tt">'+fm(tg)+'</td></tr></tfoot></table></div></div>';
+}
+function osViewApont(rows){
+  const dias=[...new Set(rows.map(r=>r.data))].sort();let tA=0,tD=0;
+  const linhas=dias.map(d=>{const a=rows.filter(r=>r.data===d&&r.op==='A').length,b=rows.filter(r=>r.data===d&&r.op==='D').length;tA+=a;tD+=b;return '<tr><td>'+dateBR(d)+'</td><td class="n">'+(a||'')+'</td><td class="n d">'+(b||'')+'</td></tr>';}).join('');
+  return '<div class="card"><div class="card-title"><i class="ti ti-list-numbers"></i> Apontamento</div><div class="os-scroll" style="max-width:420px"><table class="rel-tbl os-tbl"><thead><tr><th>Data</th><th class="n">Amarração</th><th class="n d">Desamarração</th></tr></thead><tbody>'+linhas+'</tbody><tfoot><tr><td>Total geral</td><td class="n">'+tA+'</td><td class="n d">'+tD+'</td></tr></tfoot></table></div></div>';
+}
+// ---- Planilha de acompanhamento (.xlsx com 4 abas, como a ACOMPANHAMENTO) ----
+function osXlsxMulti(sheets){
+  const ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+sheets.map((x,i)=>'<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('')+'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>';
+  const wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((x,i)=>'<sheet name="'+x.name+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join('')+'</sheets></workbook>';
+  const rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map((x,i)=>'<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join('')+'<Relationship Id="rId'+(sheets.length+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
+  const styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  const sheetXml=(sh)=>{
+    let x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0">'+(sh.freeze?'<pane xSplit="'+(sh.freeze[0]||0)+'" ySplit="'+(sh.freeze[1]||0)+'" topLeftCell="'+osColNome(sh.freeze[0]||0)+((sh.freeze[1]||0)+1)+'" activePane="bottomRight" state="frozen"/>':'')+'</sheetView></sheetViews><cols>'+(sh.widths||[]).map((w,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>').join('')+'</cols><sheetData>';
+    sh.rows.forEach((row,ri)=>{x+='<row r="'+(ri+1)+'">'+row.map((c,ci)=>{
+      if(c===null||c===undefined)return'';const ref=osColNome(ci)+(ri+1);
+      if(c.h!==undefined)return'<c r="'+ref+'" s="2" t="inlineStr"><is><t xml:space="preserve">'+osXmlEsc(c.h)+'</t></is></c>';
+      if(c.s!==undefined)return'<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+osXmlEsc(c.s)+'</t></is></c>';
+      if(c.d!==undefined)return'<c r="'+ref+'" s="1"><v>'+c.d+'</v></c>';
+      if(c.m!==undefined)return'<c r="'+ref+'" s="3"><v>'+c.m+'</v></c>';
+      if(c.t!==undefined)return'<c r="'+ref+'" s="2"><v>'+c.t+'</v></c>';
+      return'<c r="'+ref+'"><v>'+c.n+'</v></c>';}).join('')+'</row>';});
+    return x+'</sheetData></worksheet>';
+  };
+  const files=[['[Content_Types].xml',ct],['_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],['xl/workbook.xml',wb],['xl/_rels/workbook.xml.rels',rels],['xl/styles.xml',styles]];
+  sheets.forEach((sh,i)=>files.push(['xl/worksheets/sheet'+(i+1)+'.xml',sheetXml(sh)]));
+  return osZip(files);
+}
+function osColNome(i){let n='';i++;while(i>0){const r=(i-1)%26;n=String.fromCharCode(65+r)+n;i=Math.floor((i-1)/26);}return n;}
+function osBaixarAcomp(){
+  const rows=osDashRows();
+  if(!rows.length){showToast('Nenhuma OS no período.','warn');return;}
+  const L=osAcompLinhas(rows),P=osPivot(rows);
+  const st=(v)=>v?{s:v}:null;
+  const s1={name:'ACOMPANHAMENTO',freeze:[0,1],widths:[12,14,44,12,12,14,32,32,15,15,12],rows:[['Nr OS','Data do Servico','Transportadoras','Cavalo','Carreta','Motorista','Amarracao','Desamarracao','Nr Transporte','Nota Fiscal','Valor'].map(h=>({h}))].concat(L.map(x=>[{s:String(x.doc)},{d:osSerial(x.data)},{s:x.cliente},st(x.cavalo),st(x.carreta),null,st(x.gA),st(x.gD),st(x.nrT),st(x.nf),x.valor===null?null:{m:Math.round(x.valor*100)/100}]))};
+  const hdr=[{h:'DATA'}],sub=[{h:'TRANSPORTADORAS'}];
+  P.dates.forEach(d=>{hdr.push({d:osSerial(d)},null);sub.push({h:'Amarracao'},{h:'Desamarracao'});});
+  hdr.push({h:'Total Amarracao'},{h:'Total Desamarracao'});
+  const cT={};P.dates.forEach(d=>cT[d]={A:0,D:0});let gA=0,gD=0;
+  const body=P.clients.map(k=>{let a=0,b=0;const r=[{s:k}];P.dates.forEach(d=>{const x=(P.c[k]||{})[d]||{A:0,D:0};a+=x.A;b+=x.D;cT[d].A+=x.A;cT[d].D+=x.D;r.push(x.A?{n:x.A}:null,x.D?{n:x.D}:null);});gA+=a;gD+=b;r.push(a?{n:a}:null,b?{n:b}:null);return r;});
+  const totRow=[{h:'Total Geral'}];P.dates.forEach(d=>totRow.push({t:cT[d].A},{t:cT[d].D}));totRow.push({t:gA},{t:gD});
+  const s2={name:'DATA OPER',freeze:[1,2],widths:[44].concat(P.dates.flatMap(()=>[11,13])).concat([16,18]),rows:[hdr,sub].concat(body).concat([totRow])};
+  const hv=[{h:'TRANSPORTADORAS'}].concat(P.dates.map(d=>({d:osSerial(d)}))).concat([{h:'Total Geral'}]);
+  const cv={};P.dates.forEach(d=>cv[d]=0);let gv=0;
+  const bodyV=P.clients.map(k=>{let t=0;const r=[{s:k}];P.dates.forEach(d=>{const x=(P.v[k]||{})[d]||0;t+=x;cv[d]+=x;r.push(x?{m:Math.round(x*100)/100}:null);});gv+=t;r.push({m:Math.round(t*100)/100});return r;});
+  const s3={name:'DATA VALOR',freeze:[1,1],widths:[44].concat(P.dates.map(()=>12)).concat([14]),rows:[hv].concat(bodyV).concat([[{h:'Total Geral'}].concat(P.dates.map(d=>({m:Math.round(cv[d]*100)/100}))).concat([{m:Math.round(gv*100)/100}])])};
+  const dias=[...new Set(rows.map(r=>r.data))].sort();let ta=0,td=0;
+  const bodyA=dias.map(d=>{const a=rows.filter(r=>r.data===d&&r.op==='A').length,b=rows.filter(r=>r.data===d&&r.op==='D').length;ta+=a;td+=b;return[{d:osSerial(d)},a?{n:a}:null,b?{n:b}:null];});
+  const s4={name:'APONTAMENTO',freeze:[0,1],widths:[14,14,16],rows:[[{h:'DATA'},{h:'Amarracao'},{h:'Desamarracao'}]].concat(bodyA).concat([[{h:'Total Geral'},{t:ta},{t:td}]])};
+  const blob=osXlsxMulti([s1,s2,s3,s4]);
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ACOMPANHAMENTO_'+osDash.de+'_a_'+osDash.ate+'.xlsx';
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+  showToast('Planilha de acompanhamento gerada.','ok');
 }
 // ---- Clientes ----
 function osRenderClientes(){

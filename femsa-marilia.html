@@ -440,7 +440,7 @@ img,canvas,svg{max-width:100%}
         <button class="snav-item" id="snav-presenca"    onclick="goTo('presenca')"><i class="ti ti-users"></i>Presença</button>
         <button class="snav-item" id="snav-operacao"    onclick="goTo('operacao')"><i class="ti ti-truck-delivery"></i>Operação</button>
         <button class="snav-item" id="snav-absenteismo" onclick="goTo('absenteismo')"><i class="ti ti-user-off"></i>Absenteísmo</button>
-        <button class="snav-item" id="snav-premiacao"   onclick="goTo('premiacao')"><i class="ti ti-trophy"></i>Premiação</button>
+        <button class="snav-item" id="snav-premiacao" style="display:none!important"   onclick="goTo('premiacao')"><i class="ti ti-trophy"></i>Premiação</button>
         <button class="snav-item" id="snav-equipe"      onclick="goTo('equipe')"><i class="ti ti-id-badge"></i>Equipe</button>
         <button class="snav-item" id="snav-config"      onclick="goTo('config')"><i class="ti ti-settings"></i>Config</button>
       </nav>
@@ -533,14 +533,14 @@ img,canvas,svg{max-width:100%}
           </div>
 
           <div class="card">
-            <div class="card-title"><i class="ti ti-truck"></i> Carretas e descarte</div>
+            <div class="card-title"><i class="ti ti-truck"></i> Recebidos, enviados e descarte</div>
             <div class="cg">
               <div class="cg-h"><span class="cg-t"><i class="ti ti-truck-delivery"></i> Recebidos</span><span class="tt-badge" id="tt-rec">0 hoje</span></div>
-              <div id="cg-rec"></div>
+              <div class="num-wrap"><button class="num-btn" onclick="adj('mv-rec',-1)">−</button><input type="number" id="mv-rec" value="" placeholder="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-rec',1)">+</button></div>
             </div>
             <div class="cg">
               <div class="cg-h"><span class="cg-t"><i class="ti ti-truck-loading"></i> Enviados</span><span class="tt-badge" id="tt-env">0 hoje</span></div>
-              <div id="cg-env"></div>
+              <div class="num-wrap"><button class="num-btn" onclick="adj('mv-env',-1)">−</button><input type="number" id="mv-env" value="" placeholder="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-env',1)">+</button></div>
             </div>
             <div class="cg">
               <div class="cg-h"><span class="cg-t"><i class="ti ti-trash"></i> Descarte (paletes)</span><span class="tt-badge" id="tt-desc">0 hoje</span></div>
@@ -551,7 +551,7 @@ img,canvas,svg{max-width:100%}
               <div class="num-wrap"><button class="num-btn" onclick="adj('mv-prod',-1)">−</button><input type="number" id="mv-prod" value="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-prod',1)">+</button></div>
               <span class="tt-badge" id="tt-prod" style="display:none">0 hoje</span>
             </details>
-            <input type="hidden" id="mv-rec" value="0"><input type="hidden" id="mv-env" value="0">
+            
             <button class="btn btn-primary" style="margin-top:14px" onclick="lancar()"><i class="ti ti-check" style="font-size:16px"></i> Lançar movimentação</button>
             <button class="btn btn-ghost" style="margin-top:8px" onclick="abrirLancamentoRetroativo()"><i class="ti ti-calendar-plus" style="font-size:16px"></i> Lançar retroativo</button>
             <div id="lanc-ok-inline" style="display:none;margin-top:14px;padding:14px 16px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;align-items:center;gap:10px">
@@ -586,7 +586,7 @@ img,canvas,svg{max-width:100%}
     <button class="bn" id="bn-presenca"    onclick="goTo('presenca')"><i class="ti ti-users"></i><span>Presença</span></button>
     <button class="bn" id="bn-operacao"    onclick="goTo('operacao')"><i class="ti ti-truck-delivery"></i><span>Operação</span></button>
     <button class="bn" id="bn-absenteismo" onclick="goTo('absenteismo')"><i class="ti ti-user-off"></i><span>Ausências</span></button>
-    <button class="bn" id="bn-premiacao"   onclick="goTo('premiacao')"><i class="ti ti-trophy"></i><span>Prêmio</span></button>
+    <button class="bn" id="bn-premiacao" style="display:none!important"   onclick="goTo('premiacao')"><i class="ti ti-trophy"></i><span>Prêmio</span></button>
     <button class="bn" id="bn-equipe"      onclick="goTo('equipe')"><i class="ti ti-id-badge"></i><span>Equipe</span></button>
     <button class="bn" id="bn-config"      onclick="goTo('config')"><i class="ti ti-settings"></i><span>Config</span></button>
   </div>
@@ -2069,32 +2069,7 @@ async function cancelarFerias(nome,inicio){
 }
 
 // OPERAÇÃO
-const CARRETA_PALETES={rec:390,env:420};
-let cargas={rec:[],env:[]};
-function _somaCargas(k){return cargas[k].reduce((a,b)=>a+(parseInt(b)||0),0);}
-function _syncCargas(){
-  ['rec','env'].forEach(k=>{const e=document.getElementById('mv-'+k);if(e)e.value=_somaCargas(k);});
-  updBuf();
-}
-function renderCargas(){
-  ['rec','env'].forEach(k=>{
-    const el=document.getElementById('cg-'+k);if(!el)return;
-    const l=cargas[k];
-    el.innerHTML=l.map((v,i)=>'<div class="car-row"><span class="car-n"><i class="ti ti-truck"></i> '+(i+1)+'ª</span><div class="num-wrap"><input type="number" min="0" inputmode="numeric" value="'+v+'" oninput="cargaSet(\''+k+'\','+i+',this.value)" onfocus="this.select()"></div><span class="car-u">paletes</span><button class="car-x" aria-label="Remover carreta" onclick="cargaDel(\''+k+'\','+i+')">×</button></div>').join('')+
-      '<button class="car-add" onclick="cargaAdd(\''+k+'\')"><i class="ti ti-plus"></i> '+(l.length?'Outra carreta':'Adicionar carreta')+' ('+CARRETA_PALETES[k]+' paletes)</button>'+
-      (l.length?'<div class="car-tot"><span><strong>'+l.length+'</strong> carreta'+(l.length>1?'s':'')+'</span><span><strong>'+_somaCargas(k).toLocaleString('pt-BR')+'</strong> paletes'+(l.some(v=>(parseInt(v)||0)<CARRETA_PALETES[k])?' · há carga abaixo de '+CARRETA_PALETES[k]:'')+'</span></div>':'<div class="car-tot"><span>Nenhuma carreta lançada</span></div>');
-  });
-  _syncCargas();
-}
-function _cargaTotLbl(k){
-  const el=document.getElementById('cg-'+k);if(!el)return;
-  const t=el.querySelector('.car-tot');if(!t)return;
-  const l=cargas[k];
-  t.innerHTML=l.length?'<span><strong>'+l.length+'</strong> carreta'+(l.length>1?'s':'')+'</span><span><strong>'+_somaCargas(k).toLocaleString('pt-BR')+'</strong> paletes'+(l.some(v=>(parseInt(v)||0)<CARRETA_PALETES[k])?' · há carga abaixo de '+CARRETA_PALETES[k]:'')+'</span>':'<span>Nenhuma carreta lançada</span>';
-}
-function cargaAdd(k){cargas[k].push(CARRETA_PALETES[k]);renderCargas();}
-function cargaDel(k,i){cargas[k].splice(i,1);renderCargas();}
-function cargaSet(k,i,v){cargas[k][i]=Math.max(0,parseInt(v)||0);_cargaTotLbl(k);_syncCargas();}
+function renderCargas(){updBuf();}
 // Produzidos "automático": soma da produção por colaborador (salva ou em edição) + lançamentos avulsos
 function _prodAutoSalvo(date){return (state.movimentos[date]||[]).filter(m=>m.auto==='pessoas').reduce((s,m)=>s+(m.prod||0),0);}
 function _prodPessoasLive(date){
@@ -2135,11 +2110,10 @@ function renderOperacao(){
   const tR=movs.reduce((s,m)=>s+(m.rec||0),0);
   const tE=movs.reduce((s,m)=>s+(m.env||0),0);
   const tD=movs.reduce((s,m)=>s+(m.desc||0),0);
-  const nCar=(k)=>movs.reduce((s,m)=>s+((m.carretas&&m.carretas[k])?m.carretas[k].length:0),0);
   const el=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   el('tt-rec',tR+' hoje');el('tt-env',tE+' hoje');el('tt-desc',tD+' hoje');
   el('tl-rec',tR.toLocaleString('pt-BR'));el('tl-env',tE.toLocaleString('pt-BR'));el('tl-desc',tD.toLocaleString('pt-BR'));
-  el('tl-rec-sub',nCar('rec')?nCar('rec')+' carreta(s) hoje':'paletes hoje');el('tl-env-sub',nCar('env')?nCar('env')+' carreta(s) hoje':'paletes hoje');
+  el('tl-rec-sub','paletes hoje');el('tl-env-sub','paletes hoje');
   renderCargas();
   const hc=document.getElementById('op-hist-card'),ho=document.getElementById('op-hist');
   if(movs.length&&hc&&ho){hc.style.display='block';ho.innerHTML=movs.map((m,i)=>({m,i})).slice().reverse().map(({m,i})=>'<div class="log-entry" style="cursor:pointer" onclick="abrirEditMov(\''+todayD+'\','+i+')"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · '+m.who+(m.auto==='pessoas'?' · produção dos colaboradores (Turno '+m.turno+')':'')+(m.editadoManualmente?' <i class="ti ti-edit" style="font-size:10px;color:var(--cyan)"></i>':'')+'</div><div class="log-vals">'+(m.rec?'Rec:'+m.rec+(m.carretas&&m.carretas.rec?' ('+m.carretas.rec.length+' carr.)':'')+' ':'')+(m.prod?'Prod:'+m.prod+' ':'')+(m.env?'Env:'+m.env+(m.carretas&&m.carretas.env?' ('+m.carretas.env.length+' carr.)':'')+' ':'')+(m.desc?'Desc:'+m.desc+'':'')+'</div></div>').join('');}
@@ -2167,10 +2141,8 @@ async function lancar(){
   const who=currentUser?currentUser.user:'Desconhecido';
   if(!state.movimentos[todayD])state.movimentos[todayD]=[];
   const mov={ts:new Date().toISOString(),who,rec,prod,env,desc,turno:selTurnoProd};
-  if(cargas.rec.length||cargas.env.length)mov.carretas={rec:cargas.rec.slice(),env:cargas.env.slice()};
   state.movimentos[todayD].push(mov);
-  cargas={rec:[],env:[]};
-  ['mv-rec','mv-prod','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
+  ['mv-rec','mv-prod','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=(id==='mv-rec'||id==='mv-env')?'':0;});
   saveCache();await pushToCloud();verificarAusencia();showLancamentoOK();renderOperacao();
 }
 

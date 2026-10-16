@@ -2132,6 +2132,7 @@ async function cancelarFerias(nome,inicio){
 // OPERAÇÃO
 function renderCargas(){updBuf();}
 // Produzidos "automático": soma da produção por colaborador (salva ou em edição) + lançamentos avulsos
+function pbrDoTurno(dia){if(!dia)return 0;if(dia.pbr2!==undefined&&dia.pbr2!==null)return dia.pbr2||0;return Object.values(dia.pessoas||{}).reduce((s,r)=>s+((r&&r.pbr2)||0),0);}
 function _prodAutoSalvo(date){return (state.movimentos[date]||[]).filter(m=>m.auto==='pessoas').reduce((s,m)=>s+(m.prod||0),0);}
 function _prodPessoasLive(date){
   let t=0;const dd=(state.producaoPessoas||{})[date]||{};
@@ -2142,7 +2143,7 @@ function _prodPessoasPendente(date){return _prodPessoasLive(date)-_prodAutoSalvo
 function upsertAutoProd(date,turno){
   const dia=(state.producaoPessoas[date]||{})[turno];
   const soma=Object.values((dia&&dia.pessoas)||{}).reduce((s,r)=>s+((r&&r.prod)||0),0);
-  const somaPbr=Object.values((dia&&dia.pessoas)||{}).reduce((s,r)=>s+((r&&r.pbr2)||0),0);
+  const somaPbr=pbrDoTurno(dia);
   if(!state.movimentos[date])state.movimentos[date]=[];
   const agora=new Date().toISOString(), who=currentUser?currentUser.user:'Desconhecido';
   let m=state.movimentos[date].find(x=>x.auto==='pessoas'&&x.turno===turno);
@@ -2160,7 +2161,7 @@ function reconciliarProducao(){
       if(!turnos)return;
       Object.entries(turnos).forEach(([turno,dia])=>{
         const ps=Object.values((dia&&dia.pessoas)||{});
-        const soma=ps.reduce((s,r)=>s+((r&&r.prod)||0),0),somaPbr=ps.reduce((s,r)=>s+((r&&r.pbr2)||0),0);
+        const soma=ps.reduce((s,r)=>s+((r&&r.prod)||0),0),somaPbr=pbrDoTurno(dia);
         const m=(state.movimentos[date]||[]).find(x=>x.auto==='pessoas'&&x.turno===turno);
         if(m){ if((m.prod||0)!==soma||(m.pbr2||0)!==somaPbr){upsertAutoProd(date,turno);mudou=true;} }
         else if(soma>0){upsertAutoProd(date,turno);mudou=true;}
@@ -2282,13 +2283,13 @@ function renderProdPessoas(){
       '<div class="prow-nome"><div class="n">'+c.nome+'</div><div class="m" style="color:'+(abaixo?'var(--text3)':'var(--green)')+'">'+stChip(st)+' '+(abaixo?'meta '+info.metaPorPessoa+' · faltam '+falta:'meta batida ✓')+'</div></div>'+
       '<div class="num-wrap"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" inputmode="numeric" min="0" '+(saved?'disabled':'')+' value="'+(reg.prod||'')+'" placeholder="0" onfocus="this.select()" oninput="setProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderProdPessoas()"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
       '</div>'+
-      '<div class="pbr-row"><label>PBR2</label><small>dos '+(reg.prod||0)+' produzidos</small><input type="number" inputmode="numeric" min="0" max="'+(reg.prod||0)+'" '+(saved?'disabled':'')+' value="'+(reg.pbr2||'')+'" placeholder="0" onfocus="this.select()" onchange="setPbr2Pessoa(\''+nomeJs+'\',this.value)"></div>'+
       (abaixo&&!saved?'<select id="motivo-'+safeId+'" onchange="setMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
         MOTIVOS_NAO_META.map(m=>'<option value="'+m+'" '+(reg.motivo===m?'selected':'')+'>'+m+'</option>').join('')+
       '</select>':'')+
       (abaixo&&saved&&reg.motivo?'<div style="font-size:11px;color:var(--text2);margin-top:4px">Motivo: '+reg.motivo+'</div>':'')+
     '</div>';
   }).join('')+
+  '<div class="pbr-row" style="margin-top:12px"><label>PBR2 do turno</label><small>total geral do turno (de '+_pbrTotalProd(dia)+' produzidos)</small><input type="number" inputmode="numeric" min="0" max="'+_pbrTotalProd(dia)+'" '+(saved?'disabled':'')+' value="'+(pbrDoTurno(dia)||'')+'" placeholder="0" onfocus="this.select()" onchange="setPbr2Turno(this.value)"></div>'+
   (saved?
     '<button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="unlockProdPessoas()"><i class="ti ti-lock-open" style="font-size:13px"></i> Editar</button>'
     :
@@ -2296,26 +2297,22 @@ function renderProdPessoas(){
   );
   refreshProdLive();
 }
-function _pbrTurno(date,turno){const dia=state.producaoPessoas[date]&&state.producaoPessoas[date][turno];return Object.values((dia&&dia.pessoas)||{}).reduce((t,r)=>t+((r&&r.pbr2)||0),0);}
-function _pbrDia(date){let t=0;Object.values((state.producaoPessoas||{})[date]||{}).forEach(tv=>{Object.values((tv&&tv.pessoas)||{}).forEach(r=>{t+=(r&&r.pbr2)||0;});});return t;}
-function setPbr2Pessoa(nome,val){
-  const dia=_prodBuf();
-  if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
-  const r=dia.pessoas[nome];
-  r.pbr2=Math.max(0,parseInt(val)||0);
-  if(r.pbr2>(r.prod||0)){r.pbr2=r.prod||0;showToast('PBR2 não pode passar do total produzido de '+nome+'.','warn');}
-  dia.touchedAt=new Date().toISOString();
+function _pbrTurno(date,turno){return pbrDoTurno(state.producaoPessoas[date]&&state.producaoPessoas[date][turno]);}
+function _pbrDia(date){let t=0;Object.values((state.producaoPessoas||{})[date]||{}).forEach(tv=>{t+=pbrDoTurno(tv);});return t;}
+function _pbrTotalProd(dia){return Object.values((dia&&dia.pessoas)||{}).reduce((s,r)=>s+((r&&r.prod)||0),0);}
+function _pbrAplica(dia,val){
+  let v=Math.max(0,parseInt(val)||0);const tp=_pbrTotalProd(dia);
+  if(v>tp){v=tp;showToast('PBR2 não pode passar do total produzido no turno ('+tp+').','warn');}
+  dia.pbr2=v;dia.touchedAt=new Date().toISOString();
+}
+function setPbr2Turno(val){
+  const dia=_prodBuf();_pbrAplica(dia,val);
   upsertAutoProd(today(),selTurnoProd);saveCache();_pushSoon();
   renderProdPessoas();
 }
-function setRetroPbr2Pessoa(nome,val){
+function setRetroPbr2Turno(val){
   const{date,turno}=_retroSel();
-  const dia=_prodBuf(date,turno);
-  if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
-  const r=dia.pessoas[nome];
-  r.pbr2=Math.max(0,parseInt(val)||0);
-  if(r.pbr2>(r.prod||0)){r.pbr2=r.prod||0;showToast('PBR2 não pode passar do total produzido de '+nome+'.','warn');}
-  dia.touchedAt=new Date().toISOString();
+  _pbrAplica(_prodBuf(date,turno),val);
   renderRetroProdPessoas();
 }
 function selTurnoProd_(t){selTurnoProd=t;renderProdPessoas();}
@@ -2323,7 +2320,7 @@ function setProdPessoa(nome,val,rerender){
   const dia=_prodBuf();
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
   dia.pessoas[nome].prod=Math.max(0,parseInt(val)||0);
-  if((dia.pessoas[nome].pbr2||0)>dia.pessoas[nome].prod)dia.pessoas[nome].pbr2=dia.pessoas[nome].prod;
+  if(dia.pbr2!==undefined&&dia.pbr2>_pbrTotalProd(dia))dia.pbr2=_pbrTotalProd(dia);
   dia.touchedAt=new Date().toISOString();
   upsertAutoProd(today(),selTurnoProd);saveCache();_pushSoon();
   if(rerender!==false)renderProdPessoas();else refreshProdLive();
@@ -2332,7 +2329,7 @@ function adjProdPessoa(nome,d){
   const dia=_prodBuf();
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
   dia.pessoas[nome].prod=Math.max(0,(dia.pessoas[nome].prod||0)+d);
-  if((dia.pessoas[nome].pbr2||0)>dia.pessoas[nome].prod)dia.pessoas[nome].pbr2=dia.pessoas[nome].prod;
+  if(dia.pbr2!==undefined&&dia.pbr2>_pbrTotalProd(dia))dia.pbr2=_pbrTotalProd(dia);
   dia.touchedAt=new Date().toISOString();
   upsertAutoProd(today(),selTurnoProd);saveCache();_pushSoon();
   renderProdPessoas();
@@ -2407,19 +2404,19 @@ function renderRetroProdPessoas(){
         '<div style="font-size:13px;font-weight:600;color:var(--text);min-width:0">'+c.nome+' '+stChip(st)+'</div>'+
         '<div class="num-wrap" style="width:150px"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" value="'+(reg.prod||'')+'" placeholder="0" oninput="setRetroProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderRetroProdPessoas()"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
         '</div>'+
-        '<div class="pbr-row"><label>PBR2</label><small>dos '+(reg.prod||0)+' produzidos</small><input type="number" min="0" max="'+(reg.prod||0)+'" value="'+(reg.pbr2||'')+'" placeholder="0" onchange="setRetroPbr2Pessoa(\''+nomeJs+'\',this.value)"></div>'+
         (abaixo?'<select style="width:100%;margin-top:6px;padding:7px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px" onchange="setRetroMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
           MOTIVOS_NAO_META.map(m=>'<option value="'+m+'" '+(reg.motivo===m?'selected':'')+'>'+m+'</option>').join('')+
         '</select>':'')+
       '</div>';
-    }).join('');
+    }).join('')+
+    '<div class="pbr-row" style="margin-top:10px"><label>PBR2 do turno</label><small>total geral (de '+_pbrTotalProd(dia)+' produzidos)</small><input type="number" min="0" max="'+_pbrTotalProd(dia)+'" value="'+(pbrDoTurno(dia)||'')+'" placeholder="0" onchange="setRetroPbr2Turno(this.value)"></div>';
 }
 function setRetroProdPessoa(nome,val,rerender){
   const{date,turno}=_retroSel();
   const dia=_prodBuf(date,turno);
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
   dia.pessoas[nome].prod=Math.max(0,parseInt(val)||0);
-  if((dia.pessoas[nome].pbr2||0)>dia.pessoas[nome].prod)dia.pessoas[nome].pbr2=dia.pessoas[nome].prod;
+  if(dia.pbr2!==undefined&&dia.pbr2>_pbrTotalProd(dia))dia.pbr2=_pbrTotalProd(dia);
   dia.touchedAt=new Date().toISOString();
   if(rerender!==false)renderRetroProdPessoas();
 }
@@ -2428,7 +2425,7 @@ function adjRetroProdPessoa(nome,d){
   const dia=_prodBuf(date,turno);
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
   dia.pessoas[nome].prod=Math.max(0,(dia.pessoas[nome].prod||0)+d);
-  if((dia.pessoas[nome].pbr2||0)>dia.pessoas[nome].prod)dia.pessoas[nome].pbr2=dia.pessoas[nome].prod;
+  if(dia.pbr2!==undefined&&dia.pbr2>_pbrTotalProd(dia))dia.pbr2=_pbrTotalProd(dia);
   dia.touchedAt=new Date().toISOString();
   renderRetroProdPessoas();
 }
@@ -3134,13 +3131,14 @@ function exportarProducaoIndividual(){
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='producao_individual_'+today()+'.csv';a.click();URL.revokeObjectURL(a.href);
   showToast('CSV exportado!','ok');
 }
+function pbrMes(mes,turno){let t=0;Object.entries(state.producaoPessoas||{}).forEach(([d,tv])=>{if(d.indexOf(mes)!==0)return;Object.entries(tv||{}).forEach(([k,dia])=>{if(!turno||k===turno)t+=pbrDoTurno(dia);});});return t;}
 function calcRelatorioMensal(mes){
   var datesPres=Object.keys(state.presencas||{}).filter(function(d){return d.indexOf(mes)===0;});
   var datesProd=Object.keys(state.producaoPessoas||{}).filter(function(d){return d.indexOf(mes)===0;});
   var map={};
   function reg(turnoKey,nome){
     var k=turnoKey+'|'+nome;
-    if(!map[k]){var cc=state.colaboradores.find(function(c){return c.nome===nome;});map[k]={turno:turnoKey,nome:nome,prod:0,pbr2:0,presencas:0,faltas:0,diasProd:0,semProd:!!(cc&&!produzPallets(cc))};}
+    if(!map[k]){var cc=state.colaboradores.find(function(c){return c.nome===nome;});map[k]={turno:turnoKey,nome:nome,prod:0,presencas:0,faltas:0,diasProd:0,semProd:!!(cc&&!produzPallets(cc))};}
     return map[k];
   }
   turnosAtivos().forEach(function(t){
@@ -3160,7 +3158,7 @@ function calcRelatorioMensal(mes){
       if(!dia||!dia.pessoas)return;
       Object.entries(dia.pessoas).forEach(function(e2){
         var nome=e2[0],pr=e2[1]||{};
-        var r=reg(t.key,nome);r.prod+=(pr.prod||0);r.pbr2+=(pr.pbr2||0);if(pr.prod>0)r.diasProd++;
+        var r=reg(t.key,nome);r.prod+=(pr.prod||0);if(pr.prod>0)r.diasProd++;
       });
     });
   });
@@ -3176,9 +3174,9 @@ function exportarRelatorioMensal(mesArg){
   var rows=calcRelatorioMensal(mes);
   if(!rows.length){showToast('Nenhum dado de presen\u00E7a ou produ\u00E7\u00E3o nesse m\u00EAs.','warn');return;}
   var mesLabel=_mesLabel(mes);
-  var csv='M\u00EAs referente;Turno;Colaborador;Produ\u00E7\u00E3o do m\u00EAs;PBR2 do m\u00EAs;Presen\u00E7as do m\u00EAs;Faltas do m\u00EAs\n';
+  var csv='M\u00EAs referente;Turno;Colaborador;Produ\u00E7\u00E3o do m\u00EAs;Presen\u00E7as do m\u00EAs;Faltas do m\u00EAs\n';
   rows.forEach(function(r){
-    csv+='"'+mesLabel+'";"'+turnoInfo(r.turno).label+'";"'+r.nome+'";'+((r.semProd&&!r.prod)?'':r.prod)+';'+(r.pbr2||0)+';'+r.presencas+';'+r.faltas+'\n';
+    csv+='"'+mesLabel+'";"'+turnoInfo(r.turno).label+'";"'+r.nome+'";'+((r.semProd&&!r.prod)?'':r.prod)+';'+r.presencas+';'+r.faltas+'\n';
   });
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='relatorio_mensal_'+mes+'.csv';a.click();URL.revokeObjectURL(a.href);
@@ -3204,18 +3202,18 @@ function renderRelMensal(soTabela){
   var filt=rows.filter(function(r){return (!relTurno||r.turno===relTurno)&&(!relBusca||r.nome.toLowerCase().indexOf(relBusca.toLowerCase())>=0);});
   if(relOrd==='prod')filt.sort(function(a,b){return b.prod-a.prod;});
   else if(relOrd==='faltas')filt.sort(function(a,b){return b.faltas-a.faltas||a.nome.localeCompare(b.nome);});
-  var tP=0,tPr=0,tF=0,tB2=0;filt.forEach(function(r){tB2+=r.pbr2;tP+=r.prod;tPr+=r.presencas;tF+=r.faltas;});
+  var tP=0,tPr=0,tF=0,tB2=pbrMes(relMes,relTurno);filt.forEach(function(r){tP+=r.prod;tPr+=r.presencas;tF+=r.faltas;});
   var pctF=(tPr+tF)>0?Math.round(tF/(tPr+tF)*100):0;
   var tabela;
   if(!rows.length)tabela='<div class="empty"><i class="ti ti-database-off"></i><h3>Sem dados em '+_mesLabel(relMes)+'</h3><p>Nenhuma presença ou produção lançada nesse mês.</p></div>';
   else if(!filt.length)tabela='<div class="empty" style="padding:28px 12px"><i class="ti ti-search-off"></i><h3>Nenhum colaborador encontrado</h3></div>';
   else{
-    tabela='<div class="rel-wrap"><table class="rel-tbl"><thead><tr><th>T.</th><th>Colaborador</th><th class="n"><span class="lg">Produção</span><span class="sm">Prod.</span></th><th class="n"><span class="lg">PBR2</span><span class="sm">PBR2</span></th><th class="n"><span class="lg">Presenças</span><span class="sm">Pres.</span></th><th class="n"><span class="lg">Faltas</span><span class="sm">Falt.</span></th><th class="n"><span class="lg">% falta</span><span class="sm">%</span></th></tr></thead><tbody>';
+    tabela='<div class="rel-wrap"><table class="rel-tbl"><thead><tr><th>T.</th><th>Colaborador</th><th class="n"><span class="lg">Produção</span><span class="sm">Prod.</span></th><th class="n"><span class="lg">Presenças</span><span class="sm">Pres.</span></th><th class="n"><span class="lg">Faltas</span><span class="sm">Falt.</span></th><th class="n"><span class="lg">% falta</span><span class="sm">%</span></th></tr></thead><tbody>';
     filt.forEach(function(r){
       var pf=(r.presencas+r.faltas)>0?Math.round(r.faltas/(r.presencas+r.faltas)*100):0;
-      tabela+='<tr><td class="t">'+turnoInfo(r.turno).label.replace('Turno ','')+'</td><td class="nm">'+r.nome+'</td><td class="n'+(r.prod>0?' g':' z')+'">'+(r.semProd&&!r.prod?'—':r.prod.toLocaleString('pt-BR'))+'</td><td class="n">'+(r.pbr2?r.pbr2.toLocaleString('pt-BR'):'—')+'</td><td class="n">'+r.presencas+'</td><td class="n'+(r.faltas>0?' r':' z')+'">'+r.faltas+'</td><td class="n'+(pf>=15?' r':pf>=8?' w':' z')+'">'+(r.presencas+r.faltas>0?pf+'%':'—')+'</td></tr>';
+      tabela+='<tr><td class="t">'+turnoInfo(r.turno).label.replace('Turno ','')+'</td><td class="nm">'+r.nome+'</td><td class="n'+(r.prod>0?' g':' z')+'">'+(r.semProd&&!r.prod?'—':r.prod.toLocaleString('pt-BR'))+'</td><td class="n">'+r.presencas+'</td><td class="n'+(r.faltas>0?' r':' z')+'">'+r.faltas+'</td><td class="n'+(pf>=15?' r':pf>=8?' w':' z')+'">'+(r.presencas+r.faltas>0?pf+'%':'—')+'</td></tr>';
     });
-    tabela+='</tbody><tfoot><tr><td></td><td class="nm">Total ('+filt.length+')</td><td class="n g">'+tP.toLocaleString('pt-BR')+'</td><td class="n">'+tB2.toLocaleString('pt-BR')+'</td><td class="n">'+tPr+'</td><td class="n r">'+tF+'</td><td class="n">'+pctF+'%</td></tr></tfoot></table></div>';
+    tabela+='</tbody><tfoot><tr><td></td><td class="nm">Total ('+filt.length+')</td><td class="n g">'+tP.toLocaleString('pt-BR')+'</td><td class="n">'+tPr+'</td><td class="n r">'+tF+'</td><td class="n">'+pctF+'%</td></tr></tfoot></table></div>';
   }
   if(soTabela===true){var tb=document.getElementById('rel-tabela');if(tb){tb.innerHTML=tabela;return;}}
   var mesAtual=today().slice(0,7);

@@ -307,21 +307,42 @@ html,body{
       <div class="op-stats">
         <div class="op-stat">
           <div class="op-stat-lbl">Quadro Colab.</div>
-          <div class="op-stat-val" id="ma-quadro">—</div>
+          <div class="op-stat-val " id="ma-quadro">—</div>
         </div>
         <div class="op-stat">
           <div class="op-stat-lbl">Presentes</div>
           <div class="op-stat-val green" id="ma-presentes">—</div>
         </div>
         <div class="op-stat">
-          <div class="op-stat-lbl">OS hoje</div>
-          <div class="op-stat-val" style="color:var(--orange)" id="ma-os">—</div>
+          <div class="op-stat-lbl">Buffer</div>
+          <div class="op-stat-val cyan" id="ma-buffer">—</div>
         </div>
         <div class="op-stat">
-          <div class="op-stat-lbl">Valor OS</div>
+          <div class="op-stat-lbl">Produzido hoje</div>
+          <div class="op-stat-val green" id="ma-prod-dia">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Enviado hoje</div>
+          <div class="op-stat-val cyan" id="ma-env-dia">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Descartado hoje</div>
+          <div class="op-stat-val red" id="ma-desc-dia">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Amarração hoje</div>
+          <div class="op-stat-val " id="ma-os-a">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Desamarração hoje</div>
+          <div class="op-stat-val " id="ma-os-d">—</div>
+        </div>
+        <div class="op-stat">
+          <div class="op-stat-lbl">Valor OS hoje</div>
           <div class="op-stat-val green" id="ma-valor">—</div>
         </div>
       </div>
+      <div id="ma-absence-alert" style="display:none" class="absence-alert"><i class="ti ti-alert-triangle"></i><span id="ma-absence-msg">Ausência alta</span></div>
       <div class="freshness" id="ma-freshness">
         <i class="ti ti-clock"></i>
         <span id="ma-freshness-lbl">Abra o painel de Marília primeiro</span>
@@ -364,31 +385,6 @@ html,body{
       </div>
     </a>
 
-    <!-- Eucatex -->
-    <a class="op-card" id="card-eucatex" href="eucatex.html" target="_blank">
-      <div class="op-header">
-        <div class="op-icon" style="width:52px;height:52px;font-size:24px;border-width:2px;background:rgba(0,212,216,.12);border-color:rgba(0,212,216,.3);color:var(--cyan)"><i class="ti ti-building-factory"></i></div>
-        <div class="op-status">
-          <div class="status-dot loading" id="dot-eucatex"></div>
-          <span id="lbl-eucatex">Conectando...</span>
-        </div>
-      </div>
-      <div class="op-name">Eucatex</div>
-      <div class="op-desc">Presença — Betim, MG · Jornada comercial 07h–17h</div>
-      <div class="op-stats">
-        <div class="op-stat"><div class="op-stat-lbl">Colaboradores</div><div class="op-stat-val" id="eucatex-total">—</div></div>
-        <div class="op-stat"><div class="op-stat-lbl">Presentes</div><div class="op-stat-val green" id="eucatex-presentes">—</div></div>
-        <div class="op-stat"><div class="op-stat-lbl">Ausentes</div><div class="op-stat-val red" id="eucatex-ausentes">—</div></div>
-      </div>
-      <div class="freshness" id="eucatex-freshness">
-        <i class="ti ti-clock"></i>
-        <span id="eucatex-freshness-lbl">Abra o painel de Eucatex primeiro</span>
-      </div>
-      <div class="op-footer">
-        <span class="op-footer-lbl">Abrir painel completo</span>
-        <i class="ti ti-arrow-right op-arrow"></i>
-      </div>
-    </a>
 
 
 <script>
@@ -427,7 +423,7 @@ async function hubCarregarUnidade(u){
       const p=presDay[t];if(!p)return;
       Object.values(p.presenca||{}).forEach(v=>{
         if(v==='P')presentes++;
-        else if(v!=='F')ausentes++;
+        else if(v!=='F'&&v!=='B'&&v!=='H')ausentes++;
       });
     });
     let totP=0,totE=0;
@@ -442,6 +438,20 @@ async function hubCarregarUnidade(u){
     hubSetTxt(u.prefix+'-presentes',presentes);
     hubSetTxt(u.prefix+'-ausentes',ausentes);
     hubSetTxt(u.prefix+'-buffer',(buffer>=0?'+':'')+buffer);
+    if(u.prefix==='ma'){
+      const OSC={CARRETA:'C',TRUCK:'T',RODOTREM:'R'};
+      const vals={};(data.osValores||[]).forEach(x=>{if(x&&!x.del&&x.v!==null&&x.v!==undefined&&x.v!=='')vals[x.k]=Number(x.v);});
+      let nA=0,nD=0,vt=0,sem=0;
+      (data.osAmarracao||[]).forEach(r=>{
+        if(!r||r.del||r.data!==todayD)return;
+        if(r.op==='A')nA++;else nD++;
+        const cod=(OSC[r.veic]||'')+'S'+r.op;
+        const un=vals[r.cnpj+'|'+cod]!==undefined?vals[r.cnpj+'|'+cod]:vals[cod];
+        if(un===undefined)sem++;else vt+=un*(r.qtd||1);
+      });
+      hubSetTxt('ma-os-a',nA);hubSetTxt('ma-os-d',nD);
+      hubSetTxt('ma-valor',(vt||!sem)?vt.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'—');
+    }
     const pct=quadro>0?ausentes/quadro:0;
     const alertEl=document.getElementById(u.prefix+'-absence-alert');
     if(alertEl){

@@ -688,6 +688,16 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
   </div>
 </div>
 
+<!-- Modal Grupos de visita -->
+<div id="grupos-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeGruposModal()">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-title"><i class="ti ti-link"></i><span>Grupos de visita</span></div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5" id="grp-sup-lbl"></div>
+    <div id="grp-corpo"></div>
+    <div class="modal-btns"><button class="modal-btn-ghost" onclick="closeGruposModal()">Fechar</button></div>
+  </div>
+</div>
+
 <!-- Modal Rota de Supervisor -->
 <div id="rota-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeRotaModal()">
   <div class="modal-box" style="max-height:92vh;overflow-y:auto">
@@ -753,6 +763,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
       <input type="text" id="rota-modal-grupo" list="rota-grupos-lista" maxlength="40" placeholder="ex.: Dori + Grespan — use o mesmo nome nos clientes que devem ser visitados juntos">
       <datalist id="rota-grupos-lista"></datalist>
     </div>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:2px 0 10px;cursor:pointer"><input type="checkbox" id="rota-modal-diainteiro" style="margin-top:2px"> <span>Este cliente ocupa o <b>dia inteiro</b>: o supervisor passa o dia todo nele e o cronograma <b>não coloca nenhum outro cliente</b> nesse dia.</span></label>
     <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:2px 0 10px;cursor:pointer"><input type="checkbox" id="rota-modal-escr" style="margin-top:2px"> <span>Este local é o <b>escritório da Login Serv</b>: nos dias de daily scrum a visita é o próprio scrum (não gera 2 visitas no mesmo dia).</span></label>
     <div class="modal-btns">
       <button class="modal-btn-primary" onclick="salvarRotaModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
@@ -2905,6 +2916,7 @@ async function cronNucleo(cfg){
   let soma=0,n=0;
   for(let i=0;i<nCli;i++)for(let j=i+1;j<nCli;j++){ if(dist[i][j]>0){soma+=dist[i][j];n++;} }
   const escala=n?soma/n:5;
+  const DI=new Set(cfg.diaInt||[]), DIA=1500;
   const GRP=700, PER=1000, DUP=1000, CAP=300, HOR=800, SPC=300, REP=0.5*escala, SAME=1.5*escala;
 
   const memo=new Map();
@@ -3002,6 +3014,7 @@ async function cronNucleo(cfg){
       const ag0=agendaDia(pd0.ordem,scrumDia[dI]); if(ag0.viol){pen+=HOR*ag0.viol;vh+=ag0.viol;}
       const cl=ids.map(id=>inst[id].cli);
       for(let a=0;a<cl.length;a++)for(let b=a+1;b<cl.length;b++) if(cl[a]===cl[b]){pen+=DUP;viol++;}
+      if(DI.size&&cl.length>1&&cl.some(c=>DI.has(c))){pen+=DIA*(cl.length-1);viol++;}
       for(const c of cl){ wk[c*W+w]++; mask[c*W+w]|=(1<<d); }
       for(const id of ids){ const x=inst[id]; if((x.permD&&!x.permD.includes(d))||(x.permW&&!x.permW.includes(w))){pen+=PER;viol++;} }
       keys[dI]=cl.slice().sort((a,b)=>a-b).join(',');
@@ -3427,7 +3440,7 @@ async function _cronGerar(sup,o,seed,onMsg){
     // grupos de clientes próximos (visita no mesmo dia): reserva dias com capacidade para o grupo inteiro,
     // tirando as vagas de dias mais cheios — o total de visitas não muda
     (function(){
-      const gm={}; rotas.forEach((r,i)=>{ if(r.grupoDia)(gm[r.grupoDia]=gm[r.grupoDia]||[]).push(i); });
+      const gm={}; rotas.forEach((r,i)=>{ if(r.grupoDia&&!r.diaInteiro)(gm[r.grupoDia]=gm[r.grupoDia]||[]).push(i); });
       const gl=Object.values(gm).filter(a=>a.length>1).sort((a,b)=>b.length-a.length);
       const reservado=new Set();
       gl.forEach(g=>{
@@ -3446,10 +3459,45 @@ async function _cronGerar(sup,o,seed,onMsg){
       });
     })();
   }
+  // clientes de "dia inteiro": cada visita fica sozinha num dia (capacidade 1); as vagas que sobram vão para os outros dias
+  const diaIntIdx=rotas.map((r,i)=>r.diaInteiro?i:-1).filter(i=>i>=0);
+  if(diaIntIdx.length){
+    const nD=W*D, travado=new Set(), diaOcup=new Set();
+    grpRes.forEach(g=>g.dias.forEach(j=>travado.add(j)));
+    diaIntIdx.forEach(i=>{
+      const x=dem[i];
+      let dias=[];
+      if(x.tipo==='fixo'){ dias=fixInst.filter(f=>f.i===i).map(f=>f.w*D+f.d); }
+      else{
+        const pd=(x.perm&&x.perm.length)?x.perm.map(dw=>dowL.indexOf(dw)).filter(q=>q>=0):dowL.map((_,q)=>q);
+        const sem=x.semIni!==undefined?(x.cnt===2?[x.semIni%W,(x.semIni+Math.round(W/2))%W]:[x.semIni%W]):null;
+        for(let k=0;k<cont[i];k++){
+          const w=sem?sem[k%sem.length]:(k+i)%W; let bj=-1;
+          for(const d of pd){ const j=w*D+d; if(travado.has(j)||dias.includes(j))continue; if(scrumDia[j]&&pd.length>1)continue; if(bj<0||capDia[j]<capDia[bj])bj=j; }
+          if(bj<0)for(const d of pd){ const j=w*D+d; if(travado.has(j)||dias.includes(j))continue; if(bj<0||capDia[j]<capDia[bj])bj=j; }
+          if(bj<0)for(const d of pd){ const j=w*D+d; if(diaOcup.has(j)||dias.includes(j))continue; if(bj<0||capDia[j]<capDia[bj])bj=j; }
+          if(bj<0){ avisos.push(rotaLabel(rotas[i])+': não há dia livre suficiente para todas as visitas de "dia inteiro" — ajuste dias por semana ou os dias permitidos.'); continue; }
+          dias.push(bj);
+        }
+      }
+      dias.forEach(j=>{
+        travado.add(j); diaOcup.add(j);
+        let sobra=capDia[j]-1;
+        if(sobra<0){ // dia sem vaga: toma uma de outro dia (o total de visitas não muda)
+          let dj=-1; for(let q=0;q<nD;q++){ if(q===j||diaOcup.has(q)||capDia[q]<1)continue; if(dj<0||capDia[q]>capDia[dj])dj=q; }
+          if(dj>=0){ capDia[dj]--; sobra=0; } else { avisos.push(rotaLabel(rotas[i])+': não há como reservar um dia inteiro.'); sobra=0; }
+        }
+        capDia[j]=1;
+        while(sobra>0){ let dj=-1; for(let q=0;q<nD;q++){ if(q===j||travado.has(q))continue; if(dj<0||capDia[q]<capDia[dj])dj=q; } if(dj<0)for(let q=0;q<nD;q++){ if(q===j||diaOcup.has(q))continue; if(dj<0||capDia[q]<capDia[dj])dj=q; } if(dj<0)break; capDia[dj]++; sobra--; }
+        if(sobra>0)avisos.push(rotaLabel(rotas[i])+': dias de "dia inteiro" ocupam quase todo o cronograma — sobraram visitas sem vaga.');
+      });
+      grpRes.push({mem:[i],dias:dias.slice(),diaInteiro:true});
+    });
+  }
   const occ=new Array(N).fill(0), inst=[];
   const novoInst=(i,extra)=>{
     const gl=grupos[i], g=gl.length?gl[(occ[i]+seed+i)%gl.length]:null;
-    const x=Object.assign({cli:i,dur:(rotas[i].durMin>0?Number(rotas[i].durMin):H.dur),bucket:g?Math.floor(g.min/90):-1,grupo:g,win:g?g.win:null,noite:g?!!g.noite:false},extra||{});
+    const x=Object.assign({cli:i,dur:(rotas[i].diaInteiro?Math.max(60,Math.round(H.jornada/2)):(rotas[i].durMin>0?Number(rotas[i].durMin):H.dur)),bucket:g?Math.floor(g.min/90):-1,grupo:g,win:g?g.win:null,noite:g?!!g.noite:false},extra||{});
     const dm=dem[i];
     if(dm.perm&&dm.perm.length){ const pd=dm.perm.map(dw=>dowL.indexOf(dw)).filter(q=>q>=0); if(pd.length)x.permD=pd; }
     if(dm.semIni!==undefined){ x.permW=[(dm.semIni+Math.round(W/2)*(dm.cnt===2?occ[i]:0))%W]; }
@@ -3460,7 +3508,7 @@ async function _cronGerar(sup,o,seed,onMsg){
   for(let i=0;i<N;i++){ const fx=dem[i].tipo==='fixo'?cont[i]:0; for(let k=0;k<cont[i]-fx;k++)novoInst(i); }
   let res=null;
   for(let a=0;a<3;a++){
-    const r2=await cronNucleo({nCli:N,dist,inst,W,D,V,capDia,grpRes,grp:(function(){const m={};rotas.forEach((r,i)=>{if(r.grupoDia){(m[r.grupoDia]=m[r.grupoDia]||[]).push(i);}});return Object.values(m).filter(a=>a.length>1);})(),scrum:o.scrum,scrumDia,horario:H,esp:rotas.map(r=>r.freqCiclo==='quinzenal'),seed:seed+a*7919,onProgress:p=>onMsg('Otimizando trajetos e horários… '+Math.round(p*100)+'%')});
+    const r2=await cronNucleo({nCli:N,dist,inst,W,D,V,capDia,grpRes,diaInt:diaIntIdx,grp:(function(){const m={};rotas.forEach((r,i)=>{if(r.grupoDia&&!r.diaInteiro){(m[r.grupoDia]=m[r.grupoDia]||[]).push(i);}});return Object.values(m).filter(a=>a.length>1);})(),scrum:o.scrum,scrumDia,horario:H,esp:rotas.map(r=>r.freqCiclo==='quinzenal'),seed:seed+a*7919,onProgress:p=>onMsg('Otimizando trajetos e horários… '+Math.round(p*100)+'%')});
     if(!res||(r2.viol+r2.violH)<(res.viol+res.violH))res=r2;
     if(r2.viol===0&&r2.violH===0)break;
   }
@@ -3469,7 +3517,7 @@ async function _cronGerar(sup,o,seed,onMsg){
   res.dias.forEach((dia,dI)=>diasExp.push({campo:Math.round(dia.ag.campo),scrum:scrumDia[dI],cedo:dia.ag.cedo,w:dia.w,d:dia.d,dow:dowL[dia.d],ini:_fmtMin(dia.ag.ini),fim:_fmtMin(dia.ag.fim),pIni:_fmtMin(dia.ag.pIni),pFim:_fmtMin(dia.ag.pFim),noturno:dia.ag.noturno,km:Math.round(dia.km*10)/10}));
   res.dias.forEach(dia=>dia.ordem.forEach((id,k)=>{
     const x=inst[id];
-    itens.push({w:dia.w,d:dia.d,dow:dowL[dia.d],ordem:k+1,rotaId:rotas[x.cli].id,dur:x.dur,turno:null,hora:_fmtMin(dia.ag.times[k]),turnos:x.grupo?x.grupo.turnos.map(q=>({nome:q.nome,horaEntrada:q.horaEntrada,horaSaida:q.horaSaida})):null});
+    itens.push({w:dia.w,d:dia.d,dow:dowL[dia.d],ordem:k+1,rotaId:rotas[x.cli].id,dur:x.dur,diaInteiro:!!rotas[x.cli].diaInteiro,turno:null,hora:_fmtMin(dia.ag.times[k]),turnos:x.grupo?x.grupo.turnos.map(q=>({nome:q.nome,horaEntrada:q.horaEntrada,horaSaida:q.horaSaida})):null});
   }));
   // Sábado: revezamento entre os supervisores que têm turnos de fim de semana/feriado nos seus postos.
   // Cada um trabalha nas semanas que lhe cabem e visita só os postos vinculados a ele.
@@ -3772,6 +3820,7 @@ function cronoChip(it){
   else if(it.st==='perdida')sub.push('não visitado');
   else if(it.st==='extra')sub.push(it.hora?'fora do dia · '+it.hora:'fora do dia previsto');
   if(r.avulso)sub.push('não cadastrado');
+  if(r.diaInteiro)sub.push('dia inteiro');
   const end=rotaEnderecoTxt(r);
   return '<div class="crono-chip '+it.st+'" title="'+supEsc(rotaLabel(r)+(end?' — '+end:''))+'"><i class="ti '+CRONO_ICONE[it.st]+'"></i><div><div>'+(it.ag&&!it.ag.legacy?it.ag.ordem+'. ':'')+supEsc(rotaLabel(r))+'</div>'+(sub.length?'<small>'+supEsc(sub.join(' · '))+'</small>':'')+'</div></div>';
 }
@@ -3906,14 +3955,14 @@ function renderSupervisores(){
         const end=rotaEnderecoTxt(r);
         const semEnd=!r.avulso&&!end&&findPosto(r.postoId);
         html+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--border)">';
-        html+='<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+supEsc(rotaLabel(r))+(r.avulso?' <span class="badge b-warn" style="margin-left:4px">não cadastrado</span>':'')+'</div>';
+        html+='<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+supEsc(rotaLabel(r))+(r.avulso?' <span class="badge b-warn" style="margin-left:4px">não cadastrado</span>':'')+(r.diaInteiro?' <span class="badge b-ok" style="margin-left:4px">dia inteiro</span>':'')+(r.grupoDia?' <span class="badge" style="margin-left:4px;background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-bd)">grupo: '+supEsc(r.grupoDia)+'</span>':'')+'</div>';
         html+='<div style="font-size:11px;color:var(--text2)">'+supEsc(rotaDiasTxt(r,sup))+(r.todosPostos?' · <span style="color:var(--cyan)">passa em: '+supEsc(rotaPostosTxt(r)||'nenhum posto cadastrado')+'</span>':'')+(end?' · '+supEsc(end):'')+(semEnd?' · <span style="color:var(--warn)">sem endereço cadastrado</span>':'')+(rotaTurnosTodos(r).length>1?' · turnos: '+supEsc(rotaTurnos(r).map(x=>x.nome).join(', ')):'')+'</div></div>';
         if(canEdit)html+='<div style="display:flex;gap:10px;flex-shrink:0"><i class="ti ti-pencil" style="font-size:14px;color:var(--text3);cursor:pointer" onclick="abrirRotaModal(\''+sup.id+'\',\''+r.id+'\')"></i> <i class="ti ti-x" style="font-size:14px;color:var(--red);cursor:pointer" onclick="excluirRota(\''+sup.id+'\',\''+r.id+'\')"></i></div>';
         html+='</div>';
       });
       html+='</div>';
     }
-    if(canEdit)html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost btn-sm" onclick="abrirRotaModal(\''+sup.id+'\',null)"><i class="ti ti-plus"></i> Adicionar cliente à rota</button>'+(rota.length?'<button class="btn btn-purple btn-sm" onclick="abrirCronModal(\''+sup.id+'\')"><i class="ti ti-wand"></i> '+(cronAtivo(sup)?'Gerar novo cronograma':'Gerar cronograma')+'</button>':'')+'</div>';
+    if(canEdit)html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost btn-sm" onclick="abrirRotaModal(\''+sup.id+'\',null)"><i class="ti ti-plus"></i> Adicionar cliente à rota</button>'+(rota.length>1?'<button class="btn btn-ghost btn-sm" onclick="abrirGruposModal(\''+sup.id+'\')"><i class="ti ti-link"></i> Grupos de visita</button>':'')+(rota.length?'<button class="btn btn-purple btn-sm" onclick="abrirCronModal(\''+sup.id+'\')"><i class="ti ti-wand"></i> '+(cronAtivo(sup)?'Gerar novo cronograma':'Gerar cronograma')+'</button>':'')+'</div>';
     html+='</div>';
   });
 
@@ -3966,6 +4015,143 @@ async function excluirSupervisor(id){
 
 // --- Modal de cliente da rota (cadastrado ou avulso) ---
 let _rotaModalSupId=null,_rotaModalId=null,_rotaAvulso=false,_rotaDias=[],_rotaDiasModo='',_rotaSemIni=0;
+// ===== Grupos de visita: clientes do mesmo grupo são visitados juntos, no mesmo dia =====
+function rotaCidade(r){
+  if(r.avulso)return '';
+  let e=null;
+  if(r.todosPostos){ const cl=rotaClienteTodos(r); if(cl)e=(cl.endereco&&cl.endereco.municipio)?cl.endereco:((cl.postos||[]).map(p=>p.endereco).find(x=>x&&x.municipio)); }
+  else{ const f=findPosto(r.postoId); if(f)e=(f.posto.endereco&&f.posto.endereco.municipio)?f.posto.endereco:f.cliente.endereco; }
+  return e&&e.municipio?String(e.municipio).trim():'';
+}
+function _normTxt(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();}
+let _grpSupId=null,_grpEdit=null,_grpSug=null,_grpBusy=false;
+function abrirGruposModal(supId){
+  if(!podeEditarSupervisores())return;
+  _grpSupId=supId;_grpEdit=null;_grpSug=null;
+  const sup=findSupervisor(supId);
+  document.getElementById('grp-sup-lbl').innerHTML='Supervisor: <b style="color:var(--text)">'+supEsc(sup?sup.nome:'')+'</b> · clientes do mesmo grupo são visitados <b>juntos, no mesmo dia</b>. Clientes marcados como "dia inteiro" e o escritório não entram em grupos.';
+  document.getElementById('grupos-modal').style.display='flex';
+  renderGruposModal();
+}
+function closeGruposModal(){ if(_grpBusy)return; document.getElementById('grupos-modal').style.display='none'; renderSupervisores(); }
+function _grpElegiveis(sup){ return (sup.rota||[]).filter(r=>!r.diaInteiro&&!r.escritorio&&!rotaSoFds(r)); }
+function _grpMapa(sup){ const m={}; (sup.rota||[]).forEach(r=>{ if(r.grupoDia)(m[r.grupoDia]=m[r.grupoDia]||[]).push(r); }); return m; }
+function renderGruposModal(){
+  const sup=findSupervisor(_grpSupId); const el=document.getElementById('grp-corpo'); if(!sup||!el)return;
+  const mapa=_grpMapa(sup), nomes=Object.keys(mapa).sort();
+  const btn='background:none;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;cursor:pointer;';
+  let h='';
+  if(_grpEdit){
+    const g=_grpEdit, elig=_grpElegiveis(sup);
+    h+='<div class="field"><label>Nome do grupo</label><input type="text" id="grp-nome" maxlength="40" value="'+supEsc(g.nome)+'" placeholder="ex.: Dori + Grespan" oninput="_grpEdit.nome=this.value"></div>';
+    h+='<div class="field"><label>Clientes do grupo (marque 2 ou mais)</label><div style="max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:9px;padding:4px 10px">';
+    elig.forEach(r=>{
+      const outro=r.grupoDia&&r.grupoDia!==g.original;
+      h+='<label style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer"><input type="checkbox" '+(g.ids.includes(r.id)?'checked ':'')+'onchange="_grpToggle(\''+r.id+'\',this.checked)"> <span style="flex:1;min-width:0">'+supEsc(rotaLabel(r))+'<span style="display:block;font-size:11px;color:var(--text2)">'+supEsc(rotaCidade(r)||rotaEnderecoTxt(r)||'sem endereço')+'</span></span>'+(outro?'<span style="font-size:10px;color:var(--warn)">está em "'+supEsc(r.grupoDia)+'"</span>':'')+'</label>';
+    });
+    h+='</div></div>';
+    h+='<div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="grpSalvar()"><i class="ti ti-check"></i> Salvar grupo</button><button class="btn btn-ghost btn-sm" onclick="_grpEdit=null;renderGruposModal()">Cancelar</button></div>';
+    el.innerHTML=h;return;
+  }
+  h+='<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin:4px 0 6px">Grupos atuais ('+nomes.length+')</div>';
+  if(!nomes.length)h+='<div style="font-size:12px;color:var(--text3);padding:6px 0 10px">Nenhum grupo ainda. Crie um grupo marcando os clientes, ou deixe o sistema sugerir por proximidade.</div>';
+  nomes.forEach(n=>{
+    h+='<div style="border:1px solid var(--cyan-bd);background:var(--cyan-bg);border-radius:10px;padding:10px 12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><b style="flex:1;font-size:13px;color:var(--text)">'+supEsc(n)+' <span style="font-weight:400;color:var(--text2);font-size:11px">· '+mapa[n].length+' clientes</span></b>'+
+      '<button style="'+btn+'color:var(--text2)" onclick="grpEditar(decodeURIComponent(\''+encodeURIComponent(n)+'\'))"><i class="ti ti-pencil"></i></button><button style="'+btn+'color:var(--red);border-color:var(--red-bd)" onclick="grpExcluir(decodeURIComponent(\''+encodeURIComponent(n)+'\'))"><i class="ti ti-trash"></i></button></div>'+
+      '<div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.6">'+mapa[n].map(r=>supEsc(rotaLabel(r))+(rotaCidade(r)?' <span style="color:var(--text3)">('+supEsc(rotaCidade(r))+')</span>':'')).join('<br>')+'</div></div>';
+  });
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px"><button class="btn btn-ghost btn-sm" onclick="grpNovo()"><i class="ti ti-plus"></i> Novo grupo</button></div>';
+  h+='<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin:4px 0 6px">Sugerir grupos automaticamente</div>';
+  h+='<div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:8px">Junta os clientes <b>ainda sem grupo</b> que ficam perto uns dos outros (pelo endereço no mapa; sem localização, pela mesma cidade). Você confere antes de aplicar.</div>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end"><div class="field" style="margin:0;width:130px"><label>Raio máx. (km)</label><input type="number" id="grp-raio" min="1" max="200" value="'+((_grpSug&&_grpSug.raio)||15)+'"></div><div class="field" style="margin:0;width:150px"><label>Máx. clientes/grupo</label><input type="number" id="grp-max" min="2" max="6" value="'+((_grpSug&&_grpSug.max)||3)+'"></div><button class="btn btn-purple btn-sm" id="grp-sug-btn" onclick="grpSugerir()"><i class="ti ti-wand"></i> Sugerir grupos</button></div>';
+  h+='<div id="grp-msg" style="font-size:12px;color:var(--text2);margin-top:8px"></div>';
+  if(_grpSug&&_grpSug.lista){
+    if(!_grpSug.lista.length)h+='<div style="font-size:12px;color:var(--text3);margin-top:8px">Nenhum grupo sugerido: os clientes sem grupo estão distantes uns dos outros (tente aumentar o raio).</div>';
+    else{
+      h+='<div style="margin-top:10px">';
+      _grpSug.lista.forEach((g,i)=>{
+        h+='<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px"><label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" '+(g.on?'checked ':'')+'onchange="_grpSug.lista['+i+'].on=this.checked"> <input type="text" value="'+supEsc(g.nome)+'" maxlength="40" oninput="_grpSug.lista['+i+'].nome=this.value" style="flex:1;min-width:0;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-weight:600"></label>'+
+          '<div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.6">'+g.ids.map(id=>{const r=(sup.rota||[]).find(x=>x.id===id);return r?supEsc(rotaLabel(r))+(rotaCidade(r)?' <span style="color:var(--text3)">('+supEsc(rotaCidade(r))+')</span>':''):'';}).join('<br>')+'</div>'+(g.km?'<div style="font-size:11px;color:var(--text3);margin-top:4px">distância máxima entre eles: ~'+g.km+' km</div>':'')+'</div>';
+      });
+      h+='<button class="btn btn-primary btn-sm" onclick="grpAplicarSug()"><i class="ti ti-check"></i> Aplicar grupos marcados</button></div>';
+    }
+  }
+  el.innerHTML=h;
+}
+function grpNovo(){ _grpEdit={nome:'',ids:[],original:''}; renderGruposModal(); }
+function grpEditar(nome){ const sup=findSupervisor(_grpSupId); _grpEdit={nome,ids:(_grpMapa(sup)[nome]||[]).map(r=>r.id),original:nome}; renderGruposModal(); }
+function _grpToggle(id,on){ const i=_grpEdit.ids.indexOf(id); if(on&&i<0)_grpEdit.ids.push(id); if(!on&&i>=0)_grpEdit.ids.splice(i,1); }
+async function _grpPersist(msg){ saveCache(); await pushToCloud(); if(msg)showToast(msg,'ok'); }
+async function grpSalvar(){
+  const sup=findSupervisor(_grpSupId); if(!sup||!_grpEdit)return;
+  const nome=(_grpEdit.nome||'').trim();
+  if(!nome){showToast('Dê um nome ao grupo.','warn');return;}
+  if(_grpEdit.ids.length<2){showToast('Marque pelo menos 2 clientes no grupo.','warn');return;}
+  const mapa=_grpMapa(sup);
+  if(nome!==_grpEdit.original&&mapa[nome]){showToast('Já existe um grupo com esse nome.','warn');return;}
+  (sup.rota||[]).forEach(r=>{ if(r.grupoDia===_grpEdit.original&&_grpEdit.original)r.grupoDia=''; });
+  (sup.rota||[]).forEach(r=>{ if(_grpEdit.ids.includes(r.id))r.grupoDia=nome; });
+  _grpLimpaUnitarios(sup);
+  _grpEdit=null; await _grpPersist('Grupo salvo!'); renderGruposModal();
+}
+function _grpLimpaUnitarios(sup){ const m=_grpMapa(sup); Object.keys(m).forEach(n=>{ if(m[n].length<2)m[n].forEach(r=>{r.grupoDia='';}); }); }
+async function grpExcluir(nome){
+  const sup=findSupervisor(_grpSupId); if(!sup)return;
+  if(!confirm('Desfazer o grupo "'+nome+'"? Os clientes continuam na rota, só deixam de ser visitados juntos.'))return;
+  (sup.rota||[]).forEach(r=>{ if(r.grupoDia===nome)r.grupoDia=''; });
+  await _grpPersist('Grupo desfeito.'); renderGruposModal();
+}
+async function grpSugerir(){
+  const sup=findSupervisor(_grpSupId); if(!sup||_grpBusy)return;
+  const raio=Math.max(1,parseFloat(document.getElementById('grp-raio').value)||15), max=Math.min(6,Math.max(2,parseInt(document.getElementById('grp-max').value,10)||3));
+  const msg=document.getElementById('grp-msg'), btn=document.getElementById('grp-sug-btn');
+  const cand=_grpElegiveis(sup).filter(r=>!r.grupoDia);
+  if(cand.length<2){msg.textContent='É preciso ter pelo menos 2 clientes sem grupo.';return;}
+  _grpBusy=true; btn.disabled=true;
+  try{
+    const faltam=cand.filter(r=>!rotaCoords(r)&&(r.avulso?!!r.endereco:true));
+    let i=0;
+    for(const r of faltam){ i++; msg.textContent='Localizando clientes no mapa ('+i+'/'+faltam.length+')…'; await geocodeRota(r); }
+    msg.textContent='';
+    // 1) clientes com localização: agrupamento por proximidade (todos do grupo a no máx. "raio" km uns dos outros)
+    const com=cand.filter(r=>rotaCoords(r)), sem=cand.filter(r=>!rotaCoords(r));
+    const co=com.map(rotaCoords), d=(a,b)=>kmEntre(co[a],co[b]);
+    let cl=com.map((_,k)=>[k]);
+    const maxD=(A,B)=>{let m=0;A.forEach(a=>B.forEach(b=>{const x=d(a,b);if(x>m)m=x;}));return m;};
+    for(;;){
+      let bi=-1,bj=-1,bd=Infinity;
+      for(let a=0;a<cl.length;a++)for(let b=a+1;b<cl.length;b++){
+        if(cl[a].length+cl[b].length>max)continue;
+        const x=maxD(cl[a],cl[b]); if(x<=raio&&x<bd){bd=x;bi=a;bj=b;}
+      }
+      if(bi<0)break;
+      cl[bi]=cl[bi].concat(cl[bj]); cl.splice(bj,1);
+    }
+    const grupos=cl.filter(c=>c.length>1).map(c=>({ids:c.map(k=>com[k].id),km:Math.round(maxD(c,c)*10)/10}));
+    // 2) sem localização: mesma cidade
+    const porCid={}; sem.forEach(r=>{ const c=_normTxt(rotaCidade(r)); if(c)(porCid[c]=porCid[c]||[]).push(r); });
+    Object.values(porCid).forEach(l=>{ for(let k=0;k<l.length;k+=max){ const ch=l.slice(k,k+max); if(ch.length>1)grupos.push({ids:ch.map(r=>r.id),km:0}); } });
+    // nomes
+    const usados=new Set(Object.keys(_grpMapa(sup)));
+    const lista=grupos.map((g,n)=>{
+      const rs=g.ids.map(id=>(sup.rota||[]).find(x=>x.id===id));
+      const cids=rs.map(rotaCidade).filter(Boolean); const cid=cids.sort((a,b)=>cids.filter(x=>x===b).length-cids.filter(x=>x===a).length)[0];
+      let nome=(cid?cid+' · ':'')+rs.slice(0,2).map(r=>rotaLabel(r).split(' — ')[0].slice(0,14)).join(' + ');
+      nome=nome.slice(0,40); let base=nome,q=2; while(usados.has(nome)){nome=base.slice(0,36)+' '+q++;} usados.add(nome);
+      return {nome,ids:g.ids,km:g.km,on:true};
+    });
+    _grpSug={lista,raio,max};
+  }catch(e){ console.warn(e); msg.textContent='Não foi possível sugerir agora ('+(e&&e.message||e)+').'; }
+  _grpBusy=false; renderGruposModal();
+}
+async function grpAplicarSug(){
+  const sup=findSupervisor(_grpSupId); if(!sup||!_grpSug)return;
+  const sel=_grpSug.lista.filter(g=>g.on&&g.ids.length>1); if(!sel.length){showToast('Marque pelo menos um grupo.','warn');return;}
+  const existentes=new Set(Object.keys(_grpMapa(sup)));
+  for(const g of sel){ const n=(g.nome||'').trim(); if(!n){showToast('Todo grupo precisa de nome.','warn');return;} if(existentes.has(n)){showToast('Já existe um grupo chamado "'+n+'".','warn');return;} existentes.add(n); }
+  sel.forEach(g=>{ const n=g.nome.trim(); (sup.rota||[]).forEach(r=>{ if(g.ids.includes(r.id))r.grupoDia=n; }); });
+  _grpSug=null; await _grpPersist(sel.length+' grupo(s) criado(s)!'); renderGruposModal();
+}
 function abrirRotaModal(supervisorId,rotaId){
   if(!podeEditarSupervisores()){showToast('Apenas administradores/gestores podem editar rotas.','err');return;}
   const sup=findSupervisor(supervisorId);
@@ -3986,6 +4172,7 @@ function abrirRotaModal(supervisorId,rotaId){
   document.getElementById('rota-modal-dur').value=r&&r.durMin>0?r.durMin:'';
   document.getElementById('rota-modal-grupo').value=r&&r.grupoDia?r.grupoDia:'';
   document.getElementById('rota-modal-escr').checked=!!(r&&r.escritorio);
+  document.getElementById('rota-modal-diainteiro').checked=!!(r&&r.diaInteiro);
   document.getElementById('rota-grupos-lista').innerHTML=[...new Set((sup.rota||[]).map(x=>x.grupoDia).filter(Boolean))].map(g=>'<option value="'+supEsc(g)+'">').join('');
   document.getElementById('rota-modal-freqciclo').value=r&&r.freqCiclo?r.freqCiclo:'';
   _rotaDias=r&&r.dias?[...r.dias]:[];
@@ -4089,6 +4276,8 @@ async function salvarRotaModal(){
   dados.durMin=Math.max(0,Math.min(480,parseInt(document.getElementById('rota-modal-dur').value,10)||0));
   dados.grupoDia=(document.getElementById('rota-modal-grupo').value||'').trim();
   dados.escritorio=!!document.getElementById('rota-modal-escr').checked;
+  dados.diaInteiro=!!document.getElementById('rota-modal-diainteiro').checked;
+  if(dados.diaInteiro)dados.grupoDia='';
   const util=dias.filter(x=>x>=1&&x<=5).length;
   dados.diasModo=(!dados.freqCiclo&&util>=2&&_rotaDiasModo==='alguns')?'alguns':'';
   dados.semIni=dados.freqCiclo?(parseInt(document.getElementById('rota-modal-semini').value,10)||0):'';

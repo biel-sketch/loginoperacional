@@ -320,6 +320,19 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
   .prow .num-btn{width:56px;height:48px}
   .prow .num-wrap input{font-size:22px;height:48px}
 }
+.st-chip{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid transparent;white-space:nowrap}
+.st-chip.st-p{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}
+.st-chip.st-a{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}
+.st-chip.st-atestado{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}
+.st-chip.st-f{background:var(--purple-bg);border-color:var(--purple-bd);color:var(--purple)}
+.prow{border-left:3px solid transparent;padding-left:10px}
+.prow.st-p{border-left-color:var(--green);background:linear-gradient(90deg,var(--green-bg),transparent 60%)}
+.prow.st-a{border-left-color:var(--red);background:linear-gradient(90deg,var(--red-bg),transparent 60%)}
+.prow.st-atestado{border-left-color:var(--warn);background:linear-gradient(90deg,var(--warn-bg),transparent 60%)}
+.prow.st-f{border-left-color:var(--purple);background:linear-gradient(90deg,var(--purple-bg),transparent 60%)}
+.prow.fora .n{color:var(--text2)}
+.prow-fora{font-size:11px;color:var(--text3);margin-top:6px}
+
 </style>
 </head>
 
@@ -554,6 +567,16 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
       </select>
     </div>
     <div class="modal-field">
+      <label>Atividade</label>
+      <select id="modal-atividade">
+        <option>Conserto de Paletes</option>
+        <option>Produção de Insumos</option>
+        <option>Operação de Empilhadeira</option>
+        <option>Inspeção da Qualidade</option>
+      </select>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">Só "Conserto de Paletes" (Auxiliar de Expedição) entra na produção e na meta individual.</div>
+    </div>
+    <div class="modal-field">
       <label>Turno</label>
       <select id="modal-turno"></select>
     </div>
@@ -730,7 +753,22 @@ function calcBufferGlobal(){
   // Estoque acumulado + correção manual (ver corrigirBuffer())
   return calcBufferBruto()+(state.bufferAjuste||0);
 }
-function produzPallets(c){return c.cargo==='Auxiliar de Expedição';}
+const ATIVIDADES=['Conserto de Paletes','Produção de Insumos','Operação de Empilhadeira','Inspeção da Qualidade'];
+function produzPallets(c){return c.cargo==='Auxiliar de Expedição'&&(!c.atividade||c.atividade==='Conserto de Paletes');}
+// Situação do colaborador no dia (presença do turno + afastamentos): define se entra na produção
+function statusProdDia(c,date){
+  const af=(state.afastamentos||[]).find(a=>a.nome===c.nome&&a.dataInicio<=date&&a.dataFim>=date);
+  if(af)return{k:'atestado',lbl:af.tipo||'Atestado',fora:true};
+  const pt=state.presencas[date]&&state.presencas[date][c.turno];
+  const st=pt&&pt.presenca?pt.presenca[c.nome]:'';
+  if(st==='A')return{k:'a',lbl:'Ausente',fora:true};
+  if(st==='F')return{k:'f',lbl:'Férias',fora:true};
+  if(st==='B')return{k:'b',lbl:'Banco de horas',fora:true};
+  if(st==='H')return{k:'h',lbl:'Feriado',fora:true};
+  if(st==='P')return{k:'p',lbl:'Presente',fora:false};
+  return{k:'',lbl:'',fora:false};
+}
+function stChip(st,extra){return st.k?'<span class="st-chip st-'+st.k+'">'+st.lbl+(extra||'')+'</span>':'';}
 function diasUteisNoMes(ano,mes){
   const d=new Date(ano,mes,1);let count=0;
   while(d.getMonth()===mes){if(d.getDay()!==0)count++;d.setDate(d.getDate()+1);}
@@ -2059,17 +2097,22 @@ function renderProdPessoas(){
   if(infoEl)infoEl.innerHTML='Meta individual hoje: <strong style="color:var(--cyan)">'+info.metaPorPessoa+'</strong> pallets/pessoa'+(saved?' <span style="color:var(--green);font-weight:700">· salvo</span>':'');
   const colabs=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===selTurnoProd);
   const listEl=document.getElementById('prod-pessoas-list');if(!listEl)return;
-  if(!colabs.length){listEl.innerHTML='<div class="empty" style="padding:16px 0"><i class="ti ti-users"></i><h3>Nenhum colaborador nesse turno</h3></div>';return;}
+  if(!colabs.length){listEl.innerHTML='<div class="empty" style="padding:16px 0"><i class="ti ti-users"></i><h3>Nenhum colaborador de Conserto de Paletes nesse turno</h3></div>';return;}
   const pessoas=(dia&&dia.pessoas)||{};
+  const nFora=colabs.filter(c=>statusProdDia(c,todayD).fora).length;
+  if(infoEl&&nFora)infoEl.innerHTML+=' <span style="color:var(--warn)">· '+nFora+' fora da produção hoje (falta/atestado/férias)</span>';
   listEl.innerHTML=colabs.map(c=>{
     const reg=pessoas[c.nome]||{prod:0,motivo:'',motivoDesc:''};
-    const abaixo=(reg.prod||0)<info.metaPorPessoa;
+    const st=statusProdDia(c,todayD);
+    const fora=st.fora&&!(reg.prod>0);
+    const abaixo=!st.fora&&(reg.prod||0)<info.metaPorPessoa;
     const safeId=c.nome.replace(/[^a-zA-Z0-9]/g,'_');
     const nomeJs=c.nome.replace(/'/g,"\\'");
     const falta=info.metaPorPessoa-(reg.prod||0);
-    return'<div class="prow">'+
+    if(fora)return'<div class="prow fora st-'+st.k+'"><div class="prow-main"><div class="prow-nome"><div class="n">'+c.nome+'</div><div class="prow-fora">Não entra na produção de hoje</div></div>'+stChip(st)+'</div></div>';
+    return'<div class="prow'+(st.k?' st-'+st.k:'')+'">'+
       '<div class="prow-main">'+
-      '<div class="prow-nome"><div class="n">'+c.nome+'</div><div class="m" style="color:'+(abaixo?'var(--text3)':'var(--green)')+'">'+(abaixo?'meta '+info.metaPorPessoa+' · faltam '+falta:'meta batida ✓')+'</div></div>'+
+      '<div class="prow-nome"><div class="n">'+c.nome+'</div><div class="m" style="color:'+(abaixo?'var(--text3)':'var(--green)')+'">'+stChip(st)+' '+(abaixo?'meta '+info.metaPorPessoa+' · faltam '+falta:'meta batida ✓')+'</div></div>'+
       '<div class="num-wrap"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" inputmode="numeric" min="0" '+(saved?'disabled':'')+' value="'+(reg.prod||'')+'" placeholder="0" onfocus="this.select()" oninput="setProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderProdPessoas()"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
       '</div>'+
       (abaixo&&!saved?'<select id="motivo-'+safeId+'" onchange="setMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
@@ -2115,6 +2158,7 @@ async function salvarProducaoPessoas(){
   for(const c of colabs){
     const reg=dia.pessoas[c.nome];
     const prod=reg?(reg.prod||0):0;
+    if(statusProdDia(c,today()).fora&&!prod)continue;
     if(prod<info.metaPorPessoa&&(!reg||!reg.motivo)){
       showToast('Informe o motivo de '+c.nome+' não bater a meta.','warn');
       return;
@@ -2158,15 +2202,17 @@ function renderRetroProdPessoas(){
   const colabs=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===turno);
   const dia=state.producaoPessoas[date]&&state.producaoPessoas[date][turno];
   const pessoas=(dia&&dia.pessoas)||{};
-  if(!colabs.length){wrap.innerHTML='<div style="font-size:12px;color:var(--text2);padding:6px 0 4px">Nenhum colaborador nesse turno.</div>';return;}
+  if(!colabs.length){wrap.innerHTML='<div style="font-size:12px;color:var(--text2);padding:6px 0 4px">Nenhum colaborador de Conserto de Paletes nesse turno.</div>';return;}
   wrap.innerHTML='<div style="font-size:11px;color:var(--text2);margin:6px 0 8px">Produção individual desse turno · meta '+info.metaPorPessoa+' pallets/pessoa</div>'+
     colabs.map(c=>{
       const reg=pessoas[c.nome]||{prod:0,motivo:''};
-      const abaixo=reg.prod<info.metaPorPessoa;
+      const st=statusProdDia(c,date);
+      if(st.fora&&!(reg.prod>0))return'<div class="prow fora st-'+st.k+'"><div class="prow-main"><div class="prow-nome"><div class="n">'+c.nome+'</div><div class="prow-fora">Não entra na produção</div></div>'+stChip(st)+'</div></div>';
+      const abaixo=reg.prod<info.metaPorPessoa&&!st.fora;
       const nomeJs=c.nome.replace(/'/g,"\\'");
-      return'<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
+      return'<div class="prow'+(st.k?' st-'+st.k:'')+'" style="padding:8px 0 8px 10px">'+
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'+
-        '<div style="font-size:13px;font-weight:600;color:var(--text)">'+c.nome+'</div>'+
+        '<div style="font-size:13px;font-weight:600;color:var(--text);min-width:0">'+c.nome+' '+stChip(st)+'</div>'+
         '<div class="num-wrap" style="width:150px"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" value="'+(reg.prod||'')+'" placeholder="0" oninput="setRetroProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderRetroProdPessoas()"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
         '</div>'+
         (abaixo?'<select style="width:100%;margin-top:6px;padding:7px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px" onchange="setRetroMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
@@ -2218,6 +2264,7 @@ async function lancarRetroativo(){
     for(const c of colabsTurno){
       const reg=diaProd.pessoas[c.nome];
       const p=reg?(reg.prod||0):0;
+      if(statusProdDia(c,data).fora&&!p)continue;
       if(p<info.metaPorPessoa&&(!reg||!reg.motivo)){
         showToast('Informe o motivo de '+c.nome+' não bater a meta individual desse turno.','warn');
         return;
@@ -2401,6 +2448,7 @@ function openColabModal(idx){
   const cargoAtual = isEdit && (c.cargo==='Auxiliar de Expedição') ? 'Auxiliar de Expedição' : 'Operador de Empilhadeira';
   document.getElementById('modal-cargo').value = cargoAtual;
   atualizarTurnosDoModal(isEdit ? c.turno : null);
+  document.getElementById('modal-atividade').value = isEdit ? (c.atividade||'Conserto de Paletes') : 'Conserto de Paletes';
   document.getElementById('modal-delete-btn').style.display = (isEdit&&currentRole==='superadmin') ? 'block' : 'none';
   document.getElementById('modal-save-btn').className = 'modal-btn-primary';
   document.getElementById('colab-modal').style.display = 'flex';
@@ -2471,14 +2519,15 @@ async function saveColabModal(){
   const nome = document.getElementById('modal-nome').value.trim();
   const turno = document.getElementById('modal-turno').value;
   const cargo = document.getElementById('modal-cargo').value;
+  const atividade = document.getElementById('modal-atividade').value || 'Conserto de Paletes';
   if(!nome){ document.getElementById('modal-nome').style.borderColor='var(--red)'; return; }
   document.getElementById('modal-nome').style.borderColor='';
   if(_modalEditIdx >= 0){
     const c = state.colaboradores[_modalEditIdx];
-    state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo});
+    state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo,atividade});
     showToast('Colaborador atualizado!','ok');
   } else {
-    state.colaboradores.push({nome,turno,cargo,wpp:''});
+    state.colaboradores.push({nome,turno,cargo,atividade,wpp:''});
     showToast('Colaborador adicionado!','ok');
   }
   closeColabModal();

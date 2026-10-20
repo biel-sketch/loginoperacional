@@ -3287,7 +3287,7 @@ const F_SEM=['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
 function fTurnos(){
   if(typeof turnosAtivos==='function')return turnosAtivos().map(t=>({key:t.key,label:t.label,horario:t.horario||'',curto:t.label.replace('Turno ','T. '),extra:!!t.extra}));
   // só turnos que produzem (Auxiliar de Expedição); empilhadeira não entra no fechamento
-  return TURNOS.filter(t=>t.cargo==='Auxiliar de Expedição').map(t=>({key:t.key,label:'Expedição · '+t.label.replace('Turno ',''),horario:t.hor,curto:t.label.replace('Turno ',''),extra:false}));
+  return TURNOS.filter(t=>t.cargo==='Auxiliar de Expedição').map(t=>{const L={AXM:'A',AXT:'B',AXC:'C'}[t.key]||t.key;return{key:t.key,label:'Turno '+L,horario:t.hor,curto:'Turno '+L,extra:false};});
 }
 function fNum(v){return Math.round(v||0).toLocaleString('pt-BR');}
 function fAddDias(d,n){const p=d.split('-').map(Number);const x=new Date(p[0],p[1]-1,p[2]+n);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}

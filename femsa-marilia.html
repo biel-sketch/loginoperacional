@@ -872,7 +872,7 @@ const USERS=[
   {user:'João',      senha:'Login@982',  role:'superadmin'},
   {user:'Gabriel',   senha:'L@gin982',   role:'superadmin'},
   {user:'lançamentos', senha:'login@marilia', role:'lancamentos'},
-  {user:'Financeiro', senha:'L@gin982', role:'financeiro'},
+  {user:'Financeiro', senha:'L@gin982', role:'admin'},
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
 let state={osAmarracao:[],osClientes:[],osValores:[],premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',bufferDia:{},metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
@@ -4445,7 +4445,14 @@ function fWd(d){return new Date(d+'T12:00').getDay();}
 function fPct(a,b){return b>0?Math.round(a/b*100):0;}
 function fechDados(de,ate){
   if(de>ate){const t=de;de=ate;ate=t;}
-  const turnos=fTurnos(),tk=turnos.map(t=>t.key);
+  let turnos=fTurnos();
+  if(FECH_CFG.porTurno){ // some turno que não produziu nada no período
+    const ativos=new Set();
+    for(let c=de,g=0;c<=ate&&g++<93;c=fAddDias(c,1))(state.movimentos[c]||[]).forEach(m=>{if(m.turno&&(m.prod||0)>0)ativos.add(m.turno);});
+    const f=turnos.filter(t=>ativos.has(t.key));
+    if(f.length)turnos=f;
+  }
+  const tk=turnos.map(t=>t.key);
   const mkT=()=>({prod:0,rec:0,env:0,desc:0,pbr1:0,pbr2:0});
   const add=(a,m)=>{a.prod+=m.prod||0;a.rec+=m.rec||0;a.env+=m.env||0;a.desc+=m.desc||0;a.pbr1+=m.pbr1||0;a.pbr2+=m.pbr2||0;};
   const porT={};tk.forEach(k=>porT[k]=Object.assign(mkT(),{p:0,a:0,dias:0}));

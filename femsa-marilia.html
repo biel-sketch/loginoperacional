@@ -63,7 +63,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .sec::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cyan);flex-shrink:0}
 .kpi{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
 .kpi.buf{background:var(--cyan-bg);border-color:var(--cyan-bd)}
-.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
 .kpi-lbl{font-size:10px;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:4px;text-transform:uppercase;letter-spacing:.1em;font-weight:600}
 .kpi-val{font-size:28px;font-weight:700;color:var(--text);line-height:1.1;letter-spacing:-.01em}
 .kpi-val.green{color:var(--green)}.kpi-val.red{color:var(--red)}.kpi-val.warn{color:var(--warn)}.kpi-val.blue{color:var(--cyan)}
@@ -159,7 +159,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .tv-header img{height:48px;object-fit:contain}
 .tv-header h1{font-size:22px;font-weight:700;color:var(--text)}
 .tv-date{font-size:13px;color:var(--text2);margin-top:3px}
-.tv-kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
+.tv-kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px}
 .tv-kpi{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:20px 22px}
 .tv-kpi-lbl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.12em;font-weight:700;margin-bottom:10px}
 .tv-kpi-val{font-size:38px;font-weight:700;color:var(--text);line-height:1;letter-spacing:-.02em}
@@ -170,7 +170,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .op-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:13px;color:var(--text2)}
 .op-who i{color:var(--cyan);margin-right:4px}.op-who strong{color:var(--text)}
 .op-date{font-size:12px;color:var(--text3);text-transform:capitalize}
-.op-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.op-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
 .op-tile{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;min-width:0}
 .op-tile.prod{border-color:var(--green-bd);background:var(--green-bg)}
 .op-tile.buf{border-color:var(--cyan-bd);background:var(--cyan-bg)}
@@ -434,7 +434,7 @@ img,canvas,svg{max-width:100%}
 .fe-un{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan)}
 .fe-dt{font-size:20px;font-weight:700;color:var(--text);margin-top:4px}
 .fe-badge{font-size:15px;font-weight:800;border:2px solid;border-radius:999px;padding:6px 14px}
-.fe-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}
+.fe-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
 .fe-t3{grid-template-columns:repeat(3,1fr);margin-top:12px;margin-bottom:0}
 .fe-tile{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:12px}
 .fe-l{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
@@ -577,7 +577,6 @@ img,canvas,svg{max-width:100%}
             <div class="op-date" id="op-date-lbl"></div>
           </div>
           <div class="op-tiles">
-            <div class="op-tile"><div class="op-tile-lbl"><i class="ti ti-truck-delivery"></i> Recebidos</div><div class="op-tile-val" id="tl-rec">0</div><div class="op-tile-sub" id="tl-rec-sub">hoje</div></div>
             <div class="op-tile prod"><div class="op-tile-lbl"><i class="ti ti-package"></i> Produzidos</div><div class="op-tile-val" id="tl-prod">0</div><div class="op-tile-sub" id="tl-prod-sub">PBR1 + PBR2</div></div>
             <div class="op-tile"><div class="op-tile-lbl"><i class="ti ti-truck-loading"></i> Classificados</div><div class="op-tile-val" id="tl-env">0</div><div class="op-tile-sub" id="tl-env-sub">hoje</div></div>
             <div class="op-tile"><div class="op-tile-lbl"><i class="ti ti-trash"></i> Descarte</div><div class="op-tile-val" id="tl-desc">0</div><div class="op-tile-sub">hoje</div></div>
@@ -594,12 +593,9 @@ img,canvas,svg{max-width:100%}
 
           <div class="card">
             <div class="card-title"><i class="ti ti-clipboard-list"></i> Lançamento do dia</div>
-            <div class="op-help">Valores gerais do dia, sem separar por colaborador. <strong>Produzidos = PBR1 + PBR2.</strong></div>
-            <div class="cg">
-              <div class="cg-h"><span class="cg-t"><i class="ti ti-truck-delivery"></i> Recebidos</span><span class="tt-badge" id="tt-rec">0 hoje</span></div>
-              <div class="num-wrap"><button class="num-btn" onclick="adj('mv-rec',-1)">−</button><input type="number" id="mv-rec" value="" placeholder="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-rec',1)">+</button></div>
-            </div>
-            <div class="cg">
+            <div class="op-help">Escolha o <strong>turno</strong> e lance os valores dele. <strong>Produzidos = PBR1 + PBR2.</strong></div>
+            <div class="turno-tabs" id="lanc-turno-wrap"></div>
+                        <div class="cg">
               <div class="cg-h"><span class="cg-t"><i class="ti ti-package"></i> PBR1</span><span class="tt-badge" id="tt-pbr1">0 hoje</span></div>
               <div class="num-wrap"><button class="num-btn" onclick="adj('mv-pbr1',-1)">−</button><input type="number" id="mv-pbr1" value="" placeholder="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-pbr1',1)">+</button></div>
             </div>
@@ -678,7 +674,7 @@ img,canvas,svg{max-width:100%}
  <div class="modal-box">
  <div class="modal-title"><i class="ti ti-edit" style="color:var(--cyan)"></i>Editar lançamento</div>
  <div id="editmov-info" style="font-size:12px;color:var(--text2);margin-bottom:16px"></div>
- <div class="modal-field"><label>Recebidos</label><input type="number" id="editmov-rec" min="0" inputmode="numeric"></div>
+ <div class="modal-field" id="editmov-turno-wrap"><label>Turno</label><select id="editmov-turno"></select></div>
  <div class="modal-field"><label>Produzidos</label><input type="number" id="editmov-prod" min="0" inputmode="numeric"></div>
  <div class="modal-field" id="editmov-pbr-wrap" style="display:none"><label>PBR1 / PBR2</label><div style="display:flex;gap:8px"><input type="number" id="editmov-pbr1" min="0" inputmode="numeric" placeholder="PBR1"><input type="number" id="editmov-pbr2" min="0" inputmode="numeric" placeholder="PBR2"></div></div>
  <div class="modal-field"><label>Classificados</label><input type="number" id="editmov-env" min="0" inputmode="numeric"></div>
@@ -710,12 +706,11 @@ img,canvas,svg{max-width:100%}
  <div class="modal-box">
  <div class="modal-title"><i class="ti ti-calendar-plus" style="color:var(--cyan)"></i>Lançamento retroativo</div>
  <div class="modal-field"><label>Data</label><input type="date" id="retro-date" onchange="renderRetroProdPessoas()"></div>
- <div class="modal-field" style="display:none"><label>Turno</label><select id="retro-turno"></select></div>
+ <div class="modal-field"><label>Turno</label><select id="retro-turno"></select></div>
  <div id="retro-prod-pessoas" style="display:none"></div>
  <input type="checkbox" id="retro-incl-geral" checked style="display:none"><input type="checkbox" id="retro-incl-individual" style="display:none">
  <div id="retro-geral-fields">
  <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">Produzidos = PBR1 + PBR2.</div>
- <div class="modal-field"><label>Recebidos</label><input type="number" id="retro-rec" min="0" inputmode="numeric"></div>
  <div class="modal-field"><label>PBR1</label><input type="number" id="retro-pbr1" min="0" inputmode="numeric"></div>
  <div class="modal-field"><label>PBR2</label><input type="number" id="retro-pbr2" min="0" inputmode="numeric"></div>
  <input type="hidden" id="retro-prod" value="0">
@@ -1210,7 +1205,7 @@ async function enviarResumoProducao(hora){
   await enviarWhatsApp([
     'FEMSA Marília - Producao '+hora+'h',
     'Produzidos: '+tP+' | Classificados: '+tE,
-    'Recebidos: '+tR+(tD?' | Descarte: '+tD:''),
+    (tD?'Descarte: '+tD:'Descarte: 0'),
     'Buffer (estoque): '+(buffer>=0?'+':'')+buffer,
     'Meta: '+META_DIARIA+' | Progresso: '+pct+'% - '+statusMeta,
     todayD.split('-').reverse().join('/')+' as '+hora+'h'
@@ -1284,7 +1279,7 @@ async function pushToCloud(){
             ms.forEach(m=>{
               if(!ex.has(m.ts)){mm[d].push(m);return;}
               if(m.auto){const cm=mm[d].find(x=>x.ts===m.ts);if(cm&&(m.updTs||'')>(cm.updTs||'')){cm.prod=m.prod;cm.pbr2=m.pbr2;cm.updTs=m.updTs;cm.who=m.who;}}
-              else if(m.geral){const cm=mm[d].find(x=>x.ts===m.ts);if(cm&&(m.updTs||'')>(cm.updTs||'')){['rec','env','desc','prod','pbr1','pbr2','updTs','who'].forEach(k=>{cm[k]=m[k];});}}
+              else if(m.geral){const cm=mm[d].find(x=>x.ts===m.ts);if(cm&&(m.updTs||'')>(cm.updTs||'')){['rec','env','desc','prod','pbr1','pbr2','turno','updTs','who'].forEach(k=>{cm[k]=m[k];});}}
               else if(m.legadoDup||m.prodLegado!==undefined){const cm=mm[d].find(x=>x.ts===m.ts);if(cm){cm.prod=m.prod;if(m.legadoDup){cm.legadoDup=true;cm.prodLegado=m.prodLegado;}else{delete cm.legadoDup;delete cm.prodLegado;}}}
             });
             mm[d].sort((a,b)=>a.ts.localeCompare(b.ts));
@@ -1762,7 +1757,7 @@ function renderDia(){
     }).join('');
     return'<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Turno '+t+' · '+(t==='A'?'06h00–14h20':t==='B'?'14h00–22h20':'22h00–06h20')+'</div><div class="pres-grid">'+cells+'</div></div>';
   }).join('');
-  const movLog=movs.length?'<div class="card"><div class="card-title"><i class="ti ti-history"></i>Lançamentos '+lastTag+'</div>'+movs.slice().reverse().map(m=>{const pts=[];if(m.rec)pts.push('Rec:<b>'+m.rec+'</b>');if(m.prod)pts.push('Prod:<b>'+m.prod+'</b>'+(m.geral?' <small>(PBR1 '+(m.pbr1||0)+' · PBR2 '+(m.pbr2||0)+')</small>':''));if(m.env)pts.push('Class:<b>'+m.env+'</b>');if(m.desc)pts.push('Desc:<b>'+m.desc+'</b>');return'<div class="log-entry"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · <strong>'+m.who+'</strong></div><div class="log-vals">'+pts.join(' · ')+'</div></div>';}).join('')+'</div>':'';
+  const movLog=movs.length?'<div class="card"><div class="card-title"><i class="ti ti-history"></i>Lançamentos '+lastTag+'</div>'+movs.slice().reverse().map(m=>{const pts=[];if(m.rec)pts.push('Rec:<b>'+m.rec+'</b>');if(m.prod)pts.push('Prod:<b>'+m.prod+'</b>'+(m.geral?' <small>(PBR1 '+(m.pbr1||0)+' · PBR2 '+(m.pbr2||0)+')</small>':''));if(m.env)pts.push('Class:<b>'+m.env+'</b>');if(m.desc)pts.push('Desc:<b>'+m.desc+'</b>');return'<div class="log-entry"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · <strong>'+m.who+'</strong>'+(m.geral&&m.turno?' · Turno '+m.turno:'')+'</div><div class="log-vals">'+pts.join(' · ')+'</div></div>';}).join('')+'</div>':'';
   cont.innerHTML=
     buildMetaMensalCards()+
     buildAfastamentosHojeAlertCard()+
@@ -1772,7 +1767,7 @@ function renderDia(){
     '<div class="sec">Pallets — totais acumulados</div>'+
     '<div class="kpi-grid">'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+tP+'</div><div class="kpi-sub">'+movs.length+' lançamento(s) · PBR1: '+_pbr1Dia(selDate)+' · PBR2: '+_pbrDia(selDate)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-truck" style="font-size:12px"></i> Recebidos</div><div class="kpi-val">'+tR+'</div></div>'+
+    
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-send" style="font-size:12px"></i> Classificados</div><div class="kpi-val">'+tE+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-trash" style="font-size:12px"></i> Descarte</div><div class="kpi-val'+(tD>0?' red':'')+'">'+tD+'</div>'+'</div>'+
     '<div class="kpi buf"><div class="kpi-lbl"><i class="ti ti-layers-difference" style="font-size:12px;color:var(--cyan)"></i> Estoque (Buffer)</div><div class="kpi-val '+(bPos?'blue':'red')+'">'+(bPos?'+':'')+tBuf+'</div><div class="kpi-sub blue">Informado manualmente · '+(tBufDia===null?'não informado neste dia':'neste dia: '+(tBufDia>=0?'+':'')+tBufDia)+'</div></div>'+
@@ -1804,7 +1799,7 @@ function sumPeriodoDatas(de,ate){
 function kpiRowResumo(m){
   return'<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+m.tP+'</div><div class="kpi-sub">'+m.n+' lançamento(s) · '+m.days+' dia(s) · PBR1: '+(m.tB1||0)+' · PBR2: '+(m.tB||0)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-truck" style="font-size:12px"></i> Recebidos</div><div class="kpi-val">'+m.tR+'</div></div>'+
+    
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-send" style="font-size:12px"></i> Classificados</div><div class="kpi-val">'+m.tE+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-trash" style="font-size:12px"></i> Descarte</div><div class="kpi-val'+(m.tD>0?' red':'')+'">'+m.tD+'</div>'+'</div>'+
     '</div>';
@@ -1940,14 +1935,13 @@ function renderMes(){
     '<div class="card"><div class="card-title"><i class="ti ti-chart-bar"></i>Pallets por dia</div>'+
     '<div style="font-size:11px;color:var(--text2);margin-bottom:12px;display:flex;gap:12px">'+
     '<span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#2a7fd4;display:inline-block"></span>Produzidos</span>'+
-    '<span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#27ae76;display:inline-block"></span>Recebidos</span>'+
     '<span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#c0392b;display:inline-block"></span>Descarte</span></div>'+
     '<div style="height:200px"><canvas id="chart-mc1"></canvas></div></div>'+
     '<div class="card"><div class="card-title"><i class="ti ti-trending-up"></i>Buffer por dia</div><div style="height:150px"><canvas id="chart-mc3"></canvas></div></div>'+
     '<div class="card"><div class="card-title"><i class="ti ti-user-off"></i>Ausências por dia</div><div style="height:150px"><canvas id="chart-mc2"></canvas></div></div>';
   setTimeout(()=>{
     if(typeof Chart==='undefined')return;
-    const c1=document.getElementById('chart-mc1');if(c1)charts.mc1=new Chart(c1,{type:'bar',data:{labels,datasets:[{label:'Produzidos',data:prodArr,backgroundColor:'#2a7fd4',borderRadius:5},{label:'Recebidos',data:recArr,backgroundColor:'#27ae76',borderRadius:5},{label:'Descarte',data:descArr,backgroundColor:'#c0392b',borderRadius:5}]},options:{...co}});
+    const c1=document.getElementById('chart-mc1');if(c1)charts.mc1=new Chart(c1,{type:'bar',data:{labels,datasets:[{label:'Produzidos',data:prodArr,backgroundColor:'#2a7fd4',borderRadius:5},{label:'Descarte',data:descArr,backgroundColor:'#c0392b',borderRadius:5}]},options:{...co}});
     const c3=document.getElementById('chart-mc3');if(c3)charts.mc3=new Chart(c3,{type:'bar',data:{labels,datasets:[{label:'Buffer',data:bufArr,backgroundColor:bufArr.map(v=>v>=0?'#2a7fd4':'#c0392b'),borderRadius:5}]},options:{...co}});
     const c2=document.getElementById('chart-mc2');if(c2)charts.mc2=new Chart(c2,{type:'line',data:{labels,datasets:[{label:'Ausências',data:absArr,borderColor:'#c0392b',backgroundColor:'rgba(192,57,43,.08)',borderWidth:2,pointRadius:3,fill:true,tension:.3}]},options:{...co}});
     const projData=buildProjecaoMensalData();
@@ -2241,6 +2235,7 @@ function refreshProdLive(){
   updBuf();
 }
 function renderOperacao(){
+  renderLancTurno();
   const ul=document.getElementById('op-user-label');if(ul&&currentUser)ul.textContent=currentUser.user;
   const dl=document.getElementById('op-date-lbl');if(dl)dl.textContent=dateFull(today());
   const todayD=today(),movs=state.movimentos[todayD]||[];
@@ -2248,12 +2243,12 @@ function renderOperacao(){
   const tE=movs.reduce((s,m)=>s+(m.env||0),0);
   const tD=movs.reduce((s,m)=>s+(m.desc||0),0);
   const el=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  el('tt-rec',tR+' hoje');el('tt-env',tE+' hoje');el('tt-desc',tD+' hoje');
-  el('tl-rec',tR.toLocaleString('pt-BR'));el('tl-env',tE.toLocaleString('pt-BR'));el('tl-desc',tD.toLocaleString('pt-BR'));
-  el('tl-rec-sub','paletes hoje');el('tl-env-sub','paletes hoje');
+  el('tt-env',tE+' hoje');el('tt-desc',tD+' hoje');
+  el('tl-env',tE.toLocaleString('pt-BR'));el('tl-desc',tD.toLocaleString('pt-BR'));
+  el('tl-env-sub','paletes hoje');
   renderCargas();
   const hc=document.getElementById('op-hist-card'),ho=document.getElementById('op-hist');
-  if(movs.length&&hc&&ho){hc.style.display='block';ho.innerHTML=movs.map((m,i)=>({m,i})).slice().reverse().map(({m,i})=>'<div class="log-entry" style="cursor:pointer" onclick="abrirEditMov(\''+todayD+'\','+i+')"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · '+m.who+(m.auto==='pessoas'?' · produção dos colaboradores (Turno '+m.turno+')':'')+(m.editadoManualmente?' <i class="ti ti-edit" style="font-size:10px;color:var(--cyan)"></i>':'')+'</div><div class="log-vals">'+(m.rec?'Rec:'+m.rec+(m.carretas&&m.carretas.rec?' ('+m.carretas.rec.length+' carr.)':'')+' ':'')+(m.prod?'Prod:'+m.prod+(m.geral?' (PBR1 '+(m.pbr1||0)+' · PBR2 '+(m.pbr2||0)+')':'')+' ':'')+(m.env?'Class:'+m.env+(m.carretas&&m.carretas.env?' ('+m.carretas.env.length+' carr.)':'')+' ':'')+(m.desc?'Desc:'+m.desc+'':'')+'</div></div>').join('');}
+  if(movs.length&&hc&&ho){hc.style.display='block';ho.innerHTML=movs.map((m,i)=>({m,i})).slice().reverse().map(({m,i})=>'<div class="log-entry" style="cursor:pointer" onclick="abrirEditMov(\''+todayD+'\','+i+')"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · '+m.who+(m.geral&&m.turno?' · Turno '+m.turno:'')+(m.auto==='pessoas'?' · produção dos colaboradores (Turno '+m.turno+')':'')+(m.editadoManualmente?' <i class="ti ti-edit" style="font-size:10px;color:var(--cyan)"></i>':'')+'</div><div class="log-vals">'+(m.rec?'Rec:'+m.rec+(m.carretas&&m.carretas.rec?' ('+m.carretas.rec.length+' carr.)':'')+' ':'')+(m.prod?'Prod:'+m.prod+(m.geral?' (PBR1 '+(m.pbr1||0)+' · PBR2 '+(m.pbr2||0)+')':'')+' ':'')+(m.env?'Class:'+m.env+(m.carretas&&m.carretas.env?' ('+m.carretas.env.length+' carr.)':'')+' ':'')+(m.desc?'Desc:'+m.desc+'':'')+'</div></div>').join('');}
   else if(hc)hc.style.display='none';
   renderProdPessoas();
   refreshProdLive();
@@ -2275,9 +2270,18 @@ function updBuf(){
   const e1=document.getElementById('tt-pbr1');if(e1)e1.textContent=sm('pbr1')+' hoje';
   const e2=document.getElementById('tt-pbr2');if(e2)e2.textContent=sm('pbr2')+' hoje';
 }
+let selTurnoLanc=null;
+function turnoPorHora(){const h=new Date().getHours();const ks=turnosAtivos().map(t=>t.key);const k=(h>=6&&h<14)?'A':(h>=14&&h<22)?'B':'C';return ks.includes(k)?k:ks[0];}
+function selTurnoLanc_(k){selTurnoLanc=k;renderLancTurno();}
+function renderLancTurno(){
+  const w=document.getElementById('lanc-turno-wrap');if(!w)return;
+  const ts=turnosAtivos();
+  if(!selTurnoLanc||!ts.some(t=>t.key===selTurnoLanc))selTurnoLanc=turnoPorHora();
+  w.innerHTML=ts.map(t=>'<button class="btn btn-ghost btn-sm" style="'+(t.key===selTurnoLanc?'border-color:var(--cyan-bd);background:var(--cyan-bg);color:var(--cyan)':'')+'" onclick="selTurnoLanc_(\''+t.key+'\')">'+t.label+' <span style="font-weight:400;opacity:.7;font-size:10px">'+(t.horario||'')+'</span></button>').join('');
+}
 async function lancar(){
   const g=id=>Math.max(0,parseInt(document.getElementById(id)?.value)||0);
-  const rec=g('mv-rec'),pbr1=g('mv-pbr1'),pbr2=g('mv-pbr2'),env=g('mv-env'),desc=g('mv-desc');
+  const rec=0,pbr1=g('mv-pbr1'),pbr2=g('mv-pbr2'),env=g('mv-env'),desc=g('mv-desc');
   const prod=pbr1+pbr2;
   const bufEl=document.getElementById('mv-buf');
   const bufTxt=bufEl?String(bufEl.value).trim():'';
@@ -2288,10 +2292,10 @@ async function lancar(){
   const agora=new Date().toISOString();
   if(rec||prod||env||desc){
     if(!state.movimentos[todayD])state.movimentos[todayD]=[];
-    state.movimentos[todayD].push({ts:agora,updTs:agora,who,rec,prod,pbr1,pbr2,env,desc,geral:true,avulso:true});
+    state.movimentos[todayD].push({ts:agora,updTs:agora,who,rec,prod,pbr1,pbr2,env,desc,turno:selTurnoLanc||turnoPorHora(),geral:true,avulso:true});
   }
   if(bufNovo)setBufferDia(todayD,parseInt(bufTxt)||0);
-  ['mv-rec','mv-pbr1','mv-pbr2','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['mv-pbr1','mv-pbr2','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   if(bufEl)delete bufEl.dataset.dirty;
   saveCache();await pushToCloud();verificarAusencia();showLancamentoOK();renderOperacao();
 }
@@ -2424,8 +2428,8 @@ function unlockProdPessoas(){
 function abrirLancamentoRetroativo(){
   const dt=document.getElementById('retro-date');dt.value=today();dt.max=today();
   const tSel=document.getElementById('retro-turno');
-  tSel.innerHTML=turnosAtivos().map(t=>'<option value="'+t.key+'">'+t.label+' — '+t.horario+'</option>').join('');
-  ['retro-rec','retro-pbr1','retro-pbr2','retro-prod','retro-env','retro-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});const rb=document.getElementById('retro-buf');if(rb)rb.value='';
+  tSel.innerHTML=turnosAtivos().map(t=>'<option value="'+t.key+'">'+t.label+' — '+t.horario+'</option>').join('');tSel.value=selTurnoLanc||turnoPorHora();
+  ['retro-pbr1','retro-pbr2','retro-prod','retro-env','retro-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});const rb=document.getElementById('retro-buf');if(rb)rb.value='';
   document.getElementById('retro-incl-geral').checked=true;
   document.getElementById('retro-incl-individual').checked=false;
   document.getElementById('retro-modal').style.display='flex';
@@ -2497,7 +2501,7 @@ async function lancarRetroativo(){
   const data=document.getElementById('retro-date').value;
   if(!data){showToast('Escolha uma data.','warn');return;}
   const g=id=>Math.max(0,parseInt(document.getElementById(id).value)||0);
-  const rec=g('retro-rec'),pbr1=g('retro-pbr1'),pbr2=g('retro-pbr2'),env=g('retro-env'),desc=g('retro-desc');
+  const rec=0,pbr1=g('retro-pbr1'),pbr2=g('retro-pbr2'),env=g('retro-env'),desc=g('retro-desc');
   const prod=pbr1+pbr2;
   const bufTxt=String(document.getElementById('retro-buf').value).trim();
   if(!rec&&!prod&&!env&&!desc&&bufTxt===''){showToast('Informe pelo menos um valor.','warn');return;}
@@ -2505,7 +2509,7 @@ async function lancarRetroativo(){
   const agora=new Date().toISOString();
   if(rec||prod||env||desc){
     if(!state.movimentos[data])state.movimentos[data]=[];
-    state.movimentos[data].push({ts:agora,updTs:agora,who,rec,prod,pbr1,pbr2,env,desc,geral:true,avulso:true,lancadoRetroativo:true});
+    state.movimentos[data].push({ts:agora,updTs:agora,who,rec,prod,pbr1,pbr2,env,desc,turno:document.getElementById('retro-turno').value||turnoPorHora(),geral:true,avulso:true,lancadoRetroativo:true});
   }
   if(bufTxt!=='')setBufferDia(data,parseInt(bufTxt)||0);
   closeRetroModal();
@@ -2518,7 +2522,8 @@ async function lancarRetroativo(){
                                   function abrirEditMov(date,idx){
                                     const m=(state.movimentos[date]||[])[idx];if(!m)return;
                                       _editMovDate=date;_editMovIdx=idx;
-                                        document.getElementById('editmov-rec').value=m.rec||0;
+                                        
+                                          {const tw=document.getElementById('editmov-turno-wrap'),ts_=document.getElementById('editmov-turno');if(tw&&ts_){tw.style.display=m.geral?'block':'none';ts_.innerHTML='<option value="">Sem turno</option>'+turnosAtivos().map(t=>'<option value="'+t.key+'">'+t.label+'</option>').join('');ts_.value=m.turno||'';}}
                                           {const w=document.getElementById('editmov-pbr-wrap');if(w){w.style.display=m.geral?'block':'none';document.getElementById('editmov-pbr1').value=m.pbr1||0;document.getElementById('editmov-pbr2').value=m.pbr2||0;}}
                                           document.getElementById('editmov-prod').value=m.prod||0;document.getElementById('editmov-prod').disabled=(m.auto==='pessoas'||!!m.legadoDup);document.getElementById('editmov-prod').title=(m.auto==='pessoas')?'Vem da produção por colaborador (edite lá)':(m.legadoDup?'Substituído pela produção por colaborador deste turno':'');
                                             document.getElementById('editmov-env').value=m.env||0;
@@ -2529,13 +2534,13 @@ async function lancarRetroativo(){
                                                   function closeEditMovModal(){document.getElementById('editmov-modal').style.display='none';_editMovDate=null;_editMovIdx=null;}
                                                   async function salvarEditMov(){
                                                     if(_editMovDate===null||_editMovIdx===null)return;
-                                                      const rec=parseInt(document.getElementById('editmov-rec').value)||0;
+                                                      const rec=state.movimentos[_editMovDate][_editMovIdx].rec||0;
                                                         const prod=(state.movimentos[_editMovDate][_editMovIdx].auto==='pessoas'||state.movimentos[_editMovDate][_editMovIdx].legadoDup)?(state.movimentos[_editMovDate][_editMovIdx].prod||0):(parseInt(document.getElementById('editmov-prod').value)||0);
                                                           const env=parseInt(document.getElementById('editmov-env').value)||0;
                                                             const desc=parseInt(document.getElementById('editmov-desc').value)||0;
                                                               const m=state.movimentos[_editMovDate][_editMovIdx];
                                                                 m.rec=rec;m.prod=prod;m.env=env;m.desc=desc;
-                                                                if(m.geral){m.pbr1=Math.max(0,parseInt(document.getElementById('editmov-pbr1').value)||0);m.pbr2=Math.max(0,parseInt(document.getElementById('editmov-pbr2').value)||0);m.prod=m.pbr1+m.pbr2;m.updTs=new Date().toISOString();}
+                                                                if(m.geral){{const ts_=document.getElementById('editmov-turno');if(ts_)m.turno=ts_.value||undefined;}m.pbr1=Math.max(0,parseInt(document.getElementById('editmov-pbr1').value)||0);m.pbr2=Math.max(0,parseInt(document.getElementById('editmov-pbr2').value)||0);m.prod=m.pbr1+m.pbr2;m.updTs=new Date().toISOString();}
                                                                   m.editadoManualmente=true;m.editadoPor=currentUser?currentUser.user:'?';m.editadoEm=new Date().toISOString();
                                                                     closeEditMovModal();
                                                                       saveCache();await pushToCloud();
@@ -3094,7 +3099,7 @@ function exportarJSON(){
 }
 function exportarCSV(){
   var dates=Object.keys(state.movimentos).sort();
-  var csv='Data;Produzidos;Recebidos;Classificados;Descarte;Buffer;Meta('+META_DIARIA+');Atingiu Meta\n';
+  var csv='Data;Produzidos;Classificados;Descarte;Buffer;Meta('+META_DIARIA+');Atingiu Meta\n';
   dates.forEach(function(d){
     var ms=state.movimentos[d]||[];
     var p=ms.reduce(function(s,m){return s+(m.prod||0);},0);
@@ -3102,7 +3107,7 @@ function exportarCSV(){
     var e=ms.reduce(function(s,m){return s+(m.env||0);},0);
     var dd=ms.reduce(function(s,m){return s+(m.desc||0);},0);
     var b=bufferDoDia(d);if(b===null)b='';
-    csv+=d+';'+p+';'+r+';'+e+';'+dd+';'+b+';'+META_DIARIA+';'+(p>=META_DIARIA?'SIM':'NÃO')+'\n';
+    csv+=d+';'+p+';'+e+';'+dd+';'+b+';'+META_DIARIA+';'+(p>=META_DIARIA?'SIM':'NÃO')+'\n';
   });
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='femsa_operacao_'+today()+'.csv';a.click();URL.revokeObjectURL(a.href);
@@ -3280,9 +3285,9 @@ function exportarPDF(){
     var e=ms.reduce(function(s,m){return s+(m.env||0);},0);
     var dd=ms.reduce(function(s,m){return s+(m.desc||0);},0);
     var b=p-e;totP+=p;totR+=r;totE+=e;totD+=dd;
-    return'<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:8px 10px">'+d+'</td><td style="padding:8px 10px;text-align:right;color:'+(p>=META_DIARIA?'#059669':'#dc2626')+';font-weight:600">'+p+'</td><td style="padding:8px 10px;text-align:right">'+r+'</td><td style="padding:8px 10px;text-align:right">'+e+'</td><td style="padding:8px 10px;text-align:right;color:#dc2626">'+dd+'</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:'+(b>=0?'#1d4ed8':'#dc2626')+'">'+(b>=0?'+':'')+b+'</td><td style="padding:8px 10px;text-align:center">'+(p>=META_DIARIA?'✓':'✗')+'</td></tr>';
+    return'<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:8px 10px">'+d+'</td><td style="padding:8px 10px;text-align:right;color:'+(p>=META_DIARIA?'#059669':'#dc2626')+';font-weight:600">'+p+'</td><td style="padding:8px 10px;text-align:right">'+e+'</td><td style="padding:8px 10px;text-align:right;color:#dc2626">'+dd+'</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:'+(b>=0?'#1d4ed8':'#dc2626')+'">'+(b>=0?'+':'')+b+'</td><td style="padding:8px 10px;text-align:center">'+(p>=META_DIARIA?'✓':'✗')+'</td></tr>';
   }).join('');
-  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FEMSA</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111}h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#6b7280;font-size:13px;margin-bottom:24px}.kpi-row{display:flex;gap:16px;margin-bottom:24px}.kpi{flex:1;background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb}.kpi-l{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}.kpi-v{font-size:24px;font-weight:700}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:8px 10px;background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#374151}@media print{body{padding:16px}}</style></head><body><h1>FEMSA Marília — Relatório Operacional</h1><div class="sub">Gerado em '+new Date().toLocaleString('pt-BR')+' · Meta: '+META_DIARIA+' pallets/dia</div><div class="kpi-row"><div class="kpi"><div class="kpi-l">Produzido</div><div class="kpi-v">'+totP+'</div></div><div class="kpi"><div class="kpi-l">Recebido</div><div class="kpi-v">'+totR+'</div></div><div class="kpi"><div class="kpi-l">Enviado</div><div class="kpi-v">'+totE+'</div></div><div class="kpi"><div class="kpi-l">Descarte</div><div class="kpi-v" style="color:#dc2626">'+totD+'</div></div><div class="kpi"><div class="kpi-l">Buffer</div><div class="kpi-v" style="color:'+(totP-totE>=0?'#1d4ed8':'#dc2626')+'">'+(totP-totE>=0?'+':'')+(totP-totE)+'</div></div></div><table><thead><tr><th>Data</th><th style="text-align:right">Produzidos</th><th style="text-align:right">Recebidos</th><th style="text-align:right">Classificados</th><th style="text-align:right">Descarte</th><th style="text-align:right">Buffer</th><th style="text-align:center">Meta</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
+  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FEMSA</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111}h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#6b7280;font-size:13px;margin-bottom:24px}.kpi-row{display:flex;gap:16px;margin-bottom:24px}.kpi{flex:1;background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb}.kpi-l{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}.kpi-v{font-size:24px;font-weight:700}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:8px 10px;background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#374151}@media print{body{padding:16px}}</style></head><body><h1>FEMSA Marília — Relatório Operacional</h1><div class="sub">Gerado em '+new Date().toLocaleString('pt-BR')+' · Meta: '+META_DIARIA+' pallets/dia</div><div class="kpi-row"><div class="kpi"><div class="kpi-l">Produzido</div><div class="kpi-v">'+totP+'</div></div><div class="kpi"><div class="kpi-l">Enviado</div><div class="kpi-v">'+totE+'</div></div><div class="kpi"><div class="kpi-l">Descarte</div><div class="kpi-v" style="color:#dc2626">'+totD+'</div></div><div class="kpi"><div class="kpi-l">Buffer</div><div class="kpi-v" style="color:'+(totP-totE>=0?'#1d4ed8':'#dc2626')+'">'+(totP-totE>=0?'+':'')+(totP-totE)+'</div></div></div><table><thead><tr><th>Data</th><th style="text-align:right">Produzidos</th><th style="text-align:right">Classificados</th><th style="text-align:right">Descarte</th><th style="text-align:right">Buffer</th><th style="text-align:center">Meta</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
   var w=window.open('','_blank');w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);
 }
 
@@ -3315,7 +3320,7 @@ function renderTV(){
     '<div class="tv-header"><img src="'+LOGO_B64+'" alt="Logo"><div><h1>FEMSA Marília — Dashboard Operacional</h1><div class="tv-date">'+dt+' &nbsp;·&nbsp; '+hr+'</div></div></div>'+
     '<div class="tv-kpi-row">'+
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Produzidos</div><div class="tv-kpi-val" style="color:'+(tP>=META_DIARIA?'var(--green)':'var(--text)')+'">'+tP+'</div><div class="tv-kpi-sub">Meta: '+META_DIARIA+' · '+pct+'%</div><div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barBg+';border-radius:3px"></div></div></div>'+
-    '<div class="tv-kpi"><div class="tv-kpi-lbl">Recebidos</div><div class="tv-kpi-val">'+tR+'</div></div>'+
+    
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Classificados</div><div class="tv-kpi-val">'+tE+'</div></div>'+
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Descarte</div><div class="tv-kpi-val" style="color:'+(tD>0?'var(--red)':'var(--text)')+'">'+tD+'</div></div>'+
     '<div class="tv-kpi" style="background:var(--cyan-bg);border-color:var(--cyan-bd)"><div class="tv-kpi-lbl" style="color:var(--cyan)">Buffer</div><div class="tv-kpi-val" style="color:'+bufColor+'">'+(tBuf>=0?'+':'')+tBuf+'</div><div class="tv-kpi-sub" style="color:var(--cyan)">'+
@@ -4430,11 +4435,11 @@ function fxXlsxMulti(sheets){
   sheets.forEach((sh,i)=>files.push(['xl/worksheets/sheet'+(i+1)+'.xml',sheetXml(sh)]));
   return fxZip(files);
 }
-const FECH_CFG={porTurno:false,pbr:true,env:'Classificados',envC:'Class.'};
+const FECH_CFG={porTurno:true,pbr:true,env:'Classificados',envC:'Class.'};
 let fechDe=null,fechAte=null;
 const F_SEM=['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
 function fTurnos(){
-  if(typeof turnosAtivos==='function')return turnosAtivos().map(t=>({key:t.key,label:t.label,horario:t.horario||'',curto:t.label.replace('Turno ','T. '),extra:!!t.extra}));
+  if(typeof turnosAtivos==='function')return turnosAtivos().map(t=>({key:t.key,label:t.label,horario:t.horario||'',curto:t.label,extra:!!t.extra}));
   return TURNOS.map(t=>({key:t.key,label:(t.cargo==='Operador de Empilhadeira'?'Empilhadeira':'Expedição')+' · '+t.label.replace('Turno ',''),horario:t.hor,curto:t.key,extra:false}));
 }
 function fNum(v){return Math.round(v||0).toLocaleString('pt-BR');}
@@ -4485,11 +4490,14 @@ function fechDados(de,ate){
 function fPeriodoTxt(D){return D.de===D.ate?dateFull(D.de):fBR(D.de)+' a '+fBR(D.ate);}
 function fEnv(s){return FECH_CFG.env+(s?'':'');}
 // colunas da tabela dia a dia (tela e PDF)
+function fPB(y){return FECH_CFG.pbr?'<td class="n">'+fNum(y.pbr1)+'</td><td class="n">'+fNum(y.pbr2)+'</td>':'';}
+function fPH(){return FECH_CFG.pbr?'<th class="n">PBR1</th><th class="n">PBR2</th>':'';}
 function fCols(D){
   const c=[];
-  if(FECH_CFG.porTurno)D.turnos.forEach(t=>c.push({h:t.curto,v:x=>x.pt[t.key].prod,tot:D.porT[t.key].prod,dash:true}));
-  if(FECH_CFG.pbr){c.push({h:'PBR1',v:x=>x.t.pbr1,tot:D.tot.pbr1,dash:true},{h:'PBR2',v:x=>x.t.pbr2,tot:D.tot.pbr2,dash:true});}
-  c.push({h:'Total',v:x=>x.t.prod,tot:D.tot.prod,bold:true},{h:'Rec.',v:x=>x.t.rec,tot:D.tot.rec},{h:FECH_CFG.envC,v:x=>x.t.env,tot:D.tot.env},{h:'Desc.',v:x=>x.t.desc,tot:D.tot.desc,red:true});
+  if(FECH_CFG.porTurno&&FECH_CFG.pbr){D.turnos.forEach(t=>c.push({h:t.curto+' · PBR1',v:x=>x.pt[t.key].pbr1,tot:D.porT[t.key].pbr1,dash:true},{h:t.curto+' · PBR2',v:x=>x.pt[t.key].pbr2,tot:D.porT[t.key].pbr2,dash:true}));}
+  else if(FECH_CFG.porTurno)D.turnos.forEach(t=>c.push({h:t.curto,v:x=>x.pt[t.key].prod,tot:D.porT[t.key].prod,dash:true}));
+  if(FECH_CFG.pbr&&!FECH_CFG.porTurno){c.push({h:'PBR1',v:x=>x.t.pbr1,tot:D.tot.pbr1,dash:true},{h:'PBR2',v:x=>x.t.pbr2,tot:D.tot.pbr2,dash:true});}
+  c.push({h:'Total',v:x=>x.t.prod,tot:D.tot.prod,bold:true},{h:FECH_CFG.envC,v:x=>x.t.env,tot:D.tot.env},{h:'Desc.',v:x=>x.t.desc,tot:D.tot.desc,red:true});
   return c;
 }
 function fechIni(){if(!fechDe){fechDe=fechAte=today();}}
@@ -4517,9 +4525,9 @@ function fechRender(){
   const diaTbl='<div class="rel-wrap"><table class="rel-tbl fe-tbl fe-dia"><thead><tr><th>Dia</th>'+cols.map(c=>'<th class="n">'+c.h+'</th>').join('')+'<th class="n">% meta</th></tr></thead><tbody>'+diasRows+'</tbody><tfoot><tr><td class="nm">Total</td>'+cols.map(c=>'<td class="n'+(c.bold?' g':'')+'">'+fNum(c.tot)+'</td>').join('')+'<td></td></tr></tfoot></table></div>';
   let turnoTbl;
   if(C.porTurno){
-    const linhas=D.turnos.map(t=>{const y=D.porT[t.key],tp=y.p+y.a;return'<tr><td class="nm"><b>'+t.label+'</b><small>'+t.horario+'</small></td><td class="n g">'+fNum(y.prod)+'</td><td class="n">'+fNum(y.rec)+'</td><td class="n">'+fNum(y.env)+'</td><td class="n'+(y.desc?' r':'')+'">'+fNum(y.desc)+'</td><td class="n">'+(tp?'<b>'+y.p+'</b> pres. · <span style="color:'+(y.a?'var(--red)':'var(--text3)')+'">'+y.a+' falta(s)</span>':'<span style="color:var(--text3)">—</span>')+'</td></tr>';}).join('')+
-      ((D.sem.prod||D.sem.rec||D.sem.env||D.sem.desc)?'<tr><td class="nm"><b>Sem turno</b><small>lançamento geral</small></td><td class="n g">'+fNum(D.sem.prod)+'</td><td class="n">'+fNum(D.sem.rec)+'</td><td class="n">'+fNum(D.sem.env)+'</td><td class="n">'+fNum(D.sem.desc)+'</td><td></td></tr>':'');
-    turnoTbl='<div class="fe-sec">Por turno (período)</div><div class="rel-wrap"><table class="rel-tbl fe-tbl"><thead><tr><th>Turno</th><th class="n">Prod.</th><th class="n">Rec.</th><th class="n">'+C.envC+'</th><th class="n">Desc.</th><th class="n">Presença</th></tr></thead><tbody>'+linhas+'</tbody><tfoot><tr><td class="nm">Total</td><td class="n g">'+fNum(D.tot.prod)+'</td><td class="n">'+fNum(D.tot.rec)+'</td><td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td></tr></tfoot></table></div>';
+    const linhas=D.turnos.map(t=>{const y=D.porT[t.key],tp=y.p+y.a;return'<tr><td class="nm"><b>'+t.label+'</b><small>'+t.horario+'</small></td><td class="n g">'+fNum(y.prod)+'</td>'+fPB(y)+'<td class="n">'+fNum(y.env)+'</td><td class="n'+(y.desc?' r':'')+'">'+fNum(y.desc)+'</td><td class="n">'+(tp?'<b>'+y.p+'</b> pres. · <span style="color:'+(y.a?'var(--red)':'var(--text3)')+'">'+y.a+' falta(s)</span>':'<span style="color:var(--text3)">—</span>')+'</td></tr>';}).join('')+
+      ((D.sem.prod||D.sem.rec||D.sem.env||D.sem.desc)?'<tr><td class="nm"><b>Sem turno</b><small>lançamento geral</small></td><td class="n g">'+fNum(D.sem.prod)+'</td>'+fPB(D.sem)+'<td class="n">'+fNum(D.sem.env)+'</td><td class="n">'+fNum(D.sem.desc)+'</td><td></td></tr>':'');
+    turnoTbl='<div class="fe-sec">Por turno (período)</div><div class="rel-wrap"><table class="rel-tbl fe-tbl"><thead><tr><th>Turno</th><th class="n">Prod.</th>'+fPH()+'<th class="n">'+C.envC+'</th><th class="n">Desc.</th><th class="n">Presença</th></tr></thead><tbody>'+linhas+'</tbody><tfoot><tr><td class="nm">Total</td><td class="n g">'+fNum(D.tot.prod)+'</td>'+fPB(D.tot)+'<td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td></tr></tfoot></table></div>';
   }else{
     const linhas=D.turnos.map(t=>{const y=D.porT[t.key],tp=y.p+y.a;return'<tr><td class="nm"><b>'+t.label+'</b><small>'+t.horario+'</small></td><td class="n">'+(tp?'<b>'+y.p+'</b>':'—')+'</td><td class="n'+(y.a?' r':'')+'">'+(tp?y.a:'—')+'</td><td class="n">'+(tp?fPct(y.a,tp)+'%':'—')+'</td></tr>';}).join('');
     turnoTbl='<div class="fe-sec">Presença por turno (período)</div><div class="rel-wrap"><table class="rel-tbl fe-tbl"><thead><tr><th>Turno</th><th class="n">Presenças</th><th class="n">Faltas</th><th class="n">% falta</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
@@ -4531,7 +4539,7 @@ function fechRender(){
    '<div class="fe-nav" style="margin-top:-4px">'+chip('hoje','Hoje')+chip('ontem','Ontem')+chip('7d','Últimos 7 dias')+chip('mes','Mês atual')+chip('ant','Mês anterior')+'</div>'+
    '<div class="fe-card">'+
     '<div class="fe-head"><div><div class="fe-un">FEMSA '+unitName+' · Relatório operacional</div><div class="fe-dt">'+fPeriodoTxt(D)+'</div><div class="fe-s">'+D.dias.length+' dia(s) · '+D.diasTrab+' com produção</div></div>'+(D.diasTrab?'<div class="fe-badge" style="color:'+cor+';border-color:'+cor+'">'+pct+'% da meta</div>':'')+'</div>'+
-    '<div class="fe-tiles">'+tile('Produzidos',fNum(D.tot.prod),(C.pbr?'PBR1 '+fNum(D.tot.pbr1)+' · PBR2 '+fNum(D.tot.pbr2)+' · ':'')+'média '+fNum(D.media)+'/dia',cor)+tile('Recebidos',fNum(D.tot.rec),'')+tile(C.env,fNum(D.tot.env),'')+tile('Descarte',fNum(D.tot.desc),'',D.tot.desc?'var(--red)':'')+tile('Buffer atual',(D.bufFim>=0?'+':'')+fNum(D.bufFim),'estoque neste momento',D.bufFim>=0?'var(--cyan)':'var(--red)')+'</div>'+
+    '<div class="fe-tiles">'+tile('Produzidos',fNum(D.tot.prod),(C.pbr?'PBR1 '+fNum(D.tot.pbr1)+' · PBR2 '+fNum(D.tot.pbr2)+' · ':'')+'média '+fNum(D.media)+'/dia',cor)+tile(C.env,fNum(D.tot.env),'')+tile('Descarte',fNum(D.tot.desc),'',D.tot.desc?'var(--red)':'')+tile('Buffer atual',(D.bufFim>=0?'+':'')+fNum(D.bufFim),'estoque neste momento',D.bufFim>=0?'var(--cyan)':'var(--red)')+'</div>'+
     '<div class="fe-prog"><div style="width:'+Math.min(100,pct)+'%;background:'+cor+'"></div></div><div class="fe-progl"><span>Meta de referência '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta</span></div>'+
     '<div class="fe-sec">Produção diária <small style="font-weight:500;color:var(--text3)">· verde = meta batida</small></div><div class="fe-pulso">'+grafico+'</div>'+
     turnoTbl+
@@ -4551,12 +4559,12 @@ function fechTexto(D){
   L.push('📦 Produzidos: *'+fNum(D.tot.prod)+'*'+(D.diasTrab?' ('+pct+'% da meta de referência '+(pct>=100?'✅':'⚠️')+')':''));
   if(C.pbr)L.push('   PBR1 '+fNum(D.tot.pbr1)+' · PBR2 '+fNum(D.tot.pbr2));
   if(D.diasTrab)L.push('   Média: '+fNum(D.media)+'/dia · '+D.bateu+' de '+D.diasTrab+' dia(s) na meta');
-  L.push('🚚 Recebidos: *'+fNum(D.tot.rec)+'*','📤 '+C.env+': *'+fNum(D.tot.env)+'*','🗑️ Descarte: *'+fNum(D.tot.desc)+'*','🧱 Buffer atual: *'+(D.bufFim>=0?'+':'')+fNum(D.bufFim)+'*','');
-  if(C.porTurno){L.push('*Por turno*');D.turnos.forEach(t=>{const y=D.porT[t.key];L.push('• '+t.label+': Prod '+fNum(y.prod)+' | Rec '+fNum(y.rec)+' | '+C.envC+' '+fNum(y.env)+' | Desc '+fNum(y.desc)+((y.p+y.a)?' | 👥 '+y.p+' pres./'+y.a+' falta(s)':''));});}
+  L.push('📤 '+C.env+': *'+fNum(D.tot.env)+'*','🗑️ Descarte: *'+fNum(D.tot.desc)+'*','🧱 Buffer atual: *'+(D.bufFim>=0?'+':'')+fNum(D.bufFim)+'*','');
+  if(C.porTurno){L.push('*Por turno*');D.turnos.forEach(t=>{const y=D.porT[t.key];L.push('• '+t.label+': Prod '+fNum(y.prod)+(C.pbr?' (PBR1 '+fNum(y.pbr1)+' · PBR2 '+fNum(y.pbr2)+')':'')+' | '+C.envC+' '+fNum(y.env)+' | Desc '+fNum(y.desc)+((y.p+y.a)?' | 👥 '+y.p+' pres./'+y.a+' falta(s)':''));});if(D.sem.prod||D.sem.rec||D.sem.env||D.sem.desc)L.push('• Sem turno (lançamento geral): Prod '+fNum(D.sem.prod)+(C.pbr?' (PBR1 '+fNum(D.sem.pbr1)+' · PBR2 '+fNum(D.sem.pbr2)+')':'')+' | '+C.envC+' '+fNum(D.sem.env)+' | Desc '+fNum(D.sem.desc));}
   else{const ps=D.turnos.filter(t=>D.porT[t.key].p+D.porT[t.key].a>0);if(ps.length){L.push('*Presença por turno*');ps.forEach(t=>{const y=D.porT[t.key];L.push('• '+t.label+': 👥 '+y.p+' pres./'+y.a+' falta(s)');});}}
   if(D.dias.length>1&&D.dias.length<=31){L.push('','*Dia a dia*');D.dias.forEach(x=>{if(!x.n)return;
-    const det=C.porTurno?' ('+D.tk.map(k=>k+' '+fNum(x.pt[k].prod)).join(' · ')+')':(C.pbr?' (PBR1 '+fNum(x.t.pbr1)+' · PBR2 '+fNum(x.t.pbr2)+')':'');
-    L.push(fCurto(x.d)+' '+F_SEM[x.wd].toLowerCase()+': *'+fNum(x.t.prod)+'*'+det+' | Rec '+fNum(x.t.rec)+' | '+C.envC+' '+fNum(x.t.env)+' | Desc '+fNum(x.t.desc));});}
+    const det=C.porTurno?(D.turnos.some(t=>x.pt[t.key].prod>0)?' ('+D.turnos.filter(t=>x.pt[t.key].prod>0).map(t=>t.curto+' '+(C.pbr?'PBR1 '+fNum(x.pt[t.key].pbr1)+'/PBR2 '+fNum(x.pt[t.key].pbr2):fNum(x.pt[t.key].prod))).join(' · ')+')':''):(C.pbr?' (PBR1 '+fNum(x.t.pbr1)+' · PBR2 '+fNum(x.t.pbr2)+')':'');
+    L.push(fCurto(x.d)+' '+F_SEM[x.wd].toLowerCase()+': *'+fNum(x.t.prod)+'*'+det+' | '+C.envC+' '+fNum(x.t.env)+' | Desc '+fNum(x.t.desc));});}
   if(D.melhor)L.push('','🏆 Melhor dia: '+fCurto(D.melhor.d)+' — '+fNum(D.melhor.t.prod));
   if(D.alertas.length){L.push('','*Alertas*');D.alertas.forEach(a=>L.push('⚠️ '+a.t));}
   return L.join('\n');
@@ -4576,28 +4584,28 @@ function fechExcel(){
    [{h:'Indicador'},{h:'Valor'}],[{s:'Produzidos'},{n:D.tot.prod}]];
   if(C.pbr)r1.push([{s:'PBR1'},{n:D.tot.pbr1}],[{s:'PBR2'},{n:D.tot.pbr2}]);
   r1.push([{s:'Meta diária'},{n:META_DIARIA}],[{s:'Dias com produção'},{n:D.diasTrab}],[{s:'Meta de referência'},{n:D.metaRef}],[{s:'% da meta de referência'},{n:pct}],[{s:'Média por dia trabalhado'},{n:D.media}],[{s:'Dias que bateram a meta'},{n:D.bateu}],
-   [{s:'Recebidos'},{n:D.tot.rec}],[{s:C.env},{n:D.tot.env}],[{s:'Descarte'},{n:D.tot.desc}],[{s:'Buffer atual'},{n:D.bufFim}],[]);
+   [{s:C.env},{n:D.tot.env}],[{s:'Descarte'},{n:D.tot.desc}],[{s:'Buffer atual'},{n:D.bufFim}],[]);
   if(C.porTurno){
-    r1.push([{h:'Turno'},{h:'Horário'},{h:'Produzidos'},{h:'Recebidos'},{h:C.env},{h:'Descarte'},{h:'Presenças'},{h:'Faltas'},{h:'% absenteísmo'}]);
-    D.turnos.forEach(t=>{const y=D.porT[t.key];r1.push([{s:t.label},{s:t.horario},{n:y.prod},{n:y.rec},{n:y.env},{n:y.desc},{n:y.p},{n:y.a},{n:fPct(y.a,y.p+y.a)}]);});
-    if(D.sem.prod||D.sem.rec||D.sem.env||D.sem.desc)r1.push([{s:'Sem turno'},null,{n:D.sem.prod},{n:D.sem.rec},{n:D.sem.env},{n:D.sem.desc}]);
-    r1.push([{h:'TOTAL'},null,{t:D.tot.prod},{t:D.tot.rec},{t:D.tot.env},{t:D.tot.desc}]);
+    r1.push([{h:'Turno'},{h:'Horário'},{h:'Produzidos'}].concat(C.pbr?[{h:'PBR1'},{h:'PBR2'}]:[]).concat([{h:C.env},{h:'Descarte'},{h:'Presenças'},{h:'Faltas'},{h:'% absenteísmo'}]));
+    D.turnos.forEach(t=>{const y=D.porT[t.key];r1.push([{s:t.label},{s:t.horario},{n:y.prod}].concat(C.pbr?[{n:y.pbr1},{n:y.pbr2}]:[]).concat([{n:y.env},{n:y.desc},{n:y.p},{n:y.a},{n:fPct(y.a,y.p+y.a)}]));});
+    if(D.sem.prod||D.sem.rec||D.sem.env||D.sem.desc)r1.push([{s:'Sem turno'},null,{n:D.sem.prod}].concat(C.pbr?[{n:D.sem.pbr1},{n:D.sem.pbr2}]:[]).concat([{n:D.sem.env},{n:D.sem.desc}]));
+    r1.push([{h:'TOTAL'},null,{t:D.tot.prod}].concat(C.pbr?[{t:D.tot.pbr1},{t:D.tot.pbr2}]:[]).concat([{t:D.tot.env},{t:D.tot.desc}]));
   }else{
     r1.push([{h:'Turno'},{h:'Horário'},{h:'Presenças'},{h:'Faltas'},{h:'% absenteísmo'}]);
     D.turnos.forEach(t=>{const y=D.porT[t.key];r1.push([{s:t.label},{s:t.horario},{n:y.p},{n:y.a},{n:fPct(y.a,y.p+y.a)}]);});
   }
   if(D.alertas.length){r1.push([]);r1.push([{h:'Alertas'}]);D.alertas.forEach(a=>r1.push([{s:a.t}]));}
-  const s1={name:'Resumo',widths:[34,16,14,14,14,14,12,10,14],rows:r1};
+  const s1={name:'Resumo',widths:[34,16,14,14,14,14,14,14,12,10,14],rows:r1};
   const NOMES=['DOMINGO','SEGUNDA-FEIRA','TERÇA-FEIRA','QUARTA-FEIRA','QUINTA-FEIRA','SEXTA-FEIRA','SÁBADO'];
   let r2,w2,fz;
   if(C.porTurno){
     const h1=[{h:''},{h:''}],h2=[{h:'DATA'},{h:'DIA'}];
-    D.turnos.forEach(t=>{h1.push({h:t.label.toUpperCase()},null,null,null);h2.push({h:'PRODUZIDOS'},{h:'RECEBIDOS'},{h:C.env.toUpperCase()},{h:'DESCARTE'});});
-    h1.push({h:'TOTAL DO DIA'},null,null,null,null);h2.push({h:'PRODUZIDOS'},{h:'RECEBIDOS'},{h:C.env.toUpperCase()},{h:'DESCARTE'},{h:'% META'});
+    const NP=C.pbr?5:3;D.turnos.forEach(t=>{h1.push({h:t.label.toUpperCase()});for(let q=1;q<NP;q++)h1.push(null);h2.push({h:'PRODUZIDOS'});if(C.pbr)h2.push({h:'PBR1'},{h:'PBR2'});h2.push({h:C.env.toUpperCase()},{h:'DESCARTE'});});
+    h1.push({h:'TOTAL DO DIA'},null,null,null);h2.push({h:'PRODUZIDOS'},{h:C.env.toUpperCase()},{h:'DESCARTE'},{h:'% META'});
     r2=[h1,h2];
-    D.dias.forEach(x=>{const r=[{d:fxSerial(x.d)},{s:NOMES[x.wd]}];D.tk.forEach(k=>{const y=x.pt[k];r.push({n:y.prod},{n:y.rec},{n:y.env},{n:y.desc});});r.push({n:x.t.prod},{n:x.t.rec},{n:x.t.env},{n:x.t.desc},x.t.prod?{n:x.pct}:null);r2.push(r);});
-    const tr=[{h:'TOTAL'},null];D.tk.forEach(k=>{const y=D.porT[k];tr.push({t:y.prod},{t:y.rec},{t:y.env},{t:y.desc});});tr.push({t:D.tot.prod},{t:D.tot.rec},{t:D.tot.env},{t:D.tot.desc},null);r2.push(tr);
-    w2=[12,18].concat(D.tk.flatMap(()=>[13,13,13,13])).concat([14,13,13,13,10]);fz=[2,2];
+    D.dias.forEach(x=>{const r=[{d:fxSerial(x.d)},{s:NOMES[x.wd]}];D.tk.forEach(k=>{const y=x.pt[k];r.push({n:y.prod});if(C.pbr)r.push({n:y.pbr1},{n:y.pbr2});r.push({n:y.env},{n:y.desc});});r.push({n:x.t.prod},{n:x.t.env},{n:x.t.desc},x.t.prod?{n:x.pct}:null);r2.push(r);});
+    const tr=[{h:'TOTAL'},null];D.tk.forEach(k=>{const y=D.porT[k];tr.push({t:y.prod});if(C.pbr)tr.push({t:y.pbr1},{t:y.pbr2});tr.push({t:y.env},{t:y.desc});});tr.push({t:D.tot.prod},{t:D.tot.env},{t:D.tot.desc},null);r2.push(tr);
+    w2=[12,18].concat(D.tk.flatMap(()=>C.pbr?[13,11,11,13,13]:[13,13,13])).concat([14,13,13,10]);fz=[2,2];
   }else{
     const cols=fCols(D);
     r2=[[{h:'DATA'},{h:'DIA'}].concat(cols.map(c=>({h:(c.h==='Total'?'TOTAL PRODUZIDO':c.h.toUpperCase())}))).concat([{h:'% META'}])];
@@ -4636,8 +4644,8 @@ function fechPDF(){
   let blocoTurno;
   if(C.porTurno){
     const maxT=Math.max(1,...D.tk.map(k=>D.porT[k].prod));
-    const trT=D.turnos.map(t=>{const y=D.porT[t.key],tp=y.p+y.a;return'<tr><td><b>'+esc(t.label)+'</b><small>'+esc(t.horario)+'</small></td><td class="n"><b>'+fNum(y.prod)+'</b><div class="mb"><i style="width:'+Math.round(y.prod/maxT*100)+'%"></i></div></td><td class="n">'+fNum(y.rec)+'</td><td class="n">'+fNum(y.env)+'</td><td class="n">'+fNum(y.desc)+'</td><td class="n">'+(tp?y.p+' pres. · '+y.a+' falta(s) <small>('+fPct(y.a,tp)+'%)</small>':'—')+'</td></tr>';}).join('');
-    blocoTurno='<h2>Por turno</h2><table><thead><tr><th>Turno</th><th class="n">Produzidos</th><th class="n">Rec.</th><th class="n">'+C.envC+'</th><th class="n">Desc.</th><th class="n">Presença</th></tr></thead><tbody>'+trT+'</tbody><tfoot><tr><td>Total</td><td class="n">'+fNum(D.tot.prod)+'</td><td class="n">'+fNum(D.tot.rec)+'</td><td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td></tr></tfoot></table>';
+    const trT=D.turnos.map(t=>{const y=D.porT[t.key],tp=y.p+y.a;return'<tr><td><b>'+esc(t.label)+'</b><small>'+esc(t.horario)+'</small></td><td class="n"><b>'+fNum(y.prod)+'</b><div class="mb"><i style="width:'+Math.round(y.prod/maxT*100)+'%"></i></div></td>'+fPB(y)+'<td class="n">'+fNum(y.env)+'</td><td class="n">'+fNum(y.desc)+'</td><td class="n">'+(tp?y.p+' pres. · '+y.a+' falta(s) <small>('+fPct(y.a,tp)+'%)</small>':'—')+'</td></tr>';}).join('');
+    blocoTurno='<h2>Por turno</h2><table><thead><tr><th>Turno</th><th class="n">Produzidos</th>'+fPH()+'<th class="n">'+C.envC+'</th><th class="n">Desc.</th><th class="n">Presença</th></tr></thead><tbody>'+trT+((D.sem.prod||D.sem.rec||D.sem.env||D.sem.desc)?'<tr><td><b>Sem turno</b><small>lançamento geral</small></td><td class="n"><b>'+fNum(D.sem.prod)+'</b></td>'+fPB(D.sem)+'<td class="n">'+fNum(D.sem.env)+'</td><td class="n">'+fNum(D.sem.desc)+'</td><td></td></tr>':'')+'</tbody><tfoot><tr><td>Total</td><td class="n">'+fNum(D.tot.prod)+'</td>'+fPB(D.tot)+'<td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td></tr></tfoot></table>';
   }else{
     const trT=D.turnos.map(t=>{const y=D.porT[t.key],tp=y.p+y.a;return'<tr><td><b>'+esc(t.label)+'</b><small>'+esc(t.horario)+'</small></td><td class="n">'+(tp?y.p:'—')+'</td><td class="n">'+(tp?y.a:'—')+'</td><td class="n">'+(tp?fPct(y.a,tp)+'%':'—')+'</td></tr>';}).join('');
     blocoTurno='<h2>Presença por turno</h2><table><thead><tr><th>Turno</th><th class="n">Presenças</th><th class="n">Faltas</th><th class="n">% falta</th></tr></thead><tbody>'+trT+'</tbody></table>';
@@ -4647,7 +4655,7 @@ function fechPDF(){
   const css='@page{size:A4 landscape;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{background:#090e13}body{font-family:"Segoe UI",Arial,sans-serif;color:#fff;margin:0;padding:10mm;font-size:12px;background-image:radial-gradient(ellipse 60% 50% at 0% 40%,rgba(0,40,80,.55) 0%,transparent 70%)}'+
    '.hero{background:linear-gradient(120deg,#002a66,#003B8E 55%,#0d6efd);color:#fff;border-radius:14px;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border:1px solid rgba(255,255,255,.12)}.hero .u{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.8;font-weight:700}.hero h1{font-size:25px;margin:4px 0 2px}.hero .p{font-size:14px;opacity:.9}'+
    '.ring{text-align:center;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.55);border-radius:14px;padding:10px 20px}.ring b{font-size:30px;display:block;line-height:1}.ring span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.85}'+
-   '.ks{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}.k{border:1px solid rgba(255,255,255,.08);border-top:4px solid #1d4ed8;border-radius:10px;padding:10px 12px;background:#0f1923}.kl{font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:#7a92a8;font-weight:700}.kv{font-size:24px;font-weight:800;margin-top:2px;color:#fff}.k .ks{display:block;font-size:10px;color:#7a92a8;margin-top:2px}'+
+   '.ks{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}.k{border:1px solid rgba(255,255,255,.08);border-top:4px solid #1d4ed8;border-radius:10px;padding:10px 12px;background:#0f1923}.kl{font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:#7a92a8;font-weight:700}.kv{font-size:24px;font-weight:800;margin-top:2px;color:#fff}.k .ks{display:block;font-size:10px;color:#7a92a8;margin-top:2px}'+
    '.prog{height:9px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden}.prog i{display:block;height:100%;background:'+cor+';width:'+Math.min(100,pct)+'%}.pl{display:flex;justify-content:space-between;font-size:10px;color:#7a92a8;margin:4px 0 12px}'+
    'h2{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:#60a5fa;margin:14px 0 6px;padding-bottom:4px;border-bottom:2px solid rgba(96,165,250,.25)}.leg{display:flex;gap:14px;font-size:10px;color:#7a92a8;margin:2px 0 4px}.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}'+
    'table{width:100%;border-collapse:collapse;font-size:11px;background:#0f1923;border-radius:8px;overflow:hidden}thead{display:table-header-group}th{background:#003B8E;color:#fff;text-align:left;padding:7px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.05em}th.n{text-align:right}td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06);color:#fff}td.n{text-align:right;font-variant-numeric:tabular-nums}tbody tr:nth-child(even){background:#141f2c}tr.dom{background:rgba(255,77,106,.10)!important}tr{page-break-inside:avoid}tfoot td{background:#12305e;font-weight:800;border-top:2px solid #1d4ed8}small{color:#7a92a8;font-size:9px}td small{display:block}tr td small{display:inline}'+
@@ -4656,7 +4664,7 @@ function fechPDF(){
   const sub1=(C.pbr?'PBR1 '+fNum(D.tot.pbr1)+' · PBR2 '+fNum(D.tot.pbr2)+' · ':'')+'média '+fNum(D.media)+'/dia';
   const html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório '+esc(unitName)+' '+D.de+(D.de!==D.ate?' a '+D.ate:'')+'</title><style>'+css+'</style></head><body>'+
    '<div class="hero"><div><div class="u">FEMSA '+esc(unitName)+' · Relatório operacional</div><h1>'+esc(fPeriodoTxt(D))+'</h1><div class="p">'+D.dias.length+' dia(s) no período · '+D.diasTrab+' com produção</div></div>'+(D.diasTrab?'<div class="ring"><b>'+pct+'%</b><span>da meta ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span></div>':'')+'</div>'+
-   '<div class="ks">'+kp('Produzidos',fNum(D.tot.prod),sub1,cor,'#1d4ed8')+kp('Recebidos',fNum(D.tot.rec),'','','#6366f1')+kp(C.env,fNum(D.tot.env),'','','#10b981')+kp('Descarte',fNum(D.tot.desc),'',D.tot.desc?'#ff4d6a':'','#ff4d6a')+kp('Buffer atual',(D.bufFim>=0?'+':'')+fNum(D.bufFim),'estoque neste momento',D.bufFim>=0?'#60a5fa':'#ff4d6a','#f59e0b')+'</div>'+
+   '<div class="ks">'+kp('Produzidos',fNum(D.tot.prod),sub1,cor,'#1d4ed8')+kp(C.env,fNum(D.tot.env),'','','#10b981')+kp('Descarte',fNum(D.tot.desc),'',D.tot.desc?'#ff4d6a':'','#ff4d6a')+kp('Buffer atual',(D.bufFim>=0?'+':'')+fNum(D.bufFim),'estoque neste momento',D.bufFim>=0?'#60a5fa':'#ff4d6a','#f59e0b')+'</div>'+
    '<div class="prog"><i></i></div><div class="pl"><span>Meta de referência: '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta diária</span></div>'+
    '<h2>Produção diária</h2><div class="leg">'+legenda+'<span><i style="background:#ff4d6a"></i>meta diária ('+fNum(META_DIARIA)+')</span></div>'+svg+
    '<div class="cols"><div>'+blocoTurno+'</div>'+

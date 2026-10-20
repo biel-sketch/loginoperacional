@@ -901,7 +901,7 @@ function diasUteisRestantesNoMes(){
   for(let dia=now.getDate();dia<=fim;dia++){const d=new Date(ano,mes,dia);if(d.getDay()!==0)count++;}
   return count;
 }
-function getMetaMensal(){return state.metaMensal||(META_DIARIA*26);}
+function getMetaMensal(){const n=new Date();return META_DIARIA*diasUteisNoMes(n.getFullYear(),n.getMonth());} // meta diária fixa × dias úteis do mês
 function calcMetaIndividual(){
   const produtores=colaboradoresAtivos().filter(produzPallets);
   const diasUteisMes=diasUteisNoMes(new Date().getFullYear(),new Date().getMonth());
@@ -2788,7 +2788,7 @@ function renderConfig(){
       var infoMeta=calcMetaIndividual();
       html+='<div class="card" style="border-color:var(--cyan-bd)">';
       html+='<div class="card-title"><i class="ti ti-target-arrow" style="color:var(--cyan)"></i> Meta Mensal & Turno Extraordinário</div>';
-      html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta mensal (pallets)</div><div class="cfg-sub">Usada só nos indicadores gerais (meta do dia, % da meta mensal, projeção)</div></div><input type="number" id="cfg-meta-mensal" value="'+metaMensalAtual+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
+      html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta mensal (pallets)</div><div class="cfg-sub">Calculada automaticamente: meta diária ('+META_DIARIA+') × dias úteis do mês</div></div><input type="number" disabled id="cfg-meta-mensal" value="'+metaMensalAtual+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
       html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta individual (pallets/pessoa/dia)</div><div class="cfg-sub">Valor fixo usado no lançamento de Produção por Colaborador</div></div><input type="number" id="cfg-meta-individual" value="'+(state.metaIndividualFixa||120)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
       html+='<div class="cfg-row"><div><div class="cfg-lbl">Saldo inicial do buffer</div><div class="cfg-sub">Somado ao cálculo produzidos − enviados</div></div><input type="number" id="cfg-buffer-saldo" value="'+(state.bufferSaldoInicial||0)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
       html+='<button class="btn btn-primary btn-sm" style="margin-top:6px;margin-bottom:14px" onclick="salvarConfigMeta()"><i class="ti ti-check"></i> Salvar</button>';

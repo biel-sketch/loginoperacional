@@ -545,7 +545,6 @@ img,canvas,svg{max-width:100%}
             <button class="vtog" onclick="setDV('mes')">Mês</button>
             <button class="vtog" onclick="setDV('log')">Log</button>
             <button class="vtog" onclick="setDV('fech')">Fechamento</button>
-            <button class="vtog" onclick="setDV('rel')">Relatório</button>
           </div>
           <div id="dv-dia"><div class="day-btns" id="day-btns"></div><div id="dia-content"><div class="empty"><i class="ti ti-refresh" style="animation:spin .8s linear infinite"></i><h3>Buscando dados...</h3><p>Aguarde a sincronização</p></div></div></div>
           <div id="dv-mes" style="display:none"><div id="mes-content"></div></div>
@@ -737,7 +736,6 @@ img,canvas,svg{max-width:100%}
       <select id="modal-turno">
         <option value="A">Turno A — 06h00 às 14h20</option>
         <option value="B">Turno B — 14h00 às 22h20</option>
-        <option value="C">Turno C — 22h00 às 06h20</option>
         <option value="D" id="modal-turno-d-opt" style="display:none">Turno Extraordinário</option>
       </select>
     </div>
@@ -1140,7 +1138,7 @@ function verificarAusencia(){
   const quadro = colaboradoresAtivos().length;
   if(!quadro) return;
   let presentes=0, ausentes=0, ausentesNomes=[];
-  ['A','B','C'].forEach(t=>{
+  ['A','B'].forEach(t=>{
     const p=presDay[t]; if(!p) return;
     Object.entries(p.presenca||{}).forEach(([nome,v])=>{
       if(v==='P') presentes++;
@@ -1171,7 +1169,7 @@ async function enviarResumoPresenca(hora){
   const presDay = state.presencas[todayD] || {};
   const quadro = colaboradoresAtivos().length;
   let presentes=0, ausentes=0, ausentesNomes=[];
-  ['A','B','C'].forEach(t=>{
+  ['A','B'].forEach(t=>{
     const p=presDay[t]; if(!p) return;
     Object.entries(p.presenca||{}).forEach(([nome,v])=>{
       if(v==='P') presentes++;
@@ -1663,9 +1661,9 @@ function buildProducaoPorTurnoCard(){
   const diaD=selDate||today();
   const movs=state.movimentos[diaD]||[];
   const porTurno={};
-  let semTurno=0;
+  let semTurno=0;const pb={};
   movs.forEach(m=>{
-    if(m.turno)porTurno[m.turno]=(porTurno[m.turno]||0)+(m.prod||0);
+    if(m.turno){porTurno[m.turno]=(porTurno[m.turno]||0)+(m.prod||0);pb[m.turno]=pb[m.turno]||[0,0];pb[m.turno][0]+=(m.pbr1||0);pb[m.turno][1]+=(m.pbr2||0);}
     else semTurno+=(m.prod||0);
   });
   const turnos=turnosAtivos();
@@ -1676,11 +1674,12 @@ function buildProducaoPorTurnoCard(){
     '<div style="width:60px;text-align:right;font-weight:700;font-size:13px;color:'+cor+'">'+val.toLocaleString('pt-BR')+'</div></div>';
   const rotulo=diaD===today()?'hoje':dateFmt(diaD);
   return'<div class="card"><div class="card-title"><i class="ti ti-chart-bar"></i>Produção por Turno ('+rotulo+')</div>'+
-    turnos.map(t=>linha(t.label,porTurno[t.key]||0,'var(--cyan)')).join('')+
+    turnos.map(t=>linha(t.label+(pb[t.key]?'<div style="font-size:10px;font-weight:400;color:var(--text3)">PBR1 '+pb[t.key][0].toLocaleString('pt-BR')+' · PBR2 '+pb[t.key][1].toLocaleString('pt-BR')+'</div>':''),porTurno[t.key]||0,'var(--cyan)')).join('')+
     (semTurno>0?linha('Sem turno (retroativo)',semTurno,'var(--text2)'):'')+
     '</div>';
 }
 function buildProducaoIndividualHojeCard(){
+  return''; // removido em Marília (produção não é por colaborador)
   const diaD=selDate||today();
   const info=calcMetaIndividual();
   const producers=colaboradoresAtivos().filter(produzPallets);
@@ -1737,15 +1736,15 @@ function renderDia(){
   const pct=Math.min(100,Math.round(tP/META_DIARIA*100));
   const lastTag=movs.length?'<span style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px"><i class="ti ti-clock" style="font-size:11px"></i>'+timeFmt(movs[movs.length-1].ts)+' · '+movs[movs.length-1].who+'</span>':'';
   let presP=0,presA=0;
-  ['A','B','C'].forEach(t=>{const p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(v=>{if(v==='P')presP++;else if(v==='A')presA++;});});
-  const turnoRows=['A','B','C'].map(t=>{
+  ['A','B'].forEach(t=>{const p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(v=>{if(v==='P')presP++;else if(v==='A')presA++;});});
+  const turnoRows=['A','B'].map(t=>{
     const p=presDay[t];
     if(!p||!p.savedAt)return'<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)"><i class="ti ti-clock" style="color:var(--text3);font-size:13px"></i><span style="font-size:13px;color:var(--text2)">Turno '+t+' — aguardando apontamento</span></div>';
     const np=Object.values(p.presenca||{}).filter(v=>v==='P').length;
     const na=Object.values(p.presenca||{}).filter(v=>v==='A').length;
     return'<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:13px;font-weight:600;color:var(--text)">Turno '+t+'</span><div style="display:flex;gap:6px"><span class="badge b-ok">'+np+' pres.</span>'+(na?'<span class="badge b-err">'+na+' aus.</span>':'')+'</div></div>';
   }).join('');
-  const presCards=['A','B','C'].map(t=>{
+  const presCards=['A','B'].map(t=>{
     const p=presDay[t];if(!p||!p.savedAt)return'';
     const colabsT=colaboradoresAtivos().filter(c=>c.turno===t);
     const cells=colabsT.map(c=>{
@@ -1840,6 +1839,7 @@ function rankingProducaoPeriodo(de,ate){
   });
 }
 function buildRankingCard(de,ate){
+  return''; // removido em Marília
   const arr=rankingProducaoPeriodo(de,ate);
   const linha=(r,idx,max,cor)=>'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">'+
     '<div style="width:20px;height:20px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0">'+(idx+1)+'</div>'+
@@ -1909,7 +1909,7 @@ function renderMes(){
   const descArr=dates.map(d=>state.movimentos[d].reduce((s,m)=>s+(m.desc||0),0));
   const envArr=dates.map(d=>state.movimentos[d].reduce((s,m)=>s+(m.env||0),0));
   const bufArr=prodArr.map((p,i)=>p-envArr[i]);
-  const absArr=dates.map(d=>{let a=0;const pr=state.presencas[d]||{};['A','B','C'].forEach(t=>{if(pr[t])Object.values(pr[t].presenca||{}).forEach(v=>{if(v==='A')a++;});});return a;});
+  const absArr=dates.map(d=>{let a=0;const pr=state.presencas[d]||{};['A','B'].forEach(t=>{if(pr[t])Object.values(pr[t].presenca||{}).forEach(v=>{if(v==='A')a++;});});return a;});
   const co={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1923',borderColor:'rgba(255,255,255,.1)',borderWidth:1,titleColor:'#fff',bodyColor:'#7a92a8'}},scales:{x:{grid:{display:false},ticks:{color:'#4a6070',font:{size:10},maxRotation:45}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a6070',font:{size:10}},border:{display:false}}}};
   Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});charts={};
   cont.innerHTML=
@@ -2133,7 +2133,7 @@ function getFeriasAtivas(){
   const map={},t=today();
   Object.keys(state.presencas).forEach(date=>{
     const pd=state.presencas[date];
-    ['A','B','C'].forEach(turno=>{
+    ['A','B'].forEach(turno=>{
       const pt=pd[turno];if(!pt||!pt.feriasInfo)return;
       Object.entries(pt.feriasInfo).forEach(([nome,info])=>{
         const key=nome+'|'+info.inicio;
@@ -2150,7 +2150,7 @@ async function cancelarFerias(nome,inicio){
   Object.keys(state.presencas).forEach(date=>{
     if(date<t)return;
     const pd=state.presencas[date];
-    ['A','B','C'].forEach(turno=>{
+    ['A','B'].forEach(turno=>{
       const pt=pd[turno];if(!pt||!pt.presenca||!pt.presenca[nome])return;
       const info=pt.feriasInfo&&pt.feriasInfo[nome];
       if(pt.presenca[nome]==='F'&&info&&info.inicio===inicio){
@@ -2588,7 +2588,7 @@ function renderAbsenteismo(){
   var absMap={},diasMap={};
   dates.forEach(function(date){
     var pd=state.presencas[date]||{};
-    ['A','B','C'].forEach(function(t){
+    ['A','B'].forEach(function(t){
       if(!pd[t])return;
       Object.entries(pd[t].presenca||{}).forEach(function(e2){
         var nome=e2[0],st=e2[1];
@@ -2612,10 +2612,10 @@ function renderAbsenteismo(){
   var turnoMap={A:0,B:0,C:0};
   dates.forEach(function(date){
     var pd=state.presencas[date]||{};
-    ['A','B','C'].forEach(function(t){if(pd[t])Object.values(pd[t].presenca||{}).forEach(function(s){if(s==='A')turnoMap[t]++;});});
+    ['A','B'].forEach(function(t){if(pd[t])Object.values(pd[t].presenca||{}).forEach(function(s){if(s==='A')turnoMap[t]++;});});
   });
   var turnoHTML='';
-  ['A','B','C'].forEach(function(t){
+  ['A','B'].forEach(function(t){
     turnoHTML+='<div style="background:var(--bg3);border-radius:9px;padding:12px;text-align:center;border:1px solid var(--border)"><div style="font-size:10px;color:var(--cyan);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Turno '+t+'</div><div style="font-size:22px;font-weight:700;color:var(--text)">'+turnoMap[t]+'</div><div style="font-size:11px;color:var(--text2);margin-top:2px">faltas</div></div>';
   });
   var rowsHTML='';
@@ -3117,7 +3117,7 @@ function exportarAbsenteismo(){
   var dates=Object.keys(state.presencas).sort(),absMap={},diasMap={};
   dates.forEach(function(date){
     var pd=state.presencas[date]||{};
-    ['A','B','C'].forEach(function(t){
+    ['A','B'].forEach(function(t){
       if(!pd[t])return;
       Object.entries(pd[t].presenca||{}).forEach(function(e2){
         var nome=e2[0],st=e2[1];
@@ -3294,7 +3294,7 @@ function exportarPDF(){
 // TV MODE
 function buildTurnoRows(presDay){
   var html='',hor={A:'06h00–14h20',B:'14h00–22h20',C:'22h00–06h20'};
-  ['A','B','C'].forEach(function(t){
+  ['A','B'].forEach(function(t){
     var pt=presDay[t];
     if(!pt){html+='<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--text2)">Turno '+t+' — aguardando</div>';return;}
     var np=Object.values(pt.presenca||{}).filter(function(v){return v==='P';}).length;
@@ -3311,7 +3311,7 @@ function renderTV(){
   var tD=movs.reduce(function(s,m){return s+(m.desc||0);},0);
   var tBufDiaTV=bufferDoDia(todayD),tBuf=calcBufferGlobal(),pct=Math.min(100,Math.round(tP/META_DIARIA*100));
   var presP=0,presA=0,presQ=0;
-  ['A','B','C'].forEach(function(t){var p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(function(s){presQ++;if(s==='P')presP++;else if(s==='A')presA++;});});
+  ['A','B'].forEach(function(t){var p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(function(s){presQ++;if(s==='P')presP++;else if(s==='A')presA++;});});
   var dt=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   var hr=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   var bufColor=tBuf>=0?'var(--cyan)':'var(--red)';
@@ -3424,7 +3424,7 @@ function renderPresHist(){
     let hasFalta = false, hasReg = false;
     let turnosHtml = '';
 
-    ['A','B','C'].forEach(t => {
+    ['A','B'].forEach(t => {
       const pt = presDay[t];
       if(!pt || !pt.savedAt || !Object.keys(pt.presenca||{}).length){
         turnosHtml += '<div class="hist-turno-row"><span class="hist-turno-lbl">Turno '+t+'</span><span class="hist-sem-reg">Não registrado</span></div>';
@@ -3843,7 +3843,7 @@ function osRenderForm(){
    '<div class="modal-field os-w2"><label>Veículo</label>'+seg('veic',[['CARRETA','Carreta'],['TRUCK','Truck'],['RODOTREM','Rodotrem']])+'</div>'+
    '<div class="modal-field"><label>Nº da OS (documento)</label><input id="os-doc" inputmode="numeric" value="'+osEsc(f.doc)+'" oninput="osSet(\'doc\',this.value)" placeholder="ex.: 156278"></div>'+
    '<div class="modal-field"><label>Data</label><input type="date" id="os-data" value="'+f.data+'" max="'+today()+'" onchange="osSet(\'data\',this.value)"></div>'+
-   '<div class="modal-field"><label>Turno</label><select id="os-turno" onchange="osSet(\'turno\',this.value)">'+['A','B','C'].map(t=>'<option value="'+t+'"'+(f.turno===t?' selected':'')+'>Turno '+t+'</option>').join('')+'</select></div>'+
+   '<div class="modal-field"><label>Turno</label><select id="os-turno" onchange="osSet(\'turno\',this.value)">'+['A','B'].map(t=>'<option value="'+t+'"'+(f.turno===t?' selected':'')+'>Turno '+t+'</option>').join('')+'</select></div>'+
    '<div class="modal-field os-w2"><label>Cliente</label><div style="display:flex;gap:8px"><select id="os-cli" style="flex:1;min-width:0" onchange="osSet(\'cnpj\',this.value)"><option value="">Selecione o cliente…</option>'+cli.map(c=>'<option value="'+c.cnpj+'"'+(f.cnpj===c.cnpj?' selected':'')+'>'+osEsc(c.nome)+'</option>').join('')+'</select><button type="button" class="ds-btn" onclick="osAbrirCliente()" title="Novo cliente"><i class="ti ti-plus"></i></button></div></div>'+
    '<div class="modal-field"><label>Cavalo (placa)</label><input id="os-cav" value="'+osEsc(f.cavalo)+'" oninput="osMaskPlaca(this);osSet(\'cavalo\',this.value)" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="8" placeholder="AAA-0A00" style="text-transform:uppercase;letter-spacing:.08em;font-weight:600"></div>'+
    (f.veic==='TRUCK'?'':'<div class="modal-field"><label>'+(f.veic==='RODOTREM'?'Carreta 1':'Carreta (placa)')+'</label><input id="os-car" value="'+osEsc(f.carreta)+'" oninput="osMaskPlaca(this);osSet(\'carreta\',this.value)" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="8" placeholder="AAA-0A00" style="text-transform:uppercase;letter-spacing:.08em;font-weight:600"></div>')+
@@ -3960,7 +3960,7 @@ function osRenderLista(){
    '<div class="os-filtros">'+
    '<div class="modal-field"><label>De</label><input type="date" value="'+f.de+'" onchange="osFiltroSet(\'de\',this.value)"></div>'+
    '<div class="modal-field"><label>Até</label><input type="date" value="'+f.ate+'" onchange="osFiltroSet(\'ate\',this.value)"></div>'+
-   '<div class="modal-field"><label>Turno</label><select onchange="osFiltroSet(\'turno\',this.value)"><option value="">Todos</option>'+['A','B','C'].map(t=>'<option value="'+t+'"'+(f.turno===t?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
+   '<div class="modal-field"><label>Turno</label><select onchange="osFiltroSet(\'turno\',this.value)"><option value="">Todos</option>'+['A','B'].map(t=>'<option value="'+t+'"'+(f.turno===t?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
    '<div class="modal-field"><label>Operação</label><select onchange="osFiltroSet(\'op\',this.value)"><option value="">Todas</option><option value="A"'+(f.op==='A'?' selected':'')+'>Amarração</option><option value="D"'+(f.op==='D'?' selected':'')+'>Desamarração</option></select></div>'+
    '<div class="modal-field"><label>Cliente</label><select onchange="osFiltroSet(\'cli\',this.value)"><option value="">Todos</option>'+cli.map(c=>'<option value="'+c.cnpj+'"'+(f.cli===c.cnpj?' selected':'')+'>'+osEsc(c.nome)+'</option>').join('')+'</select></div>'+
    '<div class="modal-field"><label>Buscar</label><input value="'+osEsc(f.busca)+'" placeholder="OS, placa ou nº" oninput="osBusca(this.value)"></div>'+
@@ -4302,7 +4302,7 @@ function osExpRender(){
    '<div class="modal-field"><label>Situação</label><select onchange="osExpSet(\'status\',this.value)">'+opt('pend','Ainda não exportadas',f.status)+opt('exp','Já exportadas',f.status)+opt('todas','Todas',f.status)+'</select></div>'+
    '<div class="modal-field"><label>Operação</label><select onchange="osExpSet(\'op\',this.value)">'+opt('','Todas',f.op)+opt('A','Amarração',f.op)+opt('D','Desamarração',f.op)+'</select></div>'+
    '<div class="modal-field"><label>Veículo</label><select onchange="osExpSet(\'veic\',this.value)">'+opt('','Todos',f.veic)+opt('CARRETA','Carreta',f.veic)+opt('TRUCK','Truck',f.veic)+opt('RODOTREM','Rodotrem',f.veic)+'</select></div>'+
-   '<div class="modal-field"><label>Turno</label><select onchange="osExpSet(\'turno\',this.value)">'+opt('','Todos',f.turno)+['A','B','C'].map(t=>opt(t,'Turno '+t,f.turno)).join('')+'</select></div>'+
+   '<div class="modal-field"><label>Turno</label><select onchange="osExpSet(\'turno\',this.value)">'+opt('','Todos',f.turno)+['A','B'].map(t=>opt(t,'Turno '+t,f.turno)).join('')+'</select></div>'+
    '<div class="modal-field"><label>Cliente</label><select onchange="osExpSet(\'cli\',this.value)">'+opt('','Todos',f.cli)+cli.map(c=>opt(c.cnpj,osEsc(c.nome),f.cli)).join('')+'</select></div>'+
    '<div class="modal-field"><label>Buscar</label><input value="'+osEsc(f.busca)+'" placeholder="OS, placa ou nº" oninput="osExpBusca(this.value)"></div>'+
    '</div>'+

@@ -688,6 +688,7 @@ const USERS=[
   {user:'Debora',    senha:'Login@982',  role:'admin'},
   {user:'Simone',    senha:'Login@982',  role:'admin'},
   {user:'Wagner',    senha:'Login@982',  role:'admin'},
+  {user:'Luis',      senha:'L@gin982',   role:'admin'},
   {user:'João',      senha:'Login@982',  role:'superadmin'},
   {user:'Gabriel',   senha:'L@gin982',   role:'superadmin'},
   {user:'Financeiro', senha:'L@gin982', role:'financeiro'},
@@ -741,6 +742,8 @@ function dateFmt(d){if(!d)return'';const p=d.split('-');return'dom,seg,ter,qua,q
 function dateFull(d){if(!d)return'';return new Date(d+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});}
 function addDaysStr(dateStr,n){const p=dateStr.split('-').map(Number);const d=new Date(p[0],p[1]-1,p[2]);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function dateBR(d){if(!d)return'';return d.split('-').reverse().join('/');}
+// Gestão completa de equipe (adicionar, editar, excluir/restaurar): superadmin + Wagner + Luis
+function podeGerirEquipe(){return currentRole==='superadmin'||(currentUser&&(currentUser.user==='Wagner'||currentUser.user==='Luis'));}
 function podeEditarPresenca(){return currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor';}
 function allDates(){const s=new Set([...Object.keys(state.movimentos),...Object.keys(state.presencas)]);return Array.from(s).sort();}
 function calcBufferBruto(){
@@ -2413,7 +2416,7 @@ function renderEquipe(){
   var cont=document.getElementById('equipe-content');if(!cont)return;
   try{
   var isAdmin=currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor';
-  var canDelete=currentRole==='superadmin';
+  var canDelete=podeGerirEquipe();
   var colabs=colaboradoresAtivos();
   var html='<div class="card"><div class="card-title"><i class="ti ti-id-badge"></i>Colaboradores ('+colabs.length+')'+(isAdmin?'<button onclick="addColab()" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-plus" style="font-size:13px"></i> Adicionar</button>':'')+'</div>';
   if(!colabs.length){html+='<div class="empty" style="padding:24px 0"><i class="ti ti-users"></i><h3>Nenhum colaborador</h3></div>';}
@@ -2449,7 +2452,7 @@ function openColabModal(idx){
   document.getElementById('modal-cargo').value = cargoAtual;
   atualizarTurnosDoModal(isEdit ? c.turno : null);
   document.getElementById('modal-atividade').value = isEdit ? (c.atividade||'Conserto de Paletes') : 'Conserto de Paletes';
-  document.getElementById('modal-delete-btn').style.display = (isEdit&&currentRole==='superadmin') ? 'block' : 'none';
+  document.getElementById('modal-delete-btn').style.display = (isEdit&&podeGerirEquipe()) ? 'block' : 'none';
   document.getElementById('modal-save-btn').className = 'modal-btn-primary';
   document.getElementById('colab-modal').style.display = 'flex';
   setTimeout(()=>document.getElementById('modal-nome').focus(), 50);
@@ -2534,6 +2537,7 @@ async function saveColabModal(){
   saveCache(); await pushToCloud(); renderEquipe();
 }
 async function deleteColabModal(){
+  if(!podeGerirEquipe())return;
   const c = state.colaboradores[_modalEditIdx];
   if(!confirm('Excluir '+c.nome+'? O histórico de presença será mantido e você pode restaurar depois em "Colaboradores excluídos".')) return;
   c.ativo=false;
@@ -2544,6 +2548,7 @@ async function deleteColabModal(){
   saveCache(); await pushToCloud(); renderEquipe();
 }
 async function restaurarColab(idx){
+  if(!podeGerirEquipe())return;
   const c=state.colaboradores[idx];
   if(!c)return;
   if(!confirm('Restaurar '+c.nome+'?'))return;
@@ -3282,7 +3287,7 @@ const F_SEM=['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
 function fTurnos(){
   if(typeof turnosAtivos==='function')return turnosAtivos().map(t=>({key:t.key,label:t.label,horario:t.horario||'',curto:t.label.replace('Turno ','T. '),extra:!!t.extra}));
   // só turnos que produzem (Auxiliar de Expedição); empilhadeira não entra no fechamento
-  return TURNOS.filter(t=>t.cargo==='Auxiliar de Expedição').map(t=>({key:t.key,label:'Expedição · '+t.label.replace('Turno ',''),horario:t.hor,curto:t.key,extra:false}));
+  return TURNOS.filter(t=>t.cargo==='Auxiliar de Expedição').map(t=>({key:t.key,label:'Expedição · '+t.label.replace('Turno ',''),horario:t.hor,curto:t.label.replace('Turno ',''),extra:false}));
 }
 function fNum(v){return Math.round(v||0).toLocaleString('pt-BR');}
 function fAddDias(d,n){const p=d.split('-').map(Number);const x=new Date(p[0],p[1]-1,p[2]+n);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
@@ -3292,7 +3297,14 @@ function fWd(d){return new Date(d+'T12:00').getDay();}
 function fPct(a,b){return b>0?Math.round(a/b*100):0;}
 function fechDados(de,ate){
   if(de>ate){const t=de;de=ate;ate=t;}
-  const turnos=fTurnos(),tk=turnos.map(t=>t.key);
+  let turnos=fTurnos();
+  if(FECH_CFG.porTurno){ // some turno que não produziu nada no período
+    const ativos=new Set();
+    for(let c=de,g=0;c<=ate&&g++<93;c=fAddDias(c,1))(state.movimentos[c]||[]).forEach(m=>{if(m.turno&&(m.prod||0)>0)ativos.add(m.turno);});
+    const f=turnos.filter(t=>ativos.has(t.key));
+    if(f.length)turnos=f;
+  }
+  const tk=turnos.map(t=>t.key);
   const mkT=()=>({prod:0,rec:0,env:0,desc:0,pbr1:0,pbr2:0});
   const add=(a,m)=>{a.prod+=m.prod||0;a.rec+=m.rec||0;a.env+=m.env||0;a.desc+=m.desc||0;a.pbr1+=m.pbr1||0;a.pbr2+=m.pbr2||0;};
   const porT={};tk.forEach(k=>porT[k]=Object.assign(mkT(),{p:0,a:0,dias:0}));
@@ -3395,7 +3407,7 @@ function fechTexto(D){
   if(C.porTurno){L.push('*Por turno*');D.turnos.forEach(t=>{const y=D.porT[t.key];L.push('• '+t.label+': Prod '+fNum(y.prod)+' | Rec '+fNum(y.rec)+' | '+C.envC+' '+fNum(y.env)+' | Desc '+fNum(y.desc)+((y.p+y.a)?' | 👥 '+y.p+' pres./'+y.a+' falta(s)':''));});}
   else{const ps=D.turnos.filter(t=>D.porT[t.key].p+D.porT[t.key].a>0);if(ps.length){L.push('*Presença por turno*');ps.forEach(t=>{const y=D.porT[t.key];L.push('• '+t.label+': 👥 '+y.p+' pres./'+y.a+' falta(s)');});}}
   if(D.dias.length>1&&D.dias.length<=31){L.push('','*Dia a dia*');D.dias.forEach(x=>{if(!x.n)return;
-    const det=C.porTurno?' ('+D.tk.map(k=>k+' '+fNum(x.pt[k].prod)).join(' · ')+')':(C.pbr?' (PBR1 '+fNum(x.t.pbr1)+' · PBR2 '+fNum(x.t.pbr2)+')':'');
+    const det=C.porTurno?' ('+D.turnos.map(t=>t.curto+' '+fNum(x.pt[t.key].prod)).join(' · ')+')':(C.pbr?' (PBR1 '+fNum(x.t.pbr1)+' · PBR2 '+fNum(x.t.pbr2)+')':'');
     L.push(fCurto(x.d)+' '+F_SEM[x.wd].toLowerCase()+': *'+fNum(x.t.prod)+'*'+det+' | Rec '+fNum(x.t.rec)+' | '+C.envC+' '+fNum(x.t.env)+' | Desc '+fNum(x.t.desc));});}
   if(D.melhor)L.push('','🏆 Melhor dia: '+fCurto(D.melhor.d)+' — '+fNum(D.melhor.t.prod));
   if(D.alertas.length){L.push('','*Alertas*');D.alertas.forEach(a=>L.push('⚠️ '+a.t));}

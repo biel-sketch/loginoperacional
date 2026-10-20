@@ -544,13 +544,13 @@ img,canvas,svg{max-width:100%}
           </div>
           <div class="op-tiles">
             <div class="op-tile"><div class="op-tile-lbl"><i class="ti ti-truck-delivery"></i> Recebidos</div><div class="op-tile-val" id="tl-rec">0</div><div class="op-tile-sub" id="tl-rec-sub">hoje</div></div>
-            <div class="op-tile prod"><div class="op-tile-lbl"><i class="ti ti-package"></i> Produzidos</div><div class="op-tile-val" id="tl-prod">0</div><div class="op-tile-sub" id="tl-prod-sub">soma dos colaboradores</div></div>
-            <div class="op-tile"><div class="op-tile-lbl"><i class="ti ti-truck-loading"></i> Enviados</div><div class="op-tile-val" id="tl-env">0</div><div class="op-tile-sub" id="tl-env-sub">hoje</div></div>
+            <div class="op-tile prod"><div class="op-tile-lbl"><i class="ti ti-package"></i> Produzidos</div><div class="op-tile-val" id="tl-prod">0</div><div class="op-tile-sub" id="tl-prod-sub">PBR1 + PBR2</div></div>
+            <div class="op-tile"><div class="op-tile-lbl"><i class="ti ti-truck-loading"></i> Classificados</div><div class="op-tile-val" id="tl-env">0</div><div class="op-tile-sub" id="tl-env-sub">hoje</div></div>
             <div class="op-tile"><div class="op-tile-lbl"><i class="ti ti-trash"></i> Descarte</div><div class="op-tile-val" id="tl-desc">0</div><div class="op-tile-sub">hoje</div></div>
-            <div class="op-tile buf"><div class="op-tile-lbl"><i class="ti ti-stack-2"></i> Estoque (buffer)</div><div class="op-tile-val" id="buf-preview">+0</div><div class="op-tile-sub">produzidos − enviados (acumulado)</div></div>
+            <div class="op-tile buf"><div class="op-tile-lbl"><i class="ti ti-stack-2"></i> Estoque (buffer)</div><div class="op-tile-val" id="buf-preview">+0</div><div class="op-tile-sub" id="buf-sub">informado manualmente</div></div>
           </div>
 
-          <div class="card" id="prod-pessoas-section" style="border-color:var(--cyan-bd)">
+          <div class="card" id="prod-pessoas-section" style="border-color:var(--cyan-bd);display:none">
             <div class="card-title"><i class="ti ti-users" style="color:var(--cyan)"></i> Produção por colaborador <span class="tt-badge" id="prod-total-badge" style="margin-left:auto">0 no turno</span></div>
             <div class="op-help">Lance quanto cada colaborador produziu no turno. Ao salvar, o total entra automaticamente em <strong>Produzidos</strong> do dia e na meta mensal.</div>
             <div class="turno-tabs" id="prod-turno-btns-wrap"></div>
@@ -559,24 +559,33 @@ img,canvas,svg{max-width:100%}
           </div>
 
           <div class="card">
-            <div class="card-title"><i class="ti ti-truck"></i> Recebidos, enviados e descarte</div>
+            <div class="card-title"><i class="ti ti-clipboard-list"></i> Lançamento do dia</div>
+            <div class="op-help">Valores gerais do dia, sem separar por colaborador. <strong>Produzidos = PBR1 + PBR2.</strong></div>
             <div class="cg">
               <div class="cg-h"><span class="cg-t"><i class="ti ti-truck-delivery"></i> Recebidos</span><span class="tt-badge" id="tt-rec">0 hoje</span></div>
               <div class="num-wrap"><button class="num-btn" onclick="adj('mv-rec',-1)">−</button><input type="number" id="mv-rec" value="" placeholder="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-rec',1)">+</button></div>
             </div>
             <div class="cg">
-              <div class="cg-h"><span class="cg-t"><i class="ti ti-truck-loading"></i> Enviados</span><span class="tt-badge" id="tt-env">0 hoje</span></div>
+              <div class="cg-h"><span class="cg-t"><i class="ti ti-package"></i> PBR1</span><span class="tt-badge" id="tt-pbr1">0 hoje</span></div>
+              <div class="num-wrap"><button class="num-btn" onclick="adj('mv-pbr1',-1)">−</button><input type="number" id="mv-pbr1" value="" placeholder="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-pbr1',1)">+</button></div>
+            </div>
+            <div class="cg">
+              <div class="cg-h"><span class="cg-t"><i class="ti ti-package"></i> PBR2</span><span class="tt-badge" id="tt-pbr2">0 hoje</span></div>
+              <div class="num-wrap"><button class="num-btn" onclick="adj('mv-pbr2',-1)">−</button><input type="number" id="mv-pbr2" value="" placeholder="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-pbr2',1)">+</button></div>
+            </div>
+            <div class="cg">
+              <div class="cg-h"><span class="cg-t"><i class="ti ti-truck-loading"></i> Classificados</span><span class="tt-badge" id="tt-env">0 hoje</span></div>
               <div class="num-wrap"><button class="num-btn" onclick="adj('mv-env',-1)">−</button><input type="number" id="mv-env" value="" placeholder="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-env',1)">+</button></div>
             </div>
             <div class="cg">
               <div class="cg-h"><span class="cg-t"><i class="ti ti-trash"></i> Descarte (paletes)</span><span class="tt-badge" id="tt-desc">0 hoje</span></div>
-              <div class="num-wrap"><button class="num-btn" onclick="adj('mv-desc',-1)">−</button><input type="number" id="mv-desc" value="0" min="0" inputmode="numeric"><button class="num-btn" onclick="adj('mv-desc',1)">+</button></div>
+              <div class="num-wrap"><button class="num-btn" onclick="adj('mv-desc',-1)">−</button><input type="number" id="mv-desc" value="" placeholder="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-desc',1)">+</button></div>
             </div>
-            <details class="cg-det"><summary>Produzidos sem colaborador (ajuste avulso)</summary>
-              <div class="op-help" style="margin:8px 0">Use só se houve produção que não está na lista de colaboradores. Soma ao total do dia.</div>
-              <div class="num-wrap"><button class="num-btn" onclick="adj('mv-prod',-1)">−</button><input type="number" id="mv-prod" value="0" min="0" inputmode="numeric" oninput="updBuf()"><button class="num-btn" onclick="adj('mv-prod',1)">+</button></div>
-              <span class="tt-badge" id="tt-prod" style="display:none">0 hoje</span>
-            </details>
+            <div class="cg">
+              <div class="cg-h"><span class="cg-t"><i class="ti ti-stack-2"></i> Buffer do dia (informar)</span><span class="tt-badge" id="tt-buf">não informado</span></div>
+              <input type="number" id="mv-buf" value="" placeholder="Quantidade em estoque hoje" inputmode="numeric" oninput="this.dataset.dirty='1';updBuf()" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:16px;font-weight:700">
+            </div>
+            <input type="hidden" id="mv-prod" value="0"><span id="tt-prod" style="display:none"></span>
             
             <button class="btn btn-primary" style="margin-top:14px" onclick="lancar()"><i class="ti ti-check" style="font-size:16px"></i> Lançar movimentação</button>
             <button class="btn btn-ghost" style="margin-top:8px" onclick="abrirLancamentoRetroativo()"><i class="ti ti-calendar-plus" style="font-size:16px"></i> Lançar retroativo</button>
@@ -637,7 +646,8 @@ img,canvas,svg{max-width:100%}
  <div id="editmov-info" style="font-size:12px;color:var(--text2);margin-bottom:16px"></div>
  <div class="modal-field"><label>Recebidos</label><input type="number" id="editmov-rec" min="0" inputmode="numeric"></div>
  <div class="modal-field"><label>Produzidos</label><input type="number" id="editmov-prod" min="0" inputmode="numeric"></div>
- <div class="modal-field"><label>Enviados</label><input type="number" id="editmov-env" min="0" inputmode="numeric"></div>
+ <div class="modal-field" id="editmov-pbr-wrap" style="display:none"><label>PBR1 / PBR2</label><div style="display:flex;gap:8px"><input type="number" id="editmov-pbr1" min="0" inputmode="numeric" placeholder="PBR1"><input type="number" id="editmov-pbr2" min="0" inputmode="numeric" placeholder="PBR2"></div></div>
+ <div class="modal-field"><label>Classificados</label><input type="number" id="editmov-env" min="0" inputmode="numeric"></div>
  <div class="modal-field"><label>Descarte</label><input type="number" id="editmov-desc" min="0" inputmode="numeric"></div>
  <div class="modal-btns">
  <button class="modal-btn-ghost" onclick="closeEditMovModal()">Cancelar</button>
@@ -666,18 +676,18 @@ img,canvas,svg{max-width:100%}
  <div class="modal-box">
  <div class="modal-title"><i class="ti ti-calendar-plus" style="color:var(--cyan)"></i>Lançamento retroativo</div>
  <div class="modal-field"><label>Data</label><input type="date" id="retro-date" onchange="renderRetroProdPessoas()"></div>
- <div class="modal-field"><label>Turno</label><select id="retro-turno" onchange="renderRetroProdPessoas()"></select></div>
- <div style="display:flex;gap:16px;margin:4px 0 14px">
- <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" id="retro-incl-geral" checked onchange="toggleRetroSecoes()" style="width:15px;height:15px"> Lançamento geral</label>
- <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" id="retro-incl-individual" checked onchange="toggleRetroSecoes()" style="width:15px;height:15px"> Produção individual</label>
- </div>
- <div id="retro-prod-pessoas"></div>
+ <div class="modal-field" style="display:none"><label>Turno</label><select id="retro-turno"></select></div>
+ <div id="retro-prod-pessoas" style="display:none"></div>
+ <input type="checkbox" id="retro-incl-geral" checked style="display:none"><input type="checkbox" id="retro-incl-individual" style="display:none">
  <div id="retro-geral-fields">
- <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">Produzidos é calculado pela produção individual dos colaboradores (acima).</div>
+ <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">Produzidos = PBR1 + PBR2.</div>
  <div class="modal-field"><label>Recebidos</label><input type="number" id="retro-rec" min="0" inputmode="numeric"></div>
+ <div class="modal-field"><label>PBR1</label><input type="number" id="retro-pbr1" min="0" inputmode="numeric"></div>
+ <div class="modal-field"><label>PBR2</label><input type="number" id="retro-pbr2" min="0" inputmode="numeric"></div>
  <input type="hidden" id="retro-prod" value="0">
- <div class="modal-field"><label>Enviados</label><input type="number" id="retro-env" min="0" inputmode="numeric"></div>
+ <div class="modal-field"><label>Classificados</label><input type="number" id="retro-env" min="0" inputmode="numeric"></div>
  <div class="modal-field"><label>Descarte</label><input type="number" id="retro-desc" min="0" inputmode="numeric"></div>
+ <div class="modal-field"><label>Buffer do dia (opcional)</label><input type="number" id="retro-buf" inputmode="numeric" placeholder="Informar se souber"></div>
  </div>
  <div class="modal-btns">
  <button class="modal-btn-ghost" onclick="closeRetroModal()">Cancelar</button>
@@ -831,7 +841,7 @@ const USERS=[
   {user:'Financeiro', senha:'L@gin982', role:'financeiro'},
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
-let state={osAmarracao:[],osClientes:[],osValores:[],premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
+let state={osAmarracao:[],osClientes:[],osValores:[],premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',bufferDia:{},metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
 const ATIVIDADES=['Recuperação de Pallets','Produção de Insumos','Operação de Empilhadeira','Inspeção da Qualidade','Amarração'];
 function produzPallets(c){return !c.atividade||c.atividade==='Recuperação de Pallets';}
 // Situação do colaborador no dia (presença do turno dele + afastamentos): define cor e se entra na produção
@@ -876,16 +886,11 @@ function addDaysStr(dateStr,n){const p=dateStr.split('-').map(Number);const d=ne
 function dateBR(d){if(!d)return'';return d.split('-').reverse().join('/');}
 function podeEditarPresenca(){return currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor';}
 function allDates(){const s=new Set([...Object.keys(state.movimentos),...Object.keys(state.presencas)]);return Array.from(s).sort();}
-function calcBufferBruto(){
-  // Estoque acumulado: saldo inicial + soma de produzidos - soma de enviados de TODOS os dias (sem correção manual)
-  let totP=0,totE=0;
-  Object.values(state.movimentos).forEach(ms=>{ms.forEach(m=>{totP+=(m.prod||0);totE+=(m.env||0);});});
-  return (state.bufferSaldoInicial||0)+totP-totE;
-}
-function calcBufferGlobal(){
-  // Estoque acumulado + correção manual (ver corrigirBuffer())
-  return calcBufferBruto()+(state.bufferAjuste||0);
-}
+function bufferDoDia(d){const x=(state.bufferDia||{})[d];return(x&&!x.del&&x.v!==undefined&&x.v!==null)?Number(x.v):null;}
+function bufferAte(d){const ks=Object.keys(state.bufferDia||{}).filter(k=>k<=d&&bufferDoDia(k)!==null).sort();return ks.length?bufferDoDia(ks[ks.length-1]):0;}
+function setBufferDia(d,v){if(!state.bufferDia)state.bufferDia={};state.bufferDia[d]={v:Number(v)||0,ts:new Date().toISOString(),who:currentUser?currentUser.user:''};}
+function mergeBufferDia(a,b){const m={};[a,b].forEach(o=>Object.entries(o||{}).forEach(([k,x])=>{if(!x)return;if(!m[k]||(x.ts||'')>(m[k].ts||''))m[k]=x;}));return m;}
+function calcBufferGlobal(){return bufferAte(today());}
 // === TURNOS (incl. Turno Extraordinário opcional) ===
 const TURNOS_FIXOS=[
   {key:'A',label:'Turno A',horario:'06h00–14h20'},
@@ -1044,6 +1049,7 @@ function mergeState(cloud){
   if(cloud.osAmarracao)state.osAmarracao=mergeOS(state.osAmarracao,cloud.osAmarracao);
   if(cloud.osClientes)state.osClientes=mergeOSCli(state.osClientes,cloud.osClientes);
   if(cloud.osValores)state.osValores=mergeOSVal(state.osValores,cloud.osValores);
+  if(cloud.bufferDia)state.bufferDia=mergeBufferDia(state.bufferDia,cloud.bufferDia);
   if(cloud.bufferAjuste!==undefined)state.bufferAjuste=cloud.bufferAjuste;
   if(cloud.bufferAjusteTs!==undefined)state.bufferAjusteTs=cloud.bufferAjusteTs;
   if(reconciliarProducao())setTimeout(()=>{try{saveCache();_pushSoon();}catch(e){}},0);
@@ -1169,7 +1175,7 @@ async function enviarResumoProducao(hora){
   const statusMeta = tP>=META_DIARIA?'Meta atingida!':pct>=80?'Quase la!':'Em andamento';
   await enviarWhatsApp([
     'FEMSA Marília - Producao '+hora+'h',
-    'Produzidos: '+tP+' | Enviados: '+tE,
+    'Produzidos: '+tP+' | Classificados: '+tE,
     'Recebidos: '+tR+(tD?' | Descarte: '+tD:''),
     'Buffer (estoque): '+(buffer>=0?'+':'')+buffer,
     'Meta: '+META_DIARIA+' | Progresso: '+pct+'% - '+statusMeta,
@@ -1231,7 +1237,7 @@ async function pushToCloud(){
   setSyncDot('syncing','Salvando...');
   try{
     // Read current cloud state for smart merge
-    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{},osAmarracao:state.osAmarracao||[],osClientes:state.osClientes||[],osValores:state.osValores||[]};
+    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',bufferDia:state.bufferDia||{},metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{},osAmarracao:state.osAmarracao||[],osClientes:state.osClientes||[],osValores:state.osValores||[]};
     try{
       const r=await fetch(FB_URL);
       if(r.ok){
@@ -1244,6 +1250,7 @@ async function pushToCloud(){
             ms.forEach(m=>{
               if(!ex.has(m.ts)){mm[d].push(m);return;}
               if(m.auto){const cm=mm[d].find(x=>x.ts===m.ts);if(cm&&(m.updTs||'')>(cm.updTs||'')){cm.prod=m.prod;cm.pbr2=m.pbr2;cm.updTs=m.updTs;cm.who=m.who;}}
+              else if(m.geral){const cm=mm[d].find(x=>x.ts===m.ts);if(cm&&(m.updTs||'')>(cm.updTs||'')){['rec','env','desc','prod','pbr1','pbr2','updTs','who'].forEach(k=>{cm[k]=m[k];});}}
               else if(m.legadoDup||m.prodLegado!==undefined){const cm=mm[d].find(x=>x.ts===m.ts);if(cm){cm.prod=m.prod;if(m.legadoDup){cm.legadoDup=true;cm.prodLegado=m.prodLegado;}else{delete cm.legadoDup;delete cm.prodLegado;}}}
             });
             mm[d].sort((a,b)=>a.ts.localeCompare(b.ts));
@@ -1300,7 +1307,7 @@ async function pushToCloud(){
           const bufferSaldoInicial=usaConfigLocal?(state.bufferSaldoInicial||0):(cloud.bufferSaldoInicial||0);
           const turnoExtra=usaConfigLocal?(state.turnoExtra||{ativo:false,horario:'',inicioMin:null}):(cloud.turnoExtra||{ativo:false,horario:'',inicioMin:null});
           const configTs=usaConfigLocal?localConfigTs:cloudConfigTs;
-          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,afastamentos:mergedAfast,bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,turnoExtra,configTs,presencasResetTs:presResetTs,producaoResetTs:prodResetTs,premiacao:mergePrem(state.premiacao,cloud.premiacao),premiacaoCfg:mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg),osAmarracao:mergeOS(state.osAmarracao,cloud.osAmarracao),osClientes:mergeOSCli(state.osClientes,cloud.osClientes),osValores:mergeOSVal(state.osValores,cloud.osValores)};
+          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,afastamentos:mergedAfast,bufferDia:mergeBufferDia(state.bufferDia,cloud.bufferDia),bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,turnoExtra,configTs,presencasResetTs:presResetTs,producaoResetTs:prodResetTs,premiacao:mergePrem(state.premiacao,cloud.premiacao),premiacaoCfg:mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg),osAmarracao:mergeOS(state.osAmarracao,cloud.osAmarracao),osClientes:mergeOSCli(state.osClientes,cloud.osClientes),osValores:mergeOSVal(state.osValores,cloud.osValores)};
         }
       }
     }catch(e){}
@@ -1319,6 +1326,7 @@ async function pushToCloud(){
     state.osAmarracao=mergeOS(state.osAmarracao,merged.osAmarracao||[]);
     state.osClientes=mergeOSCli(state.osClientes,merged.osClientes||[]);
     state.osValores=mergeOSVal(state.osValores,merged.osValores||[]);
+    state.bufferDia=mergeBufferDia(state.bufferDia,merged.bufferDia);
     state.bufferAjuste=merged.bufferAjuste||0;
     state.bufferAjusteTs=merged.bufferAjusteTs||'';
     state.metaMensal=merged.metaMensal;
@@ -1507,7 +1515,7 @@ function launchApp(){
 
 function boot(){
   unitName=localStorage.getItem(LS_UNIT)||'Marília';
-  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.premiacao)state.premiacao=p.premiacao;if(p.premiacaoCfg)state.premiacaoCfg=p.premiacaoCfg;if(p.osAmarracao)state.osAmarracao=p.osAmarracao;if(p.osClientes)state.osClientes=p.osClientes;if(p.osValores)state.osValores=p.osValores;}}catch(e){}
+  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferDia)state.bufferDia=p.bufferDia;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.premiacao)state.premiacao=p.premiacao;if(p.premiacaoCfg)state.premiacaoCfg=p.premiacaoCfg;if(p.osAmarracao)state.osAmarracao=p.osAmarracao;if(p.osClientes)state.osClientes=p.osClientes;if(p.osValores)state.osValores=p.osValores;}}catch(e){}
   if(!state.colaboradores||!state.colaboradores.length)state.colaboradores=DEFAULT_COLABS;
   try{
     const raw=sessionStorage.getItem('femsa_session')||localStorage.getItem('femsa_session');
@@ -1692,8 +1700,8 @@ function renderDia(){
   const tR=movs.reduce((s,m)=>s+(m.rec||0),0);
   const tE=movs.reduce((s,m)=>s+(m.env||0),0);
   const tD=movs.reduce((s,m)=>s+(m.desc||0),0);
-  const tBufDia=tP-tE; // buffer só do dia selecionado
-  const bufGlobal=calcBufferGlobal(); // estoque acumulado histórico
+  const tBufDia=bufferDoDia(selDate); // buffer informado no dia
+  const bufGlobal=bufferAte(selDate);
   const tBuf=bufGlobal; const bPos=tBuf>=0;
   const pct=Math.min(100,Math.round(tP/META_DIARIA*100));
   const lastTag=movs.length?'<span style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px"><i class="ti ti-clock" style="font-size:11px"></i>'+timeFmt(movs[movs.length-1].ts)+' · '+movs[movs.length-1].who+'</span>':'';
@@ -1718,7 +1726,7 @@ function renderDia(){
     }).join('');
     return'<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Turno '+t+' · '+(t==='A'?'06h00–14h20':t==='B'?'14h00–22h20':'22h00–06h20')+'</div><div class="pres-grid">'+cells+'</div></div>';
   }).join('');
-  const movLog=movs.length?'<div class="card"><div class="card-title"><i class="ti ti-history"></i>Lançamentos '+lastTag+'</div>'+movs.slice().reverse().map(m=>{const pts=[];if(m.rec)pts.push('Rec:<b>'+m.rec+'</b>');if(m.prod)pts.push('Prod:<b>'+m.prod+'</b>');if(m.env)pts.push('Env:<b>'+m.env+'</b>');if(m.desc)pts.push('Desc:<b>'+m.desc+'</b>');return'<div class="log-entry"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · <strong>'+m.who+'</strong></div><div class="log-vals">'+pts.join(' · ')+'</div></div>';}).join('')+'</div>':'';
+  const movLog=movs.length?'<div class="card"><div class="card-title"><i class="ti ti-history"></i>Lançamentos '+lastTag+'</div>'+movs.slice().reverse().map(m=>{const pts=[];if(m.rec)pts.push('Rec:<b>'+m.rec+'</b>');if(m.prod)pts.push('Prod:<b>'+m.prod+'</b>'+(m.geral?' <small>(PBR1 '+(m.pbr1||0)+' · PBR2 '+(m.pbr2||0)+')</small>':''));if(m.env)pts.push('Class:<b>'+m.env+'</b>');if(m.desc)pts.push('Desc:<b>'+m.desc+'</b>');return'<div class="log-entry"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · <strong>'+m.who+'</strong></div><div class="log-vals">'+pts.join(' · ')+'</div></div>';}).join('')+'</div>':'';
   cont.innerHTML=
     buildMetaMensalCards()+
     buildAfastamentosHojeAlertCard()+
@@ -1727,17 +1735,17 @@ function renderDia(){
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;color:var(--text2)">'+dateFull(selDate)+'</div>'+lastTag+'</div>'+
     '<div class="sec">Pallets — totais acumulados</div>'+
     '<div class="kpi-grid">'+
-    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+tP+'</div><div class="kpi-sub">'+movs.length+' lançamento(s) · PBR2: '+_pbrDia(selDate)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+tP+'</div><div class="kpi-sub">'+movs.length+' lançamento(s) · PBR1: '+_pbr1Dia(selDate)+' · PBR2: '+_pbrDia(selDate)+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-truck" style="font-size:12px"></i> Recebidos</div><div class="kpi-val">'+tR+'</div></div>'+
-    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-send" style="font-size:12px"></i> Enviados</div><div class="kpi-val">'+tE+'</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-send" style="font-size:12px"></i> Classificados</div><div class="kpi-val">'+tE+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-trash" style="font-size:12px"></i> Descarte</div><div class="kpi-val'+(tD>0?' red':'')+'">'+tD+'</div>'+'</div>'+
-    '<div class="kpi buf"><div class="kpi-lbl"><i class="ti ti-layers-difference" style="font-size:12px;color:var(--cyan)"></i> Estoque (Buffer)</div><div class="kpi-val '+(bPos?'blue':'red')+'">'+(bPos?'+':'')+tBuf+'</div><div class="kpi-sub blue">Acumulado histórico · dia: '+(tBufDia>=0?'+':'')+tBufDia+'</div></div>'+
+    '<div class="kpi buf"><div class="kpi-lbl"><i class="ti ti-layers-difference" style="font-size:12px;color:var(--cyan)"></i> Estoque (Buffer)</div><div class="kpi-val '+(bPos?'blue':'red')+'">'+(bPos?'+':'')+tBuf+'</div><div class="kpi-sub blue">Informado manualmente · '+(tBufDia===null?'não informado neste dia':'neste dia: '+(tBufDia>=0?'+':'')+tBufDia)+'</div></div>'+
     '</div>'+
     '<div class="card" style="padding:14px 18px;margin-bottom:12px">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px"><div class="sec" style="margin:0">Meta diária de produção</div>'+
     '<div style="font-size:12px;color:var(--text2)">'+tP+' <span style="color:var(--text3)">/ '+META_DIARIA+'</span> <span style="font-weight:700;color:'+(tP>=META_DIARIA?'var(--green)':pct>=80?'var(--warn)':'var(--red)')+'">'+pct+'%</span></div></div>'+
     '<div style="height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden"><div style="height:100%;border-radius:4px;transition:width .6s ease;width:'+pct+'%;background:'+(tP>=META_DIARIA?'var(--green)':pct>=80?'var(--warn)':'#2a7fd4')+'"></div></div>'+
-    (!bPos?'<div style="margin-top:10px;padding:9px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--red)"><i class="ti ti-alert-triangle" style="font-size:15px"></i> Estoque negativo — enviados superam produção total</div>':'')+
+    (!bPos?'<div style="margin-top:10px;padding:9px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--red)"><i class="ti ti-alert-triangle" style="font-size:15px"></i> Buffer negativo informado</div>':'')+
     '</div>'+
     '<div class="sec">Presença do time</div>'+
     '<div class="card" style="margin-bottom:12px"><div style="display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block"></span><strong style="color:var(--green)">'+presP+'</strong> <span style="color:var(--text2)">presentes</span></div><div style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block"></span><strong style="color:var(--red)">'+presA+'</strong> <span style="color:var(--text2)">ausentes</span></div></div>'+turnoRows+'</div>'+
@@ -1753,15 +1761,15 @@ function mesRangeDefault(){
 }
 function sumPeriodoDatas(de,ate){
   const ds=Object.keys(state.movimentos).filter(d=>d>=de&&d<=ate).sort();
-  let tP=0,tR=0,tE=0,tD=0,n=0,tB=0;
-  ds.forEach(d=>{state.movimentos[d].forEach(m=>{tB+=(m.pbr2||0);tP+=(m.prod||0);tR+=(m.rec||0);tE+=(m.env||0);tD+=(m.desc||0);n++;});});
-  return{tP,tR,tE,tD,n,tB,buf:tP-tE,days:ds.length};
+  let tP=0,tR=0,tE=0,tD=0,n=0,tB=0,tB1=0;
+  ds.forEach(d=>{state.movimentos[d].forEach(m=>{tB1+=(m.pbr1||0);tB+=(m.pbr2||0);tP+=(m.prod||0);tR+=(m.rec||0);tE+=(m.env||0);tD+=(m.desc||0);n++;});});
+  return{tP,tR,tE,tD,n,tB,tB1,buf:bufferAte(ate),days:ds.length};
 }
 function kpiRowResumo(m){
   return'<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">'+
-    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+m.tP+'</div><div class="kpi-sub">'+m.n+' lançamento(s) · '+m.days+' dia(s) · PBR2: '+(m.tB||0)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-package" style="font-size:12px"></i> Produzidos</div><div class="kpi-val">'+m.tP+'</div><div class="kpi-sub">'+m.n+' lançamento(s) · '+m.days+' dia(s) · PBR1: '+(m.tB1||0)+' · PBR2: '+(m.tB||0)+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-truck" style="font-size:12px"></i> Recebidos</div><div class="kpi-val">'+m.tR+'</div></div>'+
-    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-send" style="font-size:12px"></i> Enviados</div><div class="kpi-val">'+m.tE+'</div></div>'+
+    '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-send" style="font-size:12px"></i> Classificados</div><div class="kpi-val">'+m.tE+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl"><i class="ti ti-trash" style="font-size:12px"></i> Descarte</div><div class="kpi-val'+(m.tD>0?' red':'')+'">'+m.tD+'</div>'+'</div>'+
     '</div>';
 }
@@ -1921,7 +1929,7 @@ function renderLog(){
   const all=[];
   Object.entries(state.movimentos).sort().reverse().forEach(([d,ms])=>{ms.slice().reverse().forEach(m=>{all.push({...m,date:d});});});
   if(!all.length){cont.innerHTML='<div class="empty"><i class="ti ti-history"></i><h3>Nenhum lançamento</h3></div>';return;}
-  cont.innerHTML='<div class="card"><div class="card-title"><i class="ti ti-history"></i>Log completo</div>'+all.map(m=>'<div class="log-entry"><div class="log-time">'+m.date+' · '+timeFmt(m.ts)+' · <strong>'+m.who+'</strong></div><div class="log-vals">'+(m.rec?'Rec:'+m.rec+' ':'')+(m.prod?'Prod:'+m.prod+' ':'')+(m.env?'Env:'+m.env+' ':'')+(m.desc?'Desc:'+m.desc:'')+'</div></div>').join('')+'</div>';
+  cont.innerHTML='<div class="card"><div class="card-title"><i class="ti ti-history"></i>Log completo</div>'+all.map(m=>'<div class="log-entry"><div class="log-time">'+m.date+' · '+timeFmt(m.ts)+' · <strong>'+m.who+'</strong></div><div class="log-vals">'+(m.rec?'Rec:'+m.rec+' ':'')+(m.prod?'Prod:'+m.prod+(m.geral?' (PBR1 '+(m.pbr1||0)+' · PBR2 '+(m.pbr2||0)+')':'')+' ':'')+(m.env?'Class:'+m.env+' ':'')+(m.desc?'Desc:'+m.desc:'')+'</div></div>').join('')+'</div>';
 }
 
 // PRESENÇA
@@ -2187,7 +2195,7 @@ function refreshProdLive(){
   const live=_prodPessoasLive(todayD), pend=_prodPessoasPendente(todayD);
   const el=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   el('tl-prod',(manual+live).toLocaleString('pt-BR'));
-  el('tl-prod-sub',live.toLocaleString('pt-BR')+' dos colaboradores · PBR2 '+_pbrDia(todayD).toLocaleString('pt-BR')+(manual?' + '+manual.toLocaleString('pt-BR')+' avulso':'')+(pend?' · '+Math.abs(pend)+' ainda não salvo':''));
+  el('tl-prod-sub','PBR1 '+_pbr1Dia(todayD).toLocaleString('pt-BR')+' · PBR2 '+_pbrDia(todayD).toLocaleString('pt-BR'));
   el('tt-prod',(manual+live)+' hoje');
   if(typeof selTurnoProd!=='undefined'&&selTurnoProd){
     const dia=((state.producaoPessoas[todayD]||{})[selTurnoProd]);
@@ -2209,34 +2217,46 @@ function renderOperacao(){
   el('tl-rec-sub','paletes hoje');el('tl-env-sub','paletes hoje');
   renderCargas();
   const hc=document.getElementById('op-hist-card'),ho=document.getElementById('op-hist');
-  if(movs.length&&hc&&ho){hc.style.display='block';ho.innerHTML=movs.map((m,i)=>({m,i})).slice().reverse().map(({m,i})=>'<div class="log-entry" style="cursor:pointer" onclick="abrirEditMov(\''+todayD+'\','+i+')"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · '+m.who+(m.auto==='pessoas'?' · produção dos colaboradores (Turno '+m.turno+')':'')+(m.editadoManualmente?' <i class="ti ti-edit" style="font-size:10px;color:var(--cyan)"></i>':'')+'</div><div class="log-vals">'+(m.rec?'Rec:'+m.rec+(m.carretas&&m.carretas.rec?' ('+m.carretas.rec.length+' carr.)':'')+' ':'')+(m.prod?'Prod:'+m.prod+' ':'')+(m.env?'Env:'+m.env+(m.carretas&&m.carretas.env?' ('+m.carretas.env.length+' carr.)':'')+' ':'')+(m.desc?'Desc:'+m.desc+'':'')+'</div></div>').join('');}
+  if(movs.length&&hc&&ho){hc.style.display='block';ho.innerHTML=movs.map((m,i)=>({m,i})).slice().reverse().map(({m,i})=>'<div class="log-entry" style="cursor:pointer" onclick="abrirEditMov(\''+todayD+'\','+i+')"><div class="log-time"><i class="ti ti-clock" style="font-size:10px"></i> '+timeFmt(m.ts)+' · '+m.who+(m.auto==='pessoas'?' · produção dos colaboradores (Turno '+m.turno+')':'')+(m.editadoManualmente?' <i class="ti ti-edit" style="font-size:10px;color:var(--cyan)"></i>':'')+'</div><div class="log-vals">'+(m.rec?'Rec:'+m.rec+(m.carretas&&m.carretas.rec?' ('+m.carretas.rec.length+' carr.)':'')+' ':'')+(m.prod?'Prod:'+m.prod+(m.geral?' (PBR1 '+(m.pbr1||0)+' · PBR2 '+(m.pbr2||0)+')':'')+' ':'')+(m.env?'Class:'+m.env+(m.carretas&&m.carretas.env?' ('+m.carretas.env.length+' carr.)':'')+' ':'')+(m.desc?'Desc:'+m.desc+'':'')+'</div></div>').join('');}
   else if(hc)hc.style.display='none';
   renderProdPessoas();
   refreshProdLive();
 }
 function adj(id,d){const e=document.getElementById(id);if(e){e.value=Math.max(0,(parseInt(e.value)||0)+d);updBuf();}}
 function updBuf(){
-  const p=(parseInt(document.getElementById('mv-prod')?.value)||0)+_prodPessoasPendente(today());
-  const e=parseInt(document.getElementById('mv-env')?.value)||0;
-  // Buffer global: acumulado de todos os dias + o que está sendo lançado agora
-  const globalBase=calcBufferGlobal();
-  const buf=globalBase+p-e;
+  const inp=document.getElementById('mv-buf');
+  const hoje=today();
+  let buf=calcBufferGlobal();
+  if(inp&&inp.dataset.dirty==='1'&&String(inp.value).trim()!=='')buf=parseInt(inp.value)||0;
   const bv=document.getElementById('buf-preview');
   if(bv){bv.textContent=(buf>=0?'+':'')+buf.toLocaleString('pt-BR');bv.style.color=buf>=0?'var(--cyan)':'var(--red)';}
+  const inf=bufferDoDia(hoje);
+  const bs=document.getElementById('buf-sub');if(bs)bs.textContent=inf===null?'não informado hoje':'informado hoje';
+  const tb=document.getElementById('tt-buf');if(tb)tb.textContent=inf===null?'não informado':'hoje: '+(inf>=0?'+':'')+inf;
+  if(inp&&inp.dataset.dirty!=='1'&&document.activeElement!==inp)inp.value=inf===null?'':inf;
+  const m=state.movimentos[hoje]||[];
+  const sm=k=>m.reduce((t,x)=>t+((x&&x[k])||0),0);
+  const e1=document.getElementById('tt-pbr1');if(e1)e1.textContent=sm('pbr1')+' hoje';
+  const e2=document.getElementById('tt-pbr2');if(e2)e2.textContent=sm('pbr2')+' hoje';
 }
 async function lancar(){
-  const rec=parseInt(document.getElementById('mv-rec')?.value)||0;
-  const prod=parseInt(document.getElementById('mv-prod')?.value)||0;
-  const env=parseInt(document.getElementById('mv-env')?.value)||0;
-  const desc=parseInt(document.getElementById('mv-desc')?.value)||0;
-  if(!rec&&!prod&&!env&&!desc){showToast('Informe pelo menos um valor.','warn');return;}
+  const g=id=>Math.max(0,parseInt(document.getElementById(id)?.value)||0);
+  const rec=g('mv-rec'),pbr1=g('mv-pbr1'),pbr2=g('mv-pbr2'),env=g('mv-env'),desc=g('mv-desc');
+  const prod=pbr1+pbr2;
+  const bufEl=document.getElementById('mv-buf');
+  const bufTxt=bufEl?String(bufEl.value).trim():'';
+  const bufNovo=bufEl&&bufEl.dataset.dirty==='1'&&bufTxt!=='';
+  if(!rec&&!prod&&!env&&!desc&&!bufNovo){showToast('Informe pelo menos um valor.','warn');return;}
   const todayD=today();
   const who=currentUser?currentUser.user:'Desconhecido';
-  if(!state.movimentos[todayD])state.movimentos[todayD]=[];
-  const mov={ts:new Date().toISOString(),who,rec,prod,env,desc,turno:selTurnoProd};
-  if(prod>0)mov.avulso=true;
-  state.movimentos[todayD].push(mov);
-  ['mv-rec','mv-prod','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=(id==='mv-rec'||id==='mv-env')?'':0;});
+  const agora=new Date().toISOString();
+  if(rec||prod||env||desc){
+    if(!state.movimentos[todayD])state.movimentos[todayD]=[];
+    state.movimentos[todayD].push({ts:agora,updTs:agora,who,rec,prod,pbr1,pbr2,env,desc,geral:true,avulso:true});
+  }
+  if(bufNovo)setBufferDia(todayD,parseInt(bufTxt)||0);
+  ['mv-rec','mv-pbr1','mv-pbr2','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  if(bufEl)delete bufEl.dataset.dirty;
   saveCache();await pushToCloud();verificarAusencia();showLancamentoOK();renderOperacao();
 }
 
@@ -2298,7 +2318,8 @@ function renderProdPessoas(){
   refreshProdLive();
 }
 function _pbrTurno(date,turno){return pbrDoTurno(state.producaoPessoas[date]&&state.producaoPessoas[date][turno]);}
-function _pbrDia(date){let t=0;Object.values((state.producaoPessoas||{})[date]||{}).forEach(tv=>{t+=pbrDoTurno(tv);});return t;}
+function _pbrDia(date){return(state.movimentos[date]||[]).reduce((t,m)=>t+((m&&m.pbr2)||0),0);}
+function _pbr1Dia(date){return(state.movimentos[date]||[]).reduce((t,m)=>t+((m&&m.pbr1)||0),0);}
 function _pbrTotalProd(dia){return Object.values((dia&&dia.pessoas)||{}).reduce((s,r)=>s+((r&&r.prod)||0),0);}
 function _pbrAplica(dia,val){
   let v=Math.max(0,parseInt(val)||0);const tp=_pbrTotalProd(dia);
@@ -2368,9 +2389,9 @@ function abrirLancamentoRetroativo(){
   const dt=document.getElementById('retro-date');dt.value=today();dt.max=today();
   const tSel=document.getElementById('retro-turno');
   tSel.innerHTML=turnosAtivos().map(t=>'<option value="'+t.key+'">'+t.label+' — '+t.horario+'</option>').join('');
-  ['retro-rec','retro-prod','retro-env','retro-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
+  ['retro-rec','retro-pbr1','retro-pbr2','retro-prod','retro-env','retro-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});const rb=document.getElementById('retro-buf');if(rb)rb.value='';
   document.getElementById('retro-incl-geral').checked=true;
-  document.getElementById('retro-incl-individual').checked=true;
+  document.getElementById('retro-incl-individual').checked=false;
   document.getElementById('retro-modal').style.display='flex';
   toggleRetroSecoes();
 }
@@ -2438,38 +2459,19 @@ function setRetroMotivoPessoa(nome,val){
 }
 async function lancarRetroativo(){
   const data=document.getElementById('retro-date').value;
-  const turno=document.getElementById('retro-turno').value;
-  const inclGeral=document.getElementById('retro-incl-geral').checked;
-  const inclIndividual=document.getElementById('retro-incl-individual').checked;
   if(!data){showToast('Escolha uma data.','warn');return;}
-  if(!turno){showToast('Escolha um turno.','warn');return;}
-  if(!inclGeral&&!inclIndividual){showToast('Marque ao menos uma opção: Lançamento geral ou Produção individual.','warn');return;}
-  const rec=inclGeral?(parseInt(document.getElementById('retro-rec').value)||0):0;
-  const prod=0; // Produzidos vem da produção por colaborador
-  const env=inclGeral?(parseInt(document.getElementById('retro-env').value)||0):0;
-  const desc=inclGeral?(parseInt(document.getElementById('retro-desc').value)||0):0;
-  if(inclGeral&&!rec&&!env&&!desc){showToast('Informe pelo menos um valor no lançamento geral.','warn');return;}
-  let diaProd=null;
-  if(inclIndividual){
-    const info=calcMetaIndividual();
-    const colabsTurno=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===turno);
-    diaProd=_prodBuf(data,turno);
-    for(const c of colabsTurno){
-      const reg=diaProd.pessoas[c.nome];
-      const p=reg?(reg.prod||0):0;
-      if(statusProdDia(c,data).fora&&!p)continue;
-      if(p<info.metaPorPessoa&&(!reg||!reg.motivo)){
-        showToast('Informe o motivo de '+c.nome+' não bater a meta individual desse turno.','warn');
-        return;
-      }
-    }
-    if(colabsTurno.length){diaProd.savedAt=new Date().toISOString();upsertAutoProd(data,turno);}
-  }
-  if(inclGeral){
-    const who=currentUser?currentUser.user:'Desconhecido';
+  const g=id=>Math.max(0,parseInt(document.getElementById(id).value)||0);
+  const rec=g('retro-rec'),pbr1=g('retro-pbr1'),pbr2=g('retro-pbr2'),env=g('retro-env'),desc=g('retro-desc');
+  const prod=pbr1+pbr2;
+  const bufTxt=String(document.getElementById('retro-buf').value).trim();
+  if(!rec&&!prod&&!env&&!desc&&bufTxt===''){showToast('Informe pelo menos um valor.','warn');return;}
+  const who=currentUser?currentUser.user:'Desconhecido';
+  const agora=new Date().toISOString();
+  if(rec||prod||env||desc){
     if(!state.movimentos[data])state.movimentos[data]=[];
-    state.movimentos[data].push({ts:new Date().toISOString(),who,rec,prod,env,desc,turno,lancadoRetroativo:true});
+    state.movimentos[data].push({ts:agora,updTs:agora,who,rec,prod,pbr1,pbr2,env,desc,geral:true,avulso:true,lancadoRetroativo:true});
   }
+  if(bufTxt!=='')setBufferDia(data,parseInt(bufTxt)||0);
   closeRetroModal();
   saveCache();await pushToCloud();
   renderOperacao();
@@ -2481,6 +2483,7 @@ async function lancarRetroativo(){
                                     const m=(state.movimentos[date]||[])[idx];if(!m)return;
                                       _editMovDate=date;_editMovIdx=idx;
                                         document.getElementById('editmov-rec').value=m.rec||0;
+                                          {const w=document.getElementById('editmov-pbr-wrap');if(w){w.style.display=m.geral?'block':'none';document.getElementById('editmov-pbr1').value=m.pbr1||0;document.getElementById('editmov-pbr2').value=m.pbr2||0;}}
                                           document.getElementById('editmov-prod').value=m.prod||0;document.getElementById('editmov-prod').disabled=(m.auto==='pessoas'||!!m.legadoDup);document.getElementById('editmov-prod').title=(m.auto==='pessoas')?'Vem da produção por colaborador (edite lá)':(m.legadoDup?'Substituído pela produção por colaborador deste turno':'');
                                             document.getElementById('editmov-env').value=m.env||0;
                                               document.getElementById('editmov-desc').value=m.desc||0;
@@ -2496,6 +2499,7 @@ async function lancarRetroativo(){
                                                             const desc=parseInt(document.getElementById('editmov-desc').value)||0;
                                                               const m=state.movimentos[_editMovDate][_editMovIdx];
                                                                 m.rec=rec;m.prod=prod;m.env=env;m.desc=desc;
+                                                                if(m.geral){m.pbr1=Math.max(0,parseInt(document.getElementById('editmov-pbr1').value)||0);m.pbr2=Math.max(0,parseInt(document.getElementById('editmov-pbr2').value)||0);m.prod=m.pbr1+m.pbr2;m.updTs=new Date().toISOString();}
                                                                   m.editadoManualmente=true;m.editadoPor=currentUser?currentUser.user:'?';m.editadoEm=new Date().toISOString();
                                                                     closeEditMovModal();
                                                                       saveCache();await pushToCloud();
@@ -2795,7 +2799,7 @@ function renderConfig(){
     html+='<div style="font-size:12px;color:var(--warn);margin-bottom:10px;font-weight:700">Exporta e remove dados do mês anterior. Continuar?</div>';
     html+='<div style="display:flex;gap:8px"><button class="btn btn-sm" style="background:var(--warn);color:#000" onclick="arquivar()">Confirmar</button>';
     html+='<button class="btn btn-ghost btn-sm" onclick="hideArchive()">Cancelar</button></div></div></div>';
-    if(podeEditarPresenca()){
+    if(false){
       var bufAtual=calcBufferGlobal();
       html+='<div class="card" style="border-color:var(--cyan-bd)">';
       html+='<div class="card-title"><i class="ti ti-layers-difference" style="color:var(--cyan)"></i> Corrigir Buffer (Estoque)</div>';
@@ -2813,7 +2817,6 @@ function renderConfig(){
       html+='<div class="card-title"><i class="ti ti-target-arrow" style="color:var(--cyan)"></i> Meta Mensal & Turno Extraordinário</div>';
       html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta mensal (pallets)</div><div class="cfg-sub">Usada só nos indicadores gerais (meta do dia, % da meta mensal, projeção)</div></div><input type="number" id="cfg-meta-mensal" value="'+metaMensalAtual+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
       html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta individual (pallets/pessoa/dia)</div><div class="cfg-sub">Valor fixo usado no lançamento de Produção por Colaborador</div></div><input type="number" id="cfg-meta-individual" value="'+(state.metaIndividualFixa||120)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
-      html+='<div class="cfg-row"><div><div class="cfg-lbl">Saldo inicial do buffer</div><div class="cfg-sub">Somado ao cálculo produzidos − enviados</div></div><input type="number" id="cfg-buffer-saldo" value="'+(state.bufferSaldoInicial||0)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
       html+='<button class="btn btn-primary btn-sm" style="margin-top:6px;margin-bottom:14px" onclick="salvarConfigMeta()"><i class="ti ti-check"></i> Salvar</button>';
       html+='<div style="font-size:11px;color:var(--text2);margin-bottom:14px">Meta diária individual atual: <strong style="color:var(--cyan)">'+infoMeta.metaPorPessoa+'</strong> pallets/pessoa · '+infoMeta.qtd+' pessoa(s) produzindo · '+infoMeta.diasUteisMes+' dias úteis no mês</div>';
       html+='<div style="border-top:1px solid var(--border);padding-top:14px">';
@@ -2961,7 +2964,7 @@ async function pushForceToCloud(){
   // que a nuvem realmente zerou antes de reportar sucesso.
   resetLock=true;
   setSyncDot('syncing','Salvando...');
-  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{},osAmarracao:state.osAmarracao||[],osClientes:state.osClientes||[],osValores:state.osValores||[]};
+  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',bufferDia:state.bufferDia||{},metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{},osAmarracao:state.osAmarracao||[],osClientes:state.osClientes||[],osValores:state.osValores||[]};
   let ok=false;
   for(let tentativa=0;tentativa<3&&!ok;tentativa++){
     try{
@@ -3055,14 +3058,14 @@ function exportarJSON(){
 }
 function exportarCSV(){
   var dates=Object.keys(state.movimentos).sort();
-  var csv='Data;Produzidos;Recebidos;Enviados;Descarte;Buffer;Meta('+META_DIARIA+');Atingiu Meta\n';
+  var csv='Data;Produzidos;Recebidos;Classificados;Descarte;Buffer;Meta('+META_DIARIA+');Atingiu Meta\n';
   dates.forEach(function(d){
     var ms=state.movimentos[d]||[];
     var p=ms.reduce(function(s,m){return s+(m.prod||0);},0);
     var r=ms.reduce(function(s,m){return s+(m.rec||0);},0);
     var e=ms.reduce(function(s,m){return s+(m.env||0);},0);
     var dd=ms.reduce(function(s,m){return s+(m.desc||0);},0);
-    var b=p-e;
+    var b=bufferDoDia(d);if(b===null)b='';
     csv+=d+';'+p+';'+r+';'+e+';'+dd+';'+b+';'+META_DIARIA+';'+(p>=META_DIARIA?'SIM':'NÃO')+'\n';
   });
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
@@ -3131,7 +3134,7 @@ function exportarProducaoIndividual(){
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='producao_individual_'+today()+'.csv';a.click();URL.revokeObjectURL(a.href);
   showToast('CSV exportado!','ok');
 }
-function pbrMes(mes,turno){let t=0;Object.entries(state.producaoPessoas||{}).forEach(([d,tv])=>{if(d.indexOf(mes)!==0)return;Object.entries(tv||{}).forEach(([k,dia])=>{if(!turno||k===turno)t+=pbrDoTurno(dia);});});return t;}
+function pbrMes(mes,k){k=k||'pbr2';let t=0;Object.entries(state.movimentos||{}).forEach(([d,ms])=>{if(d.indexOf(mes)!==0)return;(ms||[]).forEach(m=>{t+=((m&&m[k])||0);});});return t;}
 function calcRelatorioMensal(mes){
   var datesPres=Object.keys(state.presencas||{}).filter(function(d){return d.indexOf(mes)===0;});
   var datesProd=Object.keys(state.producaoPessoas||{}).filter(function(d){return d.indexOf(mes)===0;});
@@ -3202,7 +3205,7 @@ function renderRelMensal(soTabela){
   var filt=rows.filter(function(r){return (!relTurno||r.turno===relTurno)&&(!relBusca||r.nome.toLowerCase().indexOf(relBusca.toLowerCase())>=0);});
   if(relOrd==='prod')filt.sort(function(a,b){return b.prod-a.prod;});
   else if(relOrd==='faltas')filt.sort(function(a,b){return b.faltas-a.faltas||a.nome.localeCompare(b.nome);});
-  var tP=0,tPr=0,tF=0,tB2=pbrMes(relMes,relTurno);filt.forEach(function(r){tP+=r.prod;tPr+=r.presencas;tF+=r.faltas;});
+  var tP=0,tPr=0,tF=0,tB2=pbrMes(relMes,'pbr2'),tB1=pbrMes(relMes,'pbr1');filt.forEach(function(r){tP+=r.prod;tPr+=r.presencas;tF+=r.faltas;});
   var pctF=(tPr+tF)>0?Math.round(tF/(tPr+tF)*100):0;
   var tabela;
   if(!rows.length)tabela='<div class="empty"><i class="ti ti-database-off"></i><h3>Sem dados em '+_mesLabel(relMes)+'</h3><p>Nenhuma presença ou produção lançada nesse mês.</p></div>';
@@ -3222,7 +3225,7 @@ function renderRelMensal(soTabela){
     '<div class="rel-mes">'+_mesLabel(relMes)+'</div>'+
     '<button class="ds-btn" onclick="relMesDelta(1)" '+(relMes>=mesAtual?'disabled style="opacity:.35"':'')+' aria-label="Próximo mês"><i class="ti ti-chevron-right"></i></button>'+
     '<button class="ds-btn rel-xls" onclick="exportarRelatorioMensal(relMes)"><i class="ti ti-download"></i> Excel</button></div>'+
-    '<div class="rel-kpis"><div class="kpi"><div class="kpi-lbl">Produção do mês</div><div class="kpi-val green">'+tP.toLocaleString('pt-BR')+'</div><div class="kpi-sub">PBR2: '+tB2.toLocaleString('pt-BR')+'</div></div>'+
+    '<div class="rel-kpis"><div class="kpi"><div class="kpi-lbl">Produção do mês</div><div class="kpi-val green">'+tP.toLocaleString('pt-BR')+'</div><div class="kpi-sub">PBR1: '+tB1.toLocaleString('pt-BR')+' · PBR2: '+tB2.toLocaleString('pt-BR')+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Presenças</div><div class="kpi-val">'+tPr+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Faltas</div><div class="kpi-val'+(tF?' red':'')+'">'+tF+'</div><div class="kpi-sub'+(pctF>=15?' red':pctF>=8?' warn':'')+'">'+pctF+'% de absenteísmo</div></div></div>'+
     '<div class="card"><div class="rel-filtros"><div class="day-btns" style="margin:0">'+
@@ -3243,7 +3246,7 @@ function exportarPDF(){
     var b=p-e;totP+=p;totR+=r;totE+=e;totD+=dd;
     return'<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:8px 10px">'+d+'</td><td style="padding:8px 10px;text-align:right;color:'+(p>=META_DIARIA?'#059669':'#dc2626')+';font-weight:600">'+p+'</td><td style="padding:8px 10px;text-align:right">'+r+'</td><td style="padding:8px 10px;text-align:right">'+e+'</td><td style="padding:8px 10px;text-align:right;color:#dc2626">'+dd+'</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:'+(b>=0?'#1d4ed8':'#dc2626')+'">'+(b>=0?'+':'')+b+'</td><td style="padding:8px 10px;text-align:center">'+(p>=META_DIARIA?'✓':'✗')+'</td></tr>';
   }).join('');
-  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FEMSA</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111}h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#6b7280;font-size:13px;margin-bottom:24px}.kpi-row{display:flex;gap:16px;margin-bottom:24px}.kpi{flex:1;background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb}.kpi-l{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}.kpi-v{font-size:24px;font-weight:700}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:8px 10px;background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#374151}@media print{body{padding:16px}}</style></head><body><h1>FEMSA Marília — Relatório Operacional</h1><div class="sub">Gerado em '+new Date().toLocaleString('pt-BR')+' · Meta: '+META_DIARIA+' pallets/dia</div><div class="kpi-row"><div class="kpi"><div class="kpi-l">Produzido</div><div class="kpi-v">'+totP+'</div></div><div class="kpi"><div class="kpi-l">Recebido</div><div class="kpi-v">'+totR+'</div></div><div class="kpi"><div class="kpi-l">Enviado</div><div class="kpi-v">'+totE+'</div></div><div class="kpi"><div class="kpi-l">Descarte</div><div class="kpi-v" style="color:#dc2626">'+totD+'</div></div><div class="kpi"><div class="kpi-l">Buffer</div><div class="kpi-v" style="color:'+(totP-totE>=0?'#1d4ed8':'#dc2626')+'">'+(totP-totE>=0?'+':'')+(totP-totE)+'</div></div></div><table><thead><tr><th>Data</th><th style="text-align:right">Produzidos</th><th style="text-align:right">Recebidos</th><th style="text-align:right">Enviados</th><th style="text-align:right">Descarte</th><th style="text-align:right">Buffer</th><th style="text-align:center">Meta</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
+  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FEMSA</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111}h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#6b7280;font-size:13px;margin-bottom:24px}.kpi-row{display:flex;gap:16px;margin-bottom:24px}.kpi{flex:1;background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb}.kpi-l{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}.kpi-v{font-size:24px;font-weight:700}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:8px 10px;background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#374151}@media print{body{padding:16px}}</style></head><body><h1>FEMSA Marília — Relatório Operacional</h1><div class="sub">Gerado em '+new Date().toLocaleString('pt-BR')+' · Meta: '+META_DIARIA+' pallets/dia</div><div class="kpi-row"><div class="kpi"><div class="kpi-l">Produzido</div><div class="kpi-v">'+totP+'</div></div><div class="kpi"><div class="kpi-l">Recebido</div><div class="kpi-v">'+totR+'</div></div><div class="kpi"><div class="kpi-l">Enviado</div><div class="kpi-v">'+totE+'</div></div><div class="kpi"><div class="kpi-l">Descarte</div><div class="kpi-v" style="color:#dc2626">'+totD+'</div></div><div class="kpi"><div class="kpi-l">Buffer</div><div class="kpi-v" style="color:'+(totP-totE>=0?'#1d4ed8':'#dc2626')+'">'+(totP-totE>=0?'+':'')+(totP-totE)+'</div></div></div><table><thead><tr><th>Data</th><th style="text-align:right">Produzidos</th><th style="text-align:right">Recebidos</th><th style="text-align:right">Classificados</th><th style="text-align:right">Descarte</th><th style="text-align:right">Buffer</th><th style="text-align:center">Meta</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
   var w=window.open('','_blank');w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);
 }
 
@@ -3265,7 +3268,7 @@ function renderTV(){
   var tR=movs.reduce(function(s,m){return s+(m.rec||0);},0);
   var tE=movs.reduce(function(s,m){return s+(m.env||0);},0);
   var tD=movs.reduce(function(s,m){return s+(m.desc||0);},0);
-  var tBufDiaTV=tP-tE,tBuf=calcBufferGlobal(),pct=Math.min(100,Math.round(tP/META_DIARIA*100));
+  var tBufDiaTV=bufferDoDia(todayD),tBuf=calcBufferGlobal(),pct=Math.min(100,Math.round(tP/META_DIARIA*100));
   var presP=0,presA=0,presQ=0;
   ['A','B','C'].forEach(function(t){var p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(function(s){presQ++;if(s==='P')presP++;else if(s==='A')presA++;});});
   var dt=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
@@ -3277,10 +3280,10 @@ function renderTV(){
     '<div class="tv-kpi-row">'+
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Produzidos</div><div class="tv-kpi-val" style="color:'+(tP>=META_DIARIA?'var(--green)':'var(--text)')+'">'+tP+'</div><div class="tv-kpi-sub">Meta: '+META_DIARIA+' · '+pct+'%</div><div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barBg+';border-radius:3px"></div></div></div>'+
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Recebidos</div><div class="tv-kpi-val">'+tR+'</div></div>'+
-    '<div class="tv-kpi"><div class="tv-kpi-lbl">Enviados</div><div class="tv-kpi-val">'+tE+'</div></div>'+
+    '<div class="tv-kpi"><div class="tv-kpi-lbl">Classificados</div><div class="tv-kpi-val">'+tE+'</div></div>'+
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Descarte</div><div class="tv-kpi-val" style="color:'+(tD>0?'var(--red)':'var(--text)')+'">'+tD+'</div></div>'+
     '<div class="tv-kpi" style="background:var(--cyan-bg);border-color:var(--cyan-bd)"><div class="tv-kpi-lbl" style="color:var(--cyan)">Buffer</div><div class="tv-kpi-val" style="color:'+bufColor+'">'+(tBuf>=0?'+':'')+tBuf+'</div><div class="tv-kpi-sub" style="color:var(--cyan)">'+
-    'Estoque histórico · dia: '+(tBufDiaTV>=0?'+':'')+tBufDiaTV+'</div>'+(tBuf<0?'<div style="margin-top:8px;font-size:11px;color:var(--red);font-weight:700">⚠ BUFFER NEGATIVO</div>':'')+'</div></div>'+
+    'Informado hoje: '+(tBufDiaTV===null?'—':(tBufDiaTV>=0?'+':'')+tBufDiaTV)+'</div>'+(tBuf<0?'<div style="margin-top:8px;font-size:11px;color:var(--red);font-weight:700">⚠ BUFFER NEGATIVO</div>':'')+'</div></div>'+
     '<div class="tv-section-row">'+
     '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px">'+
     '<div style="font-size:10px;color:var(--cyan);font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-bottom:16px">Presença do time</div>'+
@@ -4308,7 +4311,7 @@ function osExpDesmarcar(){
 (function(){
   function ro(){return currentRole==='financeiro';}
   window.somenteLeitura=ro;
-  var MUT=['osSalvar','osEditar','osExcluir','osDesamarrar','osSalvarCliente','osAbrirCliente','osRemoverCliente','togglePres','setProdPessoa','setMotivoPessoa','adjProdPessoa','setRetroProdPessoa','setRetroMotivoPessoa','adjRetroProdPessoa','cargaSet','cargaAdd','cargaDel','adj','unlockPres','unlockProdPessoas','unlockResetSection','unlockApiSection','salvarEditPresenca','salvarPresenca','salvarProducaoPessoas','lancar','lancarRetroativo','abrirLancamentoRetroativo','abrirEditPresenca','abrirPresRetro','salvarPresRetro','setPresRetro','setPresRetroTodos','abrirEditMov','salvarEditMov','excluirMov','abrirAfastModal','salvarAfastamento','removerAfastamento','confirmarFerias','cancelarFerias','addColab','editColab','saveColabModal','deleteColabModal','restaurarColab','arquivar','salvarConfigMeta','salvarTurnoExtra','saveConfig','salvarNovoBuffer','zerarBuffer','corrigirBuffer','resetPallets','resetPresencas','resetProducaoIndividual','resetColaboradores','resetTudo','salvarApiKeyNotif','testarNotificacao','enviarWhatsApp','enviarResumoPresenca','premCiclo','premMarcarTodos','premCfgSet','_premSalvar','feriasDoEdit','atualizarRetornoFerias','atualizarTurnosDoModal','togglePres'];
+  var MUT=['osSalvar','osEditar','osExcluir','osDesamarrar','osSalvarCliente','osAbrirCliente','osRemoverCliente','togglePres','setProdPessoa','setMotivoPessoa','adjProdPessoa','setRetroProdPessoa','setRetroMotivoPessoa','adjRetroProdPessoa','cargaSet','cargaAdd','cargaDel','adj','unlockPres','unlockProdPessoas','unlockResetSection','unlockApiSection','salvarEditPresenca','salvarPresenca','salvarProducaoPessoas','lancar','lancarRetroativo','abrirLancamentoRetroativo','setBufferDia','abrirEditPresenca','abrirPresRetro','salvarPresRetro','setPresRetro','setPresRetroTodos','abrirEditMov','salvarEditMov','excluirMov','abrirAfastModal','salvarAfastamento','removerAfastamento','confirmarFerias','cancelarFerias','addColab','editColab','saveColabModal','deleteColabModal','restaurarColab','arquivar','salvarConfigMeta','salvarTurnoExtra','saveConfig','salvarNovoBuffer','zerarBuffer','corrigirBuffer','resetPallets','resetPresencas','resetProducaoIndividual','resetColaboradores','resetTudo','salvarApiKeyNotif','testarNotificacao','enviarWhatsApp','enviarResumoPresenca','premCiclo','premMarcarTodos','premCfgSet','_premSalvar','feriasDoEdit','atualizarRetornoFerias','atualizarTurnosDoModal','togglePres'];
   var SILENT=['pushToCloud','pushForceToCloud','markPending','saveCache'];
   MUT.forEach(function(n){
     var f=window[n]; if(typeof f!=='function')return;

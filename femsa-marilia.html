@@ -924,7 +924,6 @@ function calcBufferGlobal(){return bufferAte(today());}
 const TURNOS_FIXOS=[
   {key:'A',label:'Turno A',horario:'06h00–14h20'},
   {key:'B',label:'Turno B',horario:'14h00–22h20'},
-  {key:'C',label:'Turno C',horario:'22h00–06h20'},
 ];
 function turnosAtivos(){
   const lista=TURNOS_FIXOS.slice();
@@ -945,12 +944,13 @@ function diasUteisRestantesNoMes(){
   for(let dia=now.getDate();dia<=fim;dia++){const d=new Date(ano,mes,dia);if(d.getDay()!==0)count++;}
   return count;
 }
-function getMetaMensal(){return state.metaMensal||(META_DIARIA*26);}
+// Meta diária fixa (META_DIARIA) × dias úteis do mês (seg–sáb); Marília tem 2 turnos (A e B)
+function getMetaMensal(){const n=new Date();return META_DIARIA*diasUteisNoMes(n.getFullYear(),n.getMonth());}
 function calcMetaIndividual(){
   const produtores=colaboradoresAtivos().filter(produzPallets);
   const diasUteisMes=diasUteisNoMes(new Date().getFullYear(),new Date().getMonth());
   const metaMensal=getMetaMensal();
-  const metaDiariaGeral=diasUteisMes>0?metaMensal/diasUteisMes:0;
+  const metaDiariaGeral=META_DIARIA;
   const metaPorPessoa=state.metaIndividualFixa||120;
   return{metaPorPessoa,diasUteisMes,qtd:produtores.length,metaDiariaGeral,metaMensal,nTurnosAtivos:turnosAtivos().length};
 }
@@ -2271,7 +2271,7 @@ function updBuf(){
   const e2=document.getElementById('tt-pbr2');if(e2)e2.textContent=sm('pbr2')+' hoje';
 }
 let selTurnoLanc=null;
-function turnoPorHora(){const h=new Date().getHours();const ks=turnosAtivos().map(t=>t.key);const k=(h>=6&&h<14)?'A':(h>=14&&h<22)?'B':'C';return ks.includes(k)?k:ks[0];}
+function turnoPorHora(){const h=new Date().getHours();const ks=turnosAtivos().map(t=>t.key);const k=(h>=6&&h<14)?'A':'B';return ks.includes(k)?k:ks[0];}
 function selTurnoLanc_(k){selTurnoLanc=k;renderLancTurno();}
 function renderLancTurno(){
   const w=document.getElementById('lanc-turno-wrap');if(!w)return;

@@ -322,7 +322,7 @@ html,body{
           <div class="op-stat-val green" id="ma-prod-dia">—</div>
         </div>
         <div class="op-stat">
-          <div class="op-stat-lbl">Enviado hoje</div>
+          <div class="op-stat-lbl">Classificado hoje</div>
           <div class="op-stat-val cyan" id="ma-env-dia">—</div>
         </div>
         <div class="op-stat">
@@ -433,7 +433,8 @@ async function hubCarregarUnidade(u){
     hubSetTxt(u.prefix+'-prod-dia',dP);
     hubSetTxt(u.prefix+'-env-dia',dE);
     hubSetTxt(u.prefix+'-desc-dia',dD);
-    const buffer=(data.bufferSaldoInicial||0)+totP-totE+(data.bufferAjuste||0);
+    let buffer=(data.bufferSaldoInicial||0)+totP-totE+(data.bufferAjuste||0);
+    if(u.prefix==='ma'){const bd=data.bufferDia||{};const ks=Object.keys(bd).filter(k=>k<=todayD&&bd[k]&&!bd[k].del).sort();buffer=ks.length?Number(bd[ks[ks.length-1]].v)||0:0;}
     hubSetTxt(u.prefix+'-quadro',quadro);
     hubSetTxt(u.prefix+'-presentes',presentes);
     hubSetTxt(u.prefix+'-ausentes',ausentes);

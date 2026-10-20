@@ -3920,7 +3920,7 @@ function fechPDF(){
   const cor=!D.diasTrab?'#7a92a8':pct>=100?'#00e5a0':pct>=80?'#f59e0b':'#ff4d6a';
   const kp=(l,v,s,c,acc)=>'<div class="k" style="border-top-color:'+acc+'"><div class="kl">'+l+'</div><div class="kv"'+(c?' style="color:'+c+'"':'')+'>'+v+'</div><div class="ks">'+(s||'&nbsp;')+'</div></div>';
   // gráfico SVG
-  const W=1000,H=210,pl=44,pr=10,pt=14,pb=26,n=D.dias.length;
+  const W=1000,H=215,pl=44,pr=10,pt=20,pb=26,n=D.dias.length;
   const maxV=Math.max(META_DIARIA*1.1,...D.dias.map(x=>x.t.prod));
   const bw=(W-pl-pr)/n,gap=Math.min(6,bw*0.25);
   const yv=v=>pt+(H-pt-pb)*(1-v/maxV);
@@ -3932,9 +3932,9 @@ function fechPDF(){
     D.tk.forEach((k,ti)=>{const v=x.pt[k].prod;if(!v)return;const y1=yv(acc+v),y0=yv(acc);svg+='<rect x="'+bx+'" y="'+y1+'" width="'+w+'" height="'+Math.max(0.5,y0-y1)+'" fill="'+cores[ti%4]+'"/>';acc+=v;});
     const rest=x.t.prod-acc;if(rest>0){const y1=yv(acc+rest),y0=yv(acc);svg+='<rect x="'+bx+'" y="'+y1+'" width="'+w+'" height="'+(y0-y1)+'" fill="#94a3b8"/>';}
     if(n<=31)svg+='<text x="'+(bx+w/2)+'" y="'+(H-pb+13)+'" font-size="9" fill="'+(x.wd===0?'#ff4d6a':'#7a92a8')+'" text-anchor="middle">'+(+x.d.slice(8,10))+'</text>';
-    if(n<=16&&x.t.prod)svg+='<text x="'+(bx+w/2)+'" y="'+(yv(x.t.prod)-4)+'" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">'+fNum(x.t.prod)+'</text>';
+    if(n<=31&&x.t.prod)svg+='<text x="'+(bx+w/2)+'" y="'+(yv(x.t.prod)-4)+'" font-size="'+(n<=16?9:7.5)+'" font-weight="700" fill="#fff" text-anchor="middle">'+fNum(x.t.prod)+'</text>';
   });
-  svg+='<line x1="'+pl+'" y1="'+yv(META_DIARIA)+'" x2="'+(W-pr)+'" y2="'+yv(META_DIARIA)+'" stroke="#ff4d6a" stroke-width="1.5" stroke-dasharray="6 4"/><text x="'+(W-pr)+'" y="'+(yv(META_DIARIA)-4)+'" font-size="9" font-weight="700" fill="#ff4d6a" text-anchor="end">meta '+fNum(META_DIARIA)+'</text></svg>';
+  svg+='<line x1="'+pl+'" y1="'+yv(META_DIARIA)+'" x2="'+(W-pr)+'" y2="'+yv(META_DIARIA)+'" stroke="#ff4d6a" stroke-width="1.5" stroke-dasharray="6 4"/></svg>';
   const legenda=D.turnos.map((t,i)=>'<span><i style="background:'+['#003B8E','#1d4ed8','#60a5fa','#bfdbfe'][i%4]+'"></i>'+esc(t.label)+'</span>').join('');
   const maxT=Math.max(1,...D.tk.map(k=>D.porT[k].prod));
   const trT=D.turnos.map(t=>{const y=D.porT[t.key],tp=y.p+y.a;return'<tr><td><b>'+esc(t.label)+'</b><small>'+esc(t.horario||'')+'</small></td><td class="n"><b>'+fNum(y.prod)+'</b><div class="mb"><i style="width:'+Math.round(y.prod/maxT*100)+'%"></i></div></td><td class="n">'+fNum(y.rec)+'</td><td class="n">'+fNum(y.env)+'</td><td class="n">'+fNum(y.desc)+'</td><td class="n">'+(tp?y.p+' pres. · '+y.a+' falta(s) <small>('+fPct(y.a,tp)+'%)</small>':'—')+'</td></tr>';}).join('');
@@ -3953,7 +3953,7 @@ function fechPDF(){
    '<div class="hero"><div><div class="u">FEMSA '+esc(unitName)+' · Relatório operacional</div><h1>'+esc(fPeriodoTxt(D))+'</h1><div class="p">'+D.dias.length+' dia(s) no período · '+D.diasTrab+' com produção</div></div>'+(D.diasTrab?'<div class="ring"><b>'+pct+'%</b><span>da meta ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span></div>':'')+'</div>'+
    '<div class="ks">'+kp('Produzidos',fNum(D.tot.prod),'média '+fNum(D.media)+'/dia trabalhado',cor,'#1d4ed8')+kp('Recebidos',fNum(D.tot.rec),'','','#6366f1')+kp('Enviados',fNum(D.tot.env),'','','#10b981')+kp('Descarte',fNum(D.tot.desc),'',D.tot.desc?'#ff4d6a':'','#ff4d6a')+kp('Buffer atual',(D.bufFim>=0?'+':'')+fNum(D.bufFim),'estoque neste momento',D.bufFim>=0?'#60a5fa':'#ff4d6a','#f59e0b')+'</div>'+
    '<div class="prog"><i></i></div><div class="pl"><span>Meta de referência: '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta diária</span></div>'+
-   '<h2>Produção diária por turno</h2><div class="leg">'+legenda+'<span><i style="background:#dc2626"></i>meta diária</span></div>'+svg+
+   '<h2>Produção diária por turno</h2><div class="leg">'+legenda+'<span><i style="background:#ff4d6a"></i>meta diária ('+fNum(META_DIARIA)+')</span></div>'+svg+
    '<div class="cols"><div><h2>Por turno</h2><table><thead><tr><th>Turno</th><th class="n">Produzidos</th><th class="n">Rec.</th><th class="n">Env.</th><th class="n">Desc.</th><th class="n">Presença</th></tr></thead><tbody>'+trT+'</tbody><tfoot><tr><td>Total</td><td class="n">'+fNum(D.tot.prod)+'</td><td class="n">'+fNum(D.tot.rec)+'</td><td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td></tr></tfoot></table></div>'+
    '<div><h2>Destaques e alertas</h2>'+(D.melhor?'<div class="al ok">🏆 Melhor dia: <b>'+fCurto(D.melhor.d)+' ('+F_SEM[D.melhor.wd]+')</b> — '+fNum(D.melhor.t.prod)+'</div>':'')+(D.pior&&D.dias.length>1?'<div class="al nt">Menor dia com produção: <b>'+fCurto(D.pior.d)+'</b> — '+fNum(D.pior.t.prod)+'</div>':'')+(D.alertas.length?D.alertas.map(a=>'<div class="al">⚠ '+esc(a.t)+'</div>').join(''):'<div class="al ok">Tudo em ordem no período</div>')+'</div></div>'+
    '<h2 style="page-break-before:'+(D.dias.length>6?'always':'auto')+'">Dia a dia</h2><table><thead><tr><th>Dia</th>'+th+'<th class="n">Total</th><th class="n">Rec.</th><th class="n">Env.</th><th class="n">Desc.</th><th class="n">% meta</th></tr></thead><tbody>'+trD+'</tbody><tfoot><tr><td>Total</td>'+D.tk.map(k=>'<td class="n">'+fNum(D.porT[k].prod)+'</td>').join('')+'<td class="n">'+fNum(D.tot.prod)+'</td><td class="n">'+fNum(D.tot.rec)+'</td><td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td></tr></tfoot></table>'+

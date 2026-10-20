@@ -691,7 +691,6 @@ img,canvas,svg{max-width:100%}
       <select id="modal-turno">
         <option value="A">Turno A — 06h00 às 14h20</option>
         <option value="B">Turno B — 14h00 às 22h20</option>
-        <option value="C">Turno C — 22h00 às 06h20</option>
         <option value="D" id="modal-turno-d-opt" style="display:none">Turno Extraordinário</option>
       </select>
     </div>
@@ -882,7 +881,6 @@ function calcBufferGlobal(){
 const TURNOS_FIXOS=[
   {key:'A',label:'Turno A',horario:'06h00–14h20'},
   {key:'B',label:'Turno B',horario:'14h00–22h20'},
-  {key:'C',label:'Turno C',horario:'22h00–06h20'},
 ];
 function turnosAtivos(){
   const lista=TURNOS_FIXOS.slice();
@@ -1094,7 +1092,7 @@ function verificarAusencia(){
   const quadro = colaboradoresAtivos().length;
   if(!quadro) return;
   let presentes=0, ausentes=0, ausentesNomes=[];
-  ['A','B','C'].forEach(t=>{
+  ['A','B'].forEach(t=>{
     const p=presDay[t]; if(!p) return;
     Object.entries(p.presenca||{}).forEach(([nome,v])=>{
       if(v==='P') presentes++;
@@ -1125,7 +1123,7 @@ async function enviarResumoPresenca(hora){
   const presDay = state.presencas[todayD] || {};
   const quadro = colaboradoresAtivos().length;
   let presentes=0, ausentes=0, ausentesNomes=[];
-  ['A','B','C'].forEach(t=>{
+  ['A','B'].forEach(t=>{
     const p=presDay[t]; if(!p) return;
     Object.entries(p.presenca||{}).forEach(([nome,v])=>{
       if(v==='P') presentes++;
@@ -1674,15 +1672,15 @@ function renderDia(){
   const pct=Math.min(100,Math.round(tP/META_DIARIA*100));
   const lastTag=movs.length?'<span style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px"><i class="ti ti-clock" style="font-size:11px"></i>'+timeFmt(movs[movs.length-1].ts)+' · '+movs[movs.length-1].who+'</span>':'';
   let presP=0,presA=0;
-  ['A','B','C'].forEach(t=>{const p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(v=>{if(v==='P')presP++;else if(v==='A')presA++;});});
-  const turnoRows=['A','B','C'].map(t=>{
+  ['A','B'].forEach(t=>{const p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(v=>{if(v==='P')presP++;else if(v==='A')presA++;});});
+  const turnoRows=['A','B'].map(t=>{
     const p=presDay[t];
     if(!p||!p.savedAt)return'<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)"><i class="ti ti-clock" style="color:var(--text3);font-size:13px"></i><span style="font-size:13px;color:var(--text2)">Turno '+t+' — aguardando apontamento</span></div>';
     const np=Object.values(p.presenca||{}).filter(v=>v==='P').length;
     const na=Object.values(p.presenca||{}).filter(v=>v==='A').length;
     return'<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:13px;font-weight:600;color:var(--text)">Turno '+t+'</span><div style="display:flex;gap:6px"><span class="badge b-ok">'+np+' pres.</span>'+(na?'<span class="badge b-err">'+na+' aus.</span>':'')+'</div></div>';
   }).join('');
-  const presCards=['A','B','C'].map(t=>{
+  const presCards=['A','B'].map(t=>{
     const p=presDay[t];if(!p||!p.savedAt)return'';
     const colabsT=colaboradoresAtivos().filter(c=>c.turno===t);
     const cells=colabsT.map(c=>{
@@ -1846,7 +1844,7 @@ function renderMes(){
   const descArr=dates.map(d=>state.movimentos[d].reduce((s,m)=>s+(m.desc||0),0));
   const envArr=dates.map(d=>state.movimentos[d].reduce((s,m)=>s+(m.env||0),0));
   const bufArr=prodArr.map((p,i)=>p-envArr[i]);
-  const absArr=dates.map(d=>{let a=0;const pr=state.presencas[d]||{};['A','B','C'].forEach(t=>{if(pr[t])Object.values(pr[t].presenca||{}).forEach(v=>{if(v==='A')a++;});});return a;});
+  const absArr=dates.map(d=>{let a=0;const pr=state.presencas[d]||{};['A','B'].forEach(t=>{if(pr[t])Object.values(pr[t].presenca||{}).forEach(v=>{if(v==='A')a++;});});return a;});
   const co={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1923',borderColor:'rgba(255,255,255,.1)',borderWidth:1,titleColor:'#fff',bodyColor:'#7a92a8'}},scales:{x:{grid:{display:false},ticks:{color:'#4a6070',font:{size:10},maxRotation:45}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a6070',font:{size:10}},border:{display:false}}}};
   Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});charts={};
   cont.innerHTML=
@@ -2071,7 +2069,7 @@ function getFeriasAtivas(){
   const map={},t=today();
   Object.keys(state.presencas).forEach(date=>{
     const pd=state.presencas[date];
-    ['A','B','C'].forEach(turno=>{
+    ['A','B'].forEach(turno=>{
       const pt=pd[turno];if(!pt||!pt.feriasInfo)return;
       Object.entries(pt.feriasInfo).forEach(([nome,info])=>{
         const key=nome+'|'+info.inicio;
@@ -2088,7 +2086,7 @@ async function cancelarFerias(nome,inicio){
   Object.keys(state.presencas).forEach(date=>{
     if(date<t)return;
     const pd=state.presencas[date];
-    ['A','B','C'].forEach(turno=>{
+    ['A','B'].forEach(turno=>{
       const pt=pd[turno];if(!pt||!pt.presenca||!pt.presenca[nome])return;
       const info=pt.feriasInfo&&pt.feriasInfo[nome];
       if(pt.presenca[nome]==='F'&&info&&info.inicio===inicio){
@@ -2522,7 +2520,7 @@ function renderAbsenteismo(){
   var absMap={},diasMap={};
   dates.forEach(function(date){
     var pd=state.presencas[date]||{};
-    ['A','B','C'].forEach(function(t){
+    ['A','B'].forEach(function(t){
       if(!pd[t])return;
       Object.entries(pd[t].presenca||{}).forEach(function(e2){
         var nome=e2[0],st=e2[1];
@@ -2546,10 +2544,10 @@ function renderAbsenteismo(){
   var turnoMap={A:0,B:0,C:0};
   dates.forEach(function(date){
     var pd=state.presencas[date]||{};
-    ['A','B','C'].forEach(function(t){if(pd[t])Object.values(pd[t].presenca||{}).forEach(function(s){if(s==='A')turnoMap[t]++;});});
+    ['A','B'].forEach(function(t){if(pd[t])Object.values(pd[t].presenca||{}).forEach(function(s){if(s==='A')turnoMap[t]++;});});
   });
   var turnoHTML='';
-  ['A','B','C'].forEach(function(t){
+  ['A','B'].forEach(function(t){
     turnoHTML+='<div style="background:var(--bg3);border-radius:9px;padding:12px;text-align:center;border:1px solid var(--border)"><div style="font-size:10px;color:var(--cyan);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Turno '+t+'</div><div style="font-size:22px;font-weight:700;color:var(--text)">'+turnoMap[t]+'</div><div style="font-size:11px;color:var(--text2);margin-top:2px">faltas</div></div>';
   });
   var rowsHTML='';
@@ -3052,7 +3050,7 @@ function exportarAbsenteismo(){
   var dates=Object.keys(state.presencas).sort(),absMap={},diasMap={};
   dates.forEach(function(date){
     var pd=state.presencas[date]||{};
-    ['A','B','C'].forEach(function(t){
+    ['A','B'].forEach(function(t){
       if(!pd[t])return;
       Object.entries(pd[t].presenca||{}).forEach(function(e2){
         var nome=e2[0],st=e2[1];
@@ -3228,7 +3226,7 @@ function exportarPDF(){
 // TV MODE
 function buildTurnoRows(presDay){
   var html='',hor={A:'06h00–14h20',B:'14h00–22h20',C:'22h00–06h20'};
-  ['A','B','C'].forEach(function(t){
+  ['A','B'].forEach(function(t){
     var pt=presDay[t];
     if(!pt){html+='<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--text2)">Turno '+t+' — aguardando</div>';return;}
     var np=Object.values(pt.presenca||{}).filter(function(v){return v==='P';}).length;
@@ -3245,7 +3243,7 @@ function renderTV(){
   var tD=movs.reduce(function(s,m){return s+(m.desc||0);},0);
   var tBufDiaTV=tP-tE,tBuf=calcBufferGlobal(),pct=Math.min(100,Math.round(tP/META_DIARIA*100));
   var presP=0,presA=0,presQ=0;
-  ['A','B','C'].forEach(function(t){var p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(function(s){presQ++;if(s==='P')presP++;else if(s==='A')presA++;});});
+  ['A','B'].forEach(function(t){var p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(function(s){presQ++;if(s==='P')presP++;else if(s==='A')presA++;});});
   var dt=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   var hr=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   var bufColor=tBuf>=0?'var(--cyan)':'var(--red)';
@@ -3358,7 +3356,7 @@ function renderPresHist(){
     let hasFalta = false, hasReg = false;
     let turnosHtml = '';
 
-    ['A','B','C'].forEach(t => {
+    ['A','B'].forEach(t => {
       const pt = presDay[t];
       if(!pt || !pt.savedAt || !Object.keys(pt.presenca||{}).length){
         turnosHtml += '<div class="hist-turno-row"><span class="hist-turno-lbl">Turno '+t+'</span><span class="hist-sem-reg">Não registrado</span></div>';

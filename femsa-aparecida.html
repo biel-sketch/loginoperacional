@@ -3800,7 +3800,7 @@ function fechDados(de,ate){
       if(pr&&Object.keys(pr).length){y.dias++;Object.values(pr).forEach(st=>{if(st==='P')y.p++;else if(st==='A')y.a++;});}});
     sem.prod+=d.sem.prod;sem.rec+=d.sem.rec;sem.env+=d.sem.env;sem.desc+=d.sem.desc;
     tot.prod+=d.t.prod;tot.rec+=d.t.rec;tot.env+=d.t.env;tot.desc+=d.t.desc;
-    d.buf=fBufferAte(cur);d.pct=fPct(d.t.prod,META_DIARIA);
+    d.pct=fPct(d.t.prod,META_DIARIA);
     if(d.t.prod>0){diasTrab++;if(d.t.prod>=META_DIARIA)bateu++;}
     if(!d.n&&d.wd!==0&&cur<=today())semMov++;
     dias.push(d);cur=fAddDias(cur,1);
@@ -3808,15 +3808,15 @@ function fechDados(de,ate){
   const comProd=dias.filter(x=>x.t.prod>0);
   const melhor=comProd.length?comProd.reduce((a,b)=>b.t.prod>a.t.prod?b:a):null;
   const pior=comProd.length?comProd.reduce((a,b)=>b.t.prod<a.t.prod?b:a):null;
-  const bufIni=fBufferAte(fAddDias(de,-1)),bufFim=fBufferAte(ate);
+  const bufFim=calcBufferGlobal();
   const metaRef=META_DIARIA*diasTrab;
   const alertas=[];
   if(diasTrab&&tot.prod<metaRef)alertas.push({k:'warn',t:'Produção do período abaixo da meta de referência ('+fNum(tot.prod)+' de '+fNum(metaRef)+')'});
   if(diasTrab&&bateu<diasTrab)alertas.push({k:'info',t:(diasTrab-bateu)+' de '+diasTrab+' dia(s) trabalhado(s) ficaram abaixo da meta diária'});
-  if(bufFim<0)alertas.push({k:'red',t:'Buffer negativo no fim do período ('+fNum(bufFim)+')'});
+  if(bufFim<0)alertas.push({k:'red',t:'Buffer atual negativo ('+fNum(bufFim)+')'});
   if(semMov)alertas.push({k:'info',t:semMov+' dia(s) útil(eis) (seg–sáb) sem nenhuma movimentação lançada'});
   tk.forEach((k,i)=>{const y=porT[k];if(y.p+y.a>0&&y.a/(y.p+y.a)>=0.2)alertas.push({k:'red',t:turnos[i].label+': absenteísmo de '+Math.round(y.a/(y.p+y.a)*100)+'% no período'});});
-  return{de,ate,turnos,tk,porT,sem,dias,tot,diasTrab,bateu,melhor,pior,bufIni,bufFim,metaRef,media:diasTrab?Math.round(tot.prod/diasTrab):0,alertas};
+  return{de,ate,turnos,tk,porT,sem,dias,tot,diasTrab,bateu,melhor,pior,bufFim,metaRef,media:diasTrab?Math.round(tot.prod/diasTrab):0,alertas};
 }
 function fPeriodoTxt(D){return D.de===D.ate?dateFull(D.de):fBR(D.de)+' a '+fBR(D.ate);}
 function fechIni(){if(!fechDe){fechDe=fechAte=today();}}
@@ -3842,7 +3842,7 @@ function fechRender(){
   const linhasT=D.turnos.map(t=>{const y=D.porT[t.key];const tp=y.p+y.a;return'<tr><td class="nm"><b>'+t.label+'</b><small>'+(t.horario||'')+'</small></td><td class="n g">'+fNum(y.prod)+'</td><td class="n">'+fNum(y.rec)+'</td><td class="n">'+fNum(y.env)+'</td><td class="n'+(y.desc?' r':'')+'">'+fNum(y.desc)+'</td><td class="n">'+(tp?'<b>'+y.p+'</b> pres. · <span style="color:'+(y.a?'var(--red)':'var(--text3)')+'">'+y.a+' falta(s)</span>':'<span style="color:var(--text3)">—</span>')+'</td></tr>';}).join('')+
     ((D.sem.prod||D.sem.rec||D.sem.env||D.sem.desc)?'<tr><td class="nm"><b>Sem turno</b><small>lançamento geral</small></td><td class="n g">'+fNum(D.sem.prod)+'</td><td class="n">'+fNum(D.sem.rec)+'</td><td class="n">'+fNum(D.sem.env)+'</td><td class="n">'+fNum(D.sem.desc)+'</td><td></td></tr>':'');
   const th=D.turnos.map(t=>'<th class="n">'+t.label.replace('Turno ','T.')+'</th>').join('');
-  const diasRows=D.dias.map(x=>'<tr class="'+(x.wd===0?'fe-dom':'')+'"><td class="nm"><b>'+fCurto(x.d)+'</b> <small style="display:inline">'+F_SEM[x.wd]+'</small></td>'+D.tk.map(k=>'<td class="n">'+(x.pt[k].prod?fNum(x.pt[k].prod):'<span style="color:var(--text3)">–</span>')+'</td>').join('')+'<td class="n g"><b>'+fNum(x.t.prod)+'</b></td><td class="n">'+fNum(x.t.rec)+'</td><td class="n">'+fNum(x.t.env)+'</td><td class="n'+(x.t.desc?' r':'')+'">'+fNum(x.t.desc)+'</td><td class="n">'+(x.buf>=0?'+':'')+fNum(x.buf)+'</td><td class="n" style="color:'+(x.t.prod?(x.pct>=100?'var(--green)':x.pct>=80?'var(--warn)':'var(--red)'):'var(--text3)')+'">'+(x.t.prod?x.pct+'%':'–')+'</td></tr>').join('');
+  const diasRows=D.dias.map(x=>'<tr class="'+(x.wd===0?'fe-dom':'')+'"><td class="nm"><b>'+fCurto(x.d)+'</b> <small style="display:inline">'+F_SEM[x.wd]+'</small></td>'+D.tk.map(k=>'<td class="n">'+(x.pt[k].prod?fNum(x.pt[k].prod):'<span style="color:var(--text3)">–</span>')+'</td>').join('')+'<td class="n g"><b>'+fNum(x.t.prod)+'</b></td><td class="n">'+fNum(x.t.rec)+'</td><td class="n">'+fNum(x.t.env)+'</td><td class="n'+(x.t.desc?' r':'')+'">'+fNum(x.t.desc)+'</td><td class="n" style="color:'+(x.t.prod?(x.pct>=100?'var(--green)':x.pct>=80?'var(--warn)':'var(--red)'):'var(--text3)')+'">'+(x.t.prod?x.pct+'%':'–')+'</td></tr>').join('');
   const grafico=D.dias.map(x=>'<div class="fe-bar" title="'+fCurto(x.d)+': '+fNum(x.t.prod)+'"><i style="height:'+Math.max(x.t.prod?4:1,Math.round(x.t.prod/maxBar*100))+'%;background:'+(x.t.prod>=META_DIARIA?'var(--green)':x.t.prod>0?'var(--cyan)':'rgba(255,255,255,.12)')+'"></i>'+(D.dias.length<=31?'<span>'+(+x.d.slice(8,10))+'</span>':'')+'</div>').join('');
   const alertasHtml=D.alertas.length?D.alertas.map(a=>'<div class="fe-al fe-'+a.k+'"><i class="ti ti-'+(a.k==='info'?'info-circle':'alert-triangle')+'"></i>'+a.t+'</div>').join(''):'<div class="fe-al fe-ok"><i class="ti ti-circle-check"></i>Tudo em ordem no período</div>';
   const ativo=(a,b)=>fechDe===a&&fechAte===b?' active':'';
@@ -3852,11 +3852,11 @@ function fechRender(){
    '<div class="fe-nav" style="margin-top:-4px">'+chip('hoje','Hoje')+chip('ontem','Ontem')+chip('7d','Últimos 7 dias')+chip('mes','Mês atual')+chip('ant','Mês anterior')+'</div>'+
    '<div class="fe-card">'+
     '<div class="fe-head"><div><div class="fe-un">FEMSA '+unitName+' · Relatório operacional</div><div class="fe-dt">'+fPeriodoTxt(D)+'</div><div class="fe-s">'+D.dias.length+' dia(s) · '+D.diasTrab+' com produção</div></div>'+(D.diasTrab?'<div class="fe-badge" style="color:'+cor+';border-color:'+cor+'">'+pct+'% da meta</div>':'')+'</div>'+
-    '<div class="fe-tiles">'+tile('Produzidos',fNum(D.tot.prod),'média '+fNum(D.media)+'/dia trabalhado',cor)+tile('Recebidos',fNum(D.tot.rec),'')+tile('Enviados',fNum(D.tot.env),'')+tile('Descarte',fNum(D.tot.desc),'',D.tot.desc?'var(--red)':'')+tile('Buffer final',(D.bufFim>=0?'+':'')+fNum(D.bufFim),'variação '+(D.bufFim-D.bufIni>=0?'+':'')+fNum(D.bufFim-D.bufIni),D.bufFim>=0?'var(--cyan)':'var(--red)')+'</div>'+
+    '<div class="fe-tiles">'+tile('Produzidos',fNum(D.tot.prod),'média '+fNum(D.media)+'/dia trabalhado',cor)+tile('Recebidos',fNum(D.tot.rec),'')+tile('Enviados',fNum(D.tot.env),'')+tile('Descarte',fNum(D.tot.desc),'',D.tot.desc?'var(--red)':'')+tile('Buffer atual',(D.bufFim>=0?'+':'')+fNum(D.bufFim),'estoque neste momento',D.bufFim>=0?'var(--cyan)':'var(--red)')+'</div>'+
     '<div class="fe-prog"><div style="width:'+Math.min(100,pct)+'%;background:'+cor+'"></div></div><div class="fe-progl"><span>Meta de referência '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta</span></div>'+
     '<div class="fe-sec">Produção diária <small style="font-weight:500;color:var(--text3)">· verde = meta batida</small></div><div class="fe-pulso">'+grafico+'</div>'+
     '<div class="fe-sec">Por turno (período)</div><div class="rel-wrap"><table class="rel-tbl fe-tbl"><thead><tr><th>Turno</th><th class="n">Prod.</th><th class="n">Rec.</th><th class="n">Env.</th><th class="n">Desc.</th><th class="n">Presença</th></tr></thead><tbody>'+linhasT+'</tbody><tfoot><tr><td class="nm">Total</td><td class="n g">'+fNum(D.tot.prod)+'</td><td class="n">'+fNum(D.tot.rec)+'</td><td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td></tr></tfoot></table></div>'+
-    '<div class="fe-sec">Dia a dia <small style="font-weight:500;color:var(--text3)">· produção por turno</small></div><div class="rel-wrap"><table class="rel-tbl fe-tbl fe-dia"><thead><tr><th>Dia</th>'+th+'<th class="n">Total</th><th class="n">Rec.</th><th class="n">Env.</th><th class="n">Desc.</th><th class="n">Buffer</th><th class="n">% meta</th></tr></thead><tbody>'+diasRows+'</tbody><tfoot><tr><td class="nm">Total</td>'+D.tk.map(k=>'<td class="n">'+fNum(D.porT[k].prod)+'</td>').join('')+'<td class="n g">'+fNum(D.tot.prod)+'</td><td class="n">'+fNum(D.tot.rec)+'</td><td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td><td></td></tr></tfoot></table></div>'+
+    '<div class="fe-sec">Dia a dia <small style="font-weight:500;color:var(--text3)">· produção por turno</small></div><div class="rel-wrap"><table class="rel-tbl fe-tbl fe-dia"><thead><tr><th>Dia</th>'+th+'<th class="n">Total</th><th class="n">Rec.</th><th class="n">Env.</th><th class="n">Desc.</th><th class="n">% meta</th></tr></thead><tbody>'+diasRows+'</tbody><tfoot><tr><td class="nm">Total</td>'+D.tk.map(k=>'<td class="n">'+fNum(D.porT[k].prod)+'</td>').join('')+'<td class="n g">'+fNum(D.tot.prod)+'</td><td class="n">'+fNum(D.tot.rec)+'</td><td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td></tr></tfoot></table></div>'+
     '<div class="fe-sec">Destaques</div><div class="fe-tiles fe-t3">'+tile('Melhor dia',D.melhor?fNum(D.melhor.t.prod):'—',D.melhor?fCurto(D.melhor.d)+' · '+F_SEM[D.melhor.wd]:'')+tile('Menor dia (com produção)',D.pior?fNum(D.pior.t.prod):'—',D.pior?fCurto(D.pior.d)+' · '+F_SEM[D.pior.wd]:'')+tile('Dias na meta',D.diasTrab?D.bateu+'/'+D.diasTrab:'—',D.diasTrab?fPct(D.bateu,D.diasTrab)+'% dos dias trabalhados':'')+'</div>'+
     '<div class="fe-sec">Alertas</div>'+alertasHtml+
    '</div>'+
@@ -3872,7 +3872,7 @@ function fechTexto(D){
   L.push('📦 Produzidos: *'+fNum(D.tot.prod)+'*'+(D.diasTrab?' ('+pct+'% da meta de referência '+(pct>=100?'✅':'⚠️')+')':''));
   if(D.diasTrab)L.push('   Média: '+fNum(D.media)+'/dia · '+D.bateu+' de '+D.diasTrab+' dia(s) na meta');
   L.push('🚚 Recebidos: *'+fNum(D.tot.rec)+'*','📤 Enviados: *'+fNum(D.tot.env)+'*','🗑️ Descarte: *'+fNum(D.tot.desc)+'*');
-  L.push('🧱 Buffer final: *'+(D.bufFim>=0?'+':'')+fNum(D.bufFim)+'* (variação '+(D.bufFim-D.bufIni>=0?'+':'')+fNum(D.bufFim-D.bufIni)+')','','*Por turno*');
+  L.push('🧱 Buffer atual: *'+(D.bufFim>=0?'+':'')+fNum(D.bufFim)+'*','','*Por turno*');
   D.turnos.forEach(t=>{const y=D.porT[t.key];L.push('• '+t.label+': Prod '+fNum(y.prod)+' | Rec '+fNum(y.rec)+' | Env '+fNum(y.env)+' | Desc '+fNum(y.desc)+((y.p+y.a)?' | 👥 '+y.p+' pres./'+y.a+' falta(s)':''));});
   if(D.dias.length>1&&D.dias.length<=31){L.push('','*Dia a dia (produção por turno)*');D.dias.forEach(x=>{if(!x.n)return;L.push(fCurto(x.d)+' '+F_SEM[x.wd].toLowerCase()+': *'+fNum(x.t.prod)+'* ('+D.tk.map(k=>k+' '+fNum(x.pt[k].prod)).join(' · ')+') | Rec '+fNum(x.t.rec)+' | Env '+fNum(x.t.env)+' | Desc '+fNum(x.t.desc));});}
   if(D.melhor)L.push('','🏆 Melhor dia: '+fCurto(D.melhor.d)+' — '+fNum(D.melhor.t.prod));
@@ -3892,7 +3892,7 @@ function fechExcel(){
   const pct=fPct(D.tot.prod,D.metaRef);
   const r1=[[{h:'FEMSA '+unitName.toUpperCase()+' — RELATÓRIO OPERACIONAL'}],[{s:fPeriodoTxt(D)}],[],
    [{h:'Indicador'},{h:'Valor'}],[{s:'Produzidos'},{n:D.tot.prod}],[{s:'Meta diária'},{n:META_DIARIA}],[{s:'Dias com produção'},{n:D.diasTrab}],[{s:'Meta de referência'},{n:D.metaRef}],[{s:'% da meta de referência'},{n:pct}],[{s:'Média por dia trabalhado'},{n:D.media}],[{s:'Dias que bateram a meta'},{n:D.bateu}],
-   [{s:'Recebidos'},{n:D.tot.rec}],[{s:'Enviados'},{n:D.tot.env}],[{s:'Descarte'},{n:D.tot.desc}],[{s:'Buffer no início'},{n:D.bufIni}],[{s:'Buffer no fim'},{n:D.bufFim}],[],
+   [{s:'Recebidos'},{n:D.tot.rec}],[{s:'Enviados'},{n:D.tot.env}],[{s:'Descarte'},{n:D.tot.desc}],[{s:'Buffer atual'},{n:D.bufFim}],[],
    [{h:'Turno'},{h:'Horário'},{h:'Produzidos'},{h:'Recebidos'},{h:'Enviados'},{h:'Descarte'},{h:'Presenças'},{h:'Faltas'},{h:'% absenteísmo'}]];
   D.turnos.forEach(t=>{const y=D.porT[t.key];r1.push([{s:t.label},{s:t.horario||''},{n:y.prod},{n:y.rec},{n:y.env},{n:y.desc},{n:y.p},{n:y.a},{n:fPct(y.a,y.p+y.a)}]);});
   if(D.sem.prod||D.sem.rec||D.sem.env||D.sem.desc)r1.push([{s:'Sem turno'},null,{n:D.sem.prod},{n:D.sem.rec},{n:D.sem.env},{n:D.sem.desc}]);
@@ -3901,15 +3901,15 @@ function fechExcel(){
   const s1={name:'Resumo',widths:[34,16,14,14,14,14,12,10,14],rows:r1};
   const h1=[{h:''},{h:''}],h2=[{h:'DATA'},{h:'DIA'}];
   D.turnos.forEach(t=>{h1.push({h:t.label.toUpperCase()},null,null,null);h2.push({h:'PRODUZIDOS'},{h:'RECEBIDOS'},{h:'ENVIADOS'},{h:'DESCARTE'});});
-  h1.push({h:'TOTAL DO DIA'},null,null,null,null,null);h2.push({h:'PRODUZIDOS'},{h:'RECEBIDOS'},{h:'ENVIADOS'},{h:'DESCARTE'},{h:'BUFFER'},{h:'% META'});
+  h1.push({h:'TOTAL DO DIA'},null,null,null,null);h2.push({h:'PRODUZIDOS'},{h:'RECEBIDOS'},{h:'ENVIADOS'},{h:'DESCARTE'},{h:'% META'});
   const NOMES=['DOMINGO','SEGUNDA-FEIRA','TERÇA-FEIRA','QUARTA-FEIRA','QUINTA-FEIRA','SEXTA-FEIRA','SÁBADO'];
   const r2=[h1,h2];
   D.dias.forEach(x=>{const r=[{d:fxSerial(x.d)},{s:NOMES[x.wd]}];
     D.tk.forEach(k=>{const y=x.pt[k];r.push({n:y.prod},{n:y.rec},{n:y.env},{n:y.desc});});
-    r.push({n:x.t.prod},{n:x.t.rec},{n:x.t.env},{n:x.t.desc},{n:x.buf},x.t.prod?{n:x.pct}:null);r2.push(r);});
+    r.push({n:x.t.prod},{n:x.t.rec},{n:x.t.env},{n:x.t.desc},x.t.prod?{n:x.pct}:null);r2.push(r);});
   const tr=[{h:'TOTAL'},null];D.tk.forEach(k=>{const y=D.porT[k];tr.push({t:y.prod},{t:y.rec},{t:y.env},{t:y.desc});});
-  tr.push({t:D.tot.prod},{t:D.tot.rec},{t:D.tot.env},{t:D.tot.desc},null,null);r2.push(tr);
-  const s2={name:'Dia a dia',freeze:[2,2],widths:[12,18].concat(D.tk.flatMap(()=>[13,13,13,13])).concat([14,13,13,13,12,10]),rows:r2};
+  tr.push({t:D.tot.prod},{t:D.tot.rec},{t:D.tot.env},{t:D.tot.desc},null);r2.push(tr);
+  const s2={name:'Dia a dia',freeze:[2,2],widths:[12,18].concat(D.tk.flatMap(()=>[13,13,13,13])).concat([14,13,13,13,10]),rows:r2};
   fechBaixar(fxXlsxMulti([s1,s2]),'relatorio_'+unitName.toLowerCase()+'_'+D.de+(D.de!==D.ate?'_a_'+D.ate:'')+'.xlsx');
   showToast('Excel gerado!','ok');
 }
@@ -3939,7 +3939,7 @@ function fechPDF(){
   const maxT=Math.max(1,...D.tk.map(k=>D.porT[k].prod));
   const trT=D.turnos.map(t=>{const y=D.porT[t.key],tp=y.p+y.a;return'<tr><td><b>'+esc(t.label)+'</b><small>'+esc(t.horario||'')+'</small></td><td class="n"><b>'+fNum(y.prod)+'</b><div class="mb"><i style="width:'+Math.round(y.prod/maxT*100)+'%"></i></div></td><td class="n">'+fNum(y.rec)+'</td><td class="n">'+fNum(y.env)+'</td><td class="n">'+fNum(y.desc)+'</td><td class="n">'+(tp?y.p+' pres. · '+y.a+' falta(s) <small>('+fPct(y.a,tp)+'%)</small>':'—')+'</td></tr>';}).join('');
   const th=D.turnos.map(t=>'<th class="n">'+esc(t.label.replace('Turno ','T. '))+'</th>').join('');
-  const trD=D.dias.map(x=>'<tr'+(x.wd===0?' class="dom"':'')+'><td><b>'+fCurto(x.d)+'</b> <small>'+F_SEM[x.wd]+'</small></td>'+D.tk.map(k=>'<td class="n">'+(x.pt[k].prod?fNum(x.pt[k].prod):'–')+'</td>').join('')+'<td class="n"><b>'+fNum(x.t.prod)+'</b></td><td class="n">'+fNum(x.t.rec)+'</td><td class="n">'+fNum(x.t.env)+'</td><td class="n">'+fNum(x.t.desc)+'</td><td class="n">'+(x.buf>=0?'+':'')+fNum(x.buf)+'</td><td class="n" style="color:'+(x.t.prod?(x.pct>=100?'#00e5a0':x.pct>=80?'#f59e0b':'#ff4d6a'):'#4a6070')+';font-weight:700">'+(x.t.prod?x.pct+'%':'–')+'</td></tr>').join('');
+  const trD=D.dias.map(x=>'<tr'+(x.wd===0?' class="dom"':'')+'><td><b>'+fCurto(x.d)+'</b> <small>'+F_SEM[x.wd]+'</small></td>'+D.tk.map(k=>'<td class="n">'+(x.pt[k].prod?fNum(x.pt[k].prod):'–')+'</td>').join('')+'<td class="n"><b>'+fNum(x.t.prod)+'</b></td><td class="n">'+fNum(x.t.rec)+'</td><td class="n">'+fNum(x.t.env)+'</td><td class="n">'+fNum(x.t.desc)+'</td><td class="n" style="color:'+(x.t.prod?(x.pct>=100?'#00e5a0':x.pct>=80?'#f59e0b':'#ff4d6a'):'#4a6070')+';font-weight:700">'+(x.t.prod?x.pct+'%':'–')+'</td></tr>').join('');
   const css='@page{size:A4 landscape;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{background:#090e13}body{font-family:"Segoe UI",Arial,sans-serif;color:#fff;margin:0;padding:10mm;font-size:12px;background-image:radial-gradient(ellipse 60% 50% at 0% 40%,rgba(0,40,80,.55) 0%,transparent 70%)}'+
    '.hero{background:linear-gradient(120deg,#002a66,#003B8E 55%,#0d6efd);color:#fff;border-radius:14px;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border:1px solid rgba(255,255,255,.12)}.hero .u{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.8;font-weight:700}.hero h1{font-size:25px;margin:4px 0 2px}.hero .p{font-size:14px;opacity:.9}'+
    '.ring{text-align:center;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.55);border-radius:14px;padding:10px 20px}.ring b{font-size:30px;display:block;line-height:1}.ring span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.85}'+
@@ -3951,13 +3951,13 @@ function fechPDF(){
    '.ft{margin-top:14px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1);font-size:9px;color:#4a6070;display:flex;justify-content:space-between}';
   const html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório '+esc(unitName)+' '+D.de+(D.de!==D.ate?' a '+D.ate:'')+'</title><style>'+css+'</style></head><body>'+
    '<div class="hero"><div><div class="u">FEMSA '+esc(unitName)+' · Relatório operacional</div><h1>'+esc(fPeriodoTxt(D))+'</h1><div class="p">'+D.dias.length+' dia(s) no período · '+D.diasTrab+' com produção</div></div>'+(D.diasTrab?'<div class="ring"><b>'+pct+'%</b><span>da meta ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span></div>':'')+'</div>'+
-   '<div class="ks">'+kp('Produzidos',fNum(D.tot.prod),'média '+fNum(D.media)+'/dia trabalhado',cor,'#1d4ed8')+kp('Recebidos',fNum(D.tot.rec),'','','#6366f1')+kp('Enviados',fNum(D.tot.env),'','','#10b981')+kp('Descarte',fNum(D.tot.desc),'',D.tot.desc?'#ff4d6a':'','#ff4d6a')+kp('Buffer final',(D.bufFim>=0?'+':'')+fNum(D.bufFim),'variação '+(D.bufFim-D.bufIni>=0?'+':'')+fNum(D.bufFim-D.bufIni),D.bufFim>=0?'#60a5fa':'#ff4d6a','#f59e0b')+'</div>'+
+   '<div class="ks">'+kp('Produzidos',fNum(D.tot.prod),'média '+fNum(D.media)+'/dia trabalhado',cor,'#1d4ed8')+kp('Recebidos',fNum(D.tot.rec),'','','#6366f1')+kp('Enviados',fNum(D.tot.env),'','','#10b981')+kp('Descarte',fNum(D.tot.desc),'',D.tot.desc?'#ff4d6a':'','#ff4d6a')+kp('Buffer atual',(D.bufFim>=0?'+':'')+fNum(D.bufFim),'estoque neste momento',D.bufFim>=0?'#60a5fa':'#ff4d6a','#f59e0b')+'</div>'+
    '<div class="prog"><i></i></div><div class="pl"><span>Meta de referência: '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta diária</span></div>'+
    '<h2>Produção diária por turno</h2><div class="leg">'+legenda+'<span><i style="background:#dc2626"></i>meta diária</span></div>'+svg+
    '<div class="cols"><div><h2>Por turno</h2><table><thead><tr><th>Turno</th><th class="n">Produzidos</th><th class="n">Rec.</th><th class="n">Env.</th><th class="n">Desc.</th><th class="n">Presença</th></tr></thead><tbody>'+trT+'</tbody><tfoot><tr><td>Total</td><td class="n">'+fNum(D.tot.prod)+'</td><td class="n">'+fNum(D.tot.rec)+'</td><td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td></tr></tfoot></table></div>'+
    '<div><h2>Destaques e alertas</h2>'+(D.melhor?'<div class="al ok">🏆 Melhor dia: <b>'+fCurto(D.melhor.d)+' ('+F_SEM[D.melhor.wd]+')</b> — '+fNum(D.melhor.t.prod)+'</div>':'')+(D.pior&&D.dias.length>1?'<div class="al nt">Menor dia com produção: <b>'+fCurto(D.pior.d)+'</b> — '+fNum(D.pior.t.prod)+'</div>':'')+(D.alertas.length?D.alertas.map(a=>'<div class="al">⚠ '+esc(a.t)+'</div>').join(''):'<div class="al ok">Tudo em ordem no período</div>')+'</div></div>'+
-   '<h2 style="page-break-before:'+(D.dias.length>6?'always':'auto')+'">Dia a dia</h2><table><thead><tr><th>Dia</th>'+th+'<th class="n">Total</th><th class="n">Rec.</th><th class="n">Env.</th><th class="n">Desc.</th><th class="n">Buffer</th><th class="n">% meta</th></tr></thead><tbody>'+trD+'</tbody><tfoot><tr><td>Total</td>'+D.tk.map(k=>'<td class="n">'+fNum(D.porT[k].prod)+'</td>').join('')+'<td class="n">'+fNum(D.tot.prod)+'</td><td class="n">'+fNum(D.tot.rec)+'</td><td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td><td></td></tr></tfoot></table>'+
-   '<div class="ft"><span>Meta diária de referência: '+fNum(META_DIARIA)+' paletes · Buffer = estoque acumulado ao fim de cada dia</span><span>Gerado em '+new Date().toLocaleString('pt-BR')+' por '+esc(currentUser?currentUser.user:'')+'</span></div></body></html>';
+   '<h2 style="page-break-before:'+(D.dias.length>6?'always':'auto')+'">Dia a dia</h2><table><thead><tr><th>Dia</th>'+th+'<th class="n">Total</th><th class="n">Rec.</th><th class="n">Env.</th><th class="n">Desc.</th><th class="n">% meta</th></tr></thead><tbody>'+trD+'</tbody><tfoot><tr><td>Total</td>'+D.tk.map(k=>'<td class="n">'+fNum(D.porT[k].prod)+'</td>').join('')+'<td class="n">'+fNum(D.tot.prod)+'</td><td class="n">'+fNum(D.tot.rec)+'</td><td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td></tr></tfoot></table>'+
+   '<div class="ft"><span>Meta diária de referência: '+fNum(META_DIARIA)+' paletes</span><span>Gerado em '+new Date().toLocaleString('pt-BR')+' por '+esc(currentUser?currentUser.user:'')+'</span></div></body></html>';
   const w=window.open('','_blank');if(!w){showToast('Libere pop-ups para gerar o PDF.','warn');return;}
   w.document.write(html);w.document.close();setTimeout(()=>{try{w.print();}catch(e){}},600);
 }

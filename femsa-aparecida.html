@@ -3778,6 +3778,9 @@ function fBR(d){return d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4);}
 function fCurto(d){return d.slice(8,10)+'/'+d.slice(5,7);}
 function fWd(d){return new Date(d+'T12:00').getDay();}
 function fPct(a,b){return b>0?Math.round(a/b*100):0;}
+function fDiasUteis(de,ate){let n=0;for(let c=de,g=0;c<=ate&&g++<400;c=fAddDias(c,1))if(fWd(c)!==0)n++;return n;}
+function cicloDe(d){const y=+d.slice(0,4),m=+d.slice(5,7);return{de:d.slice(0,8)+'01',ate:d.slice(0,8)+String(new Date(y,m,0).getDate()).padStart(2,'0')};}
+function fMetaMensal(ci){return getMetaMensal();}
 function fechDados(de,ate){
   if(de>ate){const t=de;de=ate;ate=t;}
   let turnos=fTurnos();
@@ -3815,7 +3818,13 @@ function fechDados(de,ate){
   if(bufFim<0)alertas.push({k:'red',t:'Buffer atual negativo ('+fNum(bufFim)+')'});
   if(semMov)alertas.push({k:'info',t:semMov+' dia(s) útil(eis) (seg–sáb) sem nenhuma movimentação lançada'});
   turnos.forEach(t=>{const y=porT[t.key];if(y.p+y.a>0&&y.a/(y.p+y.a)>=0.2)alertas.push({k:'red',t:t.label+': absenteísmo de '+Math.round(y.a/(y.p+y.a)*100)+'% no período'});});
-  return{de,ate,turnos,tk,porT,sem,dias,tot,diasTrab,bateu,melhor,pior,bufFim,metaRef,media:diasTrab?Math.round(tot.prod/diasTrab):0,alertas};
+  const ci=cicloDe(ate);let acum=0;
+  for(let c=ci.de,g=0;c<=ate&&c<=ci.ate&&g++<400;c=fAddDias(c,1))(state.movimentos[c]||[]).forEach(m=>{acum+=m.prod||0;});
+  const metaM=fMetaMensal(ci),falta=Math.max(0,metaM-acum);
+  let restDias=0;{const ini=ate===today()?ate:fAddDias(ate,1);for(let c=ini,g=0;c<=ci.ate&&g++<400;c=fAddDias(c,1))if(fWd(c)!==0)restDias++;}
+  const ritmo=restDias>0?Math.round(falta/restDias):0,nProd=(typeof calcMetaIndividual==='function'?calcMetaIndividual().qtd:0)||0;
+  const mensal={ci,acum,metaM,falta,restDias,ritmo,ritmoPP:nProd>0?Math.round(ritmo/nProd):0,metaDia:Math.round(metaM/Math.max(1,fDiasUteis(ci.de,ci.ate))),pctAting:metaM>0?acum/metaM*100:0};
+  return{mensal,de,ate,turnos,tk,porT,sem,dias,tot,diasTrab,bateu,melhor,pior,bufFim,metaRef,media:diasTrab?Math.round(tot.prod/diasTrab):0,alertas};
 }
 function fPeriodoTxt(D){return D.de===D.ate?dateFull(D.de):fBR(D.de)+' a '+fBR(D.ate);}
 function fEnv(s){return FECH_CFG.env+(s?'':'');}
@@ -3867,6 +3876,10 @@ function fechRender(){
    '<div class="fe-card">'+
     '<div class="fe-head"><div><div class="fe-un">FEMSA '+unitName+' · Relatório operacional</div><div class="fe-dt">'+fPeriodoTxt(D)+'</div><div class="fe-s">'+D.dias.length+' dia(s) · '+D.diasTrab+' com produção</div></div>'+(D.diasTrab?'<div class="fe-badge" style="color:'+cor+';border-color:'+cor+'">'+pct+'% da meta</div>':'')+'</div>'+
     '<div class="fe-tiles">'+tile('Produzidos',fNum(D.tot.prod),(C.pbr?'PBR1 '+fNum(D.tot.pbr1)+' · PBR2 '+fNum(D.tot.pbr2)+' · ':'')+'média '+fNum(D.media)+'/dia',cor)+tile('Recebidos',fNum(D.tot.rec),'')+tile(C.env,fNum(D.tot.env),'')+tile('Descarte',fNum(D.tot.desc),'',D.tot.desc?'var(--red)':'')+tile('Buffer atual',(D.bufFim>=0?'+':'')+fNum(D.bufFim),'estoque neste momento',D.bufFim>=0?'var(--cyan)':'var(--red)')+'</div>'+
+    (function(){const M=D.mensal,pa=M.pctAting,cm=pa>=100?'var(--green)':pa>=80?'var(--warn)':'var(--red)';
+      return'<div class="fe-tiles fe-t3">'+tile('Falta p/ meta mensal',fNum(M.falta),(100-Math.min(100,pa)).toFixed(1)+'% restante · '+fCurto(M.ci.de)+' a '+fCurto(M.ci.ate),M.falta>0?'var(--red)':'var(--green)')+
+       tile('Ritmo diário necessário',M.restDias?fNum(M.ritmo):'—','vs. meta diária de '+fNum(M.metaDia)+(M.ritmoPP?' · '+fNum(M.ritmoPP)+'/pessoa/dia':'')+(M.restDias?' · '+M.restDias+' dia(s) úteis':''),M.restDias&&M.ritmo>M.metaDia?'var(--red)':'var(--green)')+
+       tile('% meta mensal atingida',pa.toFixed(0)+'%','<div class="fe-prog" style="margin:6px 0 0"><div style="width:'+Math.min(100,pa)+'%;background:'+cm+'"></div></div>',cm)+'</div>';})()+
     '<div class="fe-prog"><div style="width:'+Math.min(100,pct)+'%;background:'+cor+'"></div></div><div class="fe-progl"><span>Meta de referência '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta</span></div>'+
     '<div class="fe-sec">Produção diária <small style="font-weight:500;color:var(--text3)">· verde = meta batida</small></div><div class="fe-pulso">'+grafico+'</div>'+
     turnoTbl+
@@ -3887,6 +3900,7 @@ function fechTexto(D){
   if(C.pbr)L.push('   PBR1 '+fNum(D.tot.pbr1)+' · PBR2 '+fNum(D.tot.pbr2));
   if(D.diasTrab)L.push('   Média: '+fNum(D.media)+'/dia · '+D.bateu+' de '+D.diasTrab+' dia(s) na meta');
   L.push('🚚 Recebidos: *'+fNum(D.tot.rec)+'*','📤 '+C.env+': *'+fNum(D.tot.env)+'*','🗑️ Descarte: *'+fNum(D.tot.desc)+'*','🧱 Buffer atual: *'+(D.bufFim>=0?'+':'')+fNum(D.bufFim)+'*','');
+  {const M=D.mensal;L.splice(L.length-1,0,'🎯 Meta mensal ('+fCurto(M.ci.de)+' a '+fCurto(M.ci.ate)+'): *'+M.pctAting.toFixed(0)+'%* atingida · faltam *'+fNum(M.falta)+'*'+(M.restDias?' · ritmo necessário *'+fNum(M.ritmo)+'*/dia (meta diária '+fNum(M.metaDia)+')':''));}
   if(C.porTurno){L.push('*Por turno*');D.turnos.forEach(t=>{const y=D.porT[t.key];L.push('• '+t.label+': Prod '+fNum(y.prod)+' | Rec '+fNum(y.rec)+' | '+C.envC+' '+fNum(y.env)+' | Desc '+fNum(y.desc)+((y.p+y.a)?' | 👥 '+y.p+' pres./'+y.a+' falta(s)':''));});}
   else{const ps=D.turnos.filter(t=>D.porT[t.key].p+D.porT[t.key].a>0);if(ps.length){L.push('*Presença por turno*');ps.forEach(t=>{const y=D.porT[t.key];L.push('• '+t.label+': 👥 '+y.p+' pres./'+y.a+' falta(s)');});}}
   if(D.dias.length>1&&D.dias.length<=31){L.push('','*Dia a dia*');D.dias.forEach(x=>{if(!x.n)return;
@@ -3911,7 +3925,7 @@ function fechExcel(){
    [{h:'Indicador'},{h:'Valor'}],[{s:'Produzidos'},{n:D.tot.prod}]];
   if(C.pbr)r1.push([{s:'PBR1'},{n:D.tot.pbr1}],[{s:'PBR2'},{n:D.tot.pbr2}]);
   r1.push([{s:'Meta diária'},{n:META_DIARIA}],[{s:'Dias com produção'},{n:D.diasTrab}],[{s:'Meta de referência'},{n:D.metaRef}],[{s:'% da meta de referência'},{n:pct}],[{s:'Média por dia trabalhado'},{n:D.media}],[{s:'Dias que bateram a meta'},{n:D.bateu}],
-   [{s:'Recebidos'},{n:D.tot.rec}],[{s:C.env},{n:D.tot.env}],[{s:'Descarte'},{n:D.tot.desc}],[{s:'Buffer atual'},{n:D.bufFim}],[]);
+   [{s:'Recebidos'},{n:D.tot.rec}],[{s:C.env},{n:D.tot.env}],[{s:'Descarte'},{n:D.tot.desc}],[{s:'Buffer atual'},{n:D.bufFim}],[{s:'Meta mensal ('+D.mensal.ci.de+' a '+D.mensal.ci.ate+')'},{n:D.mensal.metaM}],[{s:'Acumulado no ciclo'},{n:D.mensal.acum}],[{s:'Falta p/ meta mensal'},{n:D.mensal.falta}],[{s:'Ritmo diário necessário'},{n:D.mensal.ritmo}],[{s:'% meta mensal atingida'},{n:Math.round(D.mensal.pctAting)}],[]);
   if(C.porTurno){
     r1.push([{h:'Turno'},{h:'Horário'},{h:'Produzidos'},{h:'Recebidos'},{h:C.env},{h:'Descarte'},{h:'Presenças'},{h:'Faltas'},{h:'% absenteísmo'}]);
     D.turnos.forEach(t=>{const y=D.porT[t.key];r1.push([{s:t.label},{s:t.horario},{n:y.prod},{n:y.rec},{n:y.env},{n:y.desc},{n:y.p},{n:y.a},{n:fPct(y.a,y.p+y.a)}]);});
@@ -3982,7 +3996,7 @@ function fechPDF(){
   const css='@page{size:A4 landscape;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{background:#090e13}body{font-family:"Segoe UI",Arial,sans-serif;color:#fff;margin:0;padding:10mm;font-size:12px;background-image:radial-gradient(ellipse 60% 50% at 0% 40%,rgba(0,40,80,.55) 0%,transparent 70%)}'+
    '.hero{background:linear-gradient(120deg,#002a66,#003B8E 55%,#0d6efd);color:#fff;border-radius:14px;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border:1px solid rgba(255,255,255,.12)}.hero .u{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.8;font-weight:700}.hero h1{font-size:25px;margin:4px 0 2px}.hero .p{font-size:14px;opacity:.9}'+
    '.ring{text-align:center;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.55);border-radius:14px;padding:10px 20px}.ring b{font-size:30px;display:block;line-height:1}.ring span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.85}'+
-   '.ks{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}.k{border:1px solid rgba(255,255,255,.08);border-top:4px solid #1d4ed8;border-radius:10px;padding:10px 12px;background:#0f1923}.kl{font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:#7a92a8;font-weight:700}.kv{font-size:24px;font-weight:800;margin-top:2px;color:#fff}.k .ks{display:block;font-size:10px;color:#7a92a8;margin-top:2px}'+
+   '.ks3{grid-template-columns:repeat(3,1fr)!important}.ks{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}.k{border:1px solid rgba(255,255,255,.08);border-top:4px solid #1d4ed8;border-radius:10px;padding:10px 12px;background:#0f1923}.kl{font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:#7a92a8;font-weight:700}.kv{font-size:24px;font-weight:800;margin-top:2px;color:#fff}.k .ks{display:block;font-size:10px;color:#7a92a8;margin-top:2px}'+
    '.prog{height:9px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden}.prog i{display:block;height:100%;background:'+cor+';width:'+Math.min(100,pct)+'%}.pl{display:flex;justify-content:space-between;font-size:10px;color:#7a92a8;margin:4px 0 12px}'+
    'h2{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:#60a5fa;margin:14px 0 6px;padding-bottom:4px;border-bottom:2px solid rgba(96,165,250,.25)}.leg{display:flex;gap:14px;font-size:10px;color:#7a92a8;margin:2px 0 4px}.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}'+
    'table{width:100%;border-collapse:collapse;font-size:11px;background:#0f1923;border-radius:8px;overflow:hidden}thead{display:table-header-group}th{background:#003B8E;color:#fff;text-align:left;padding:7px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.05em}th.n{text-align:right}td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06);color:#fff}td.n{text-align:right;font-variant-numeric:tabular-nums}tbody tr:nth-child(even){background:#141f2c}tr.dom{background:rgba(255,77,106,.10)!important}tr{page-break-inside:avoid}tfoot td{background:#12305e;font-weight:800;border-top:2px solid #1d4ed8}small{color:#7a92a8;font-size:9px}td small{display:block}tr td small{display:inline}'+
@@ -3992,6 +4006,10 @@ function fechPDF(){
   const html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório '+esc(unitName)+' '+D.de+(D.de!==D.ate?' a '+D.ate:'')+'</title><style>'+css+'</style></head><body>'+
    '<div class="hero"><div><div class="u">FEMSA '+esc(unitName)+' · Relatório operacional</div><h1>'+esc(fPeriodoTxt(D))+'</h1><div class="p">'+D.dias.length+' dia(s) no período · '+D.diasTrab+' com produção</div></div>'+(D.diasTrab?'<div class="ring"><b>'+pct+'%</b><span>da meta ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span></div>':'')+'</div>'+
    '<div class="ks">'+kp('Produzidos',fNum(D.tot.prod),sub1,cor,'#1d4ed8')+kp('Recebidos',fNum(D.tot.rec),'','','#6366f1')+kp(C.env,fNum(D.tot.env),'','','#10b981')+kp('Descarte',fNum(D.tot.desc),'',D.tot.desc?'#ff4d6a':'','#ff4d6a')+kp('Buffer atual',(D.bufFim>=0?'+':'')+fNum(D.bufFim),'estoque neste momento',D.bufFim>=0?'#60a5fa':'#ff4d6a','#f59e0b')+'</div>'+
+   (function(){const M=D.mensal,pa=M.pctAting,cm=pa>=100?'#00e5a0':pa>=80?'#f59e0b':'#ff4d6a';
+     return'<div class="ks ks3">'+kp('Falta p/ meta mensal',fNum(M.falta),(100-Math.min(100,pa)).toFixed(1)+'% restante · '+fCurto(M.ci.de)+' a '+fCurto(M.ci.ate),M.falta>0?'#ff4d6a':'#00e5a0','#ff4d6a')+
+      kp('Ritmo diário necessário',M.restDias?fNum(M.ritmo):'—','vs. meta diária de '+fNum(M.metaDia)+(M.ritmoPP?' · '+fNum(M.ritmoPP)+'/pessoa/dia':''),M.restDias&&M.ritmo>M.metaDia?'#ff4d6a':'#00e5a0','#f59e0b')+
+      kp('% meta mensal atingida',pa.toFixed(0)+'%','<div style="height:6px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin-top:4px"><i style="display:block;height:100%;width:'+Math.min(100,pa)+'%;background:'+cm+'"></i></div>',cm,'#10b981')+'</div>';})()+
    '<div class="prog"><i></i></div><div class="pl"><span>Meta de referência: '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta diária</span></div>'+
    '<h2>Produção diária</h2><div class="leg">'+legenda+'<span><i style="background:#ff4d6a"></i>meta diária ('+fNum(META_DIARIA)+')</span></div>'+svg+
    '<div class="cols"><div>'+blocoTurno+'</div>'+

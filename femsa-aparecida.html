@@ -402,6 +402,39 @@ img,canvas,svg{max-width:100%}
 .pr-seg button.on-H{background:rgba(251,146,60,.10);border-color:rgba(251,146,60,.4);color:#fb923c}
 .pr-fixo{font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px;border:1px solid var(--border);color:var(--text2)}
 @media(max-width:600px){.pr-seg{width:100%}.pr-seg button{flex:1}}
+
+.fe-nav{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.fe-nav input[type=date]{background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;font-weight:600;color-scheme:dark}
+.fe-card{background:linear-gradient(180deg,var(--bg2),var(--bg3));border:1px solid var(--cyan-bd);border-radius:16px;padding:20px;margin-bottom:14px;box-shadow:0 8px 40px rgba(0,0,0,.35)}
+.fe-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.fe-un{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan)}
+.fe-dt{font-size:20px;font-weight:700;color:var(--text);margin-top:4px}
+.fe-badge{font-size:15px;font-weight:800;border:2px solid;border-radius:999px;padding:6px 14px}
+.fe-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}
+.fe-t3{grid-template-columns:repeat(3,1fr);margin-top:12px;margin-bottom:0}
+.fe-tile{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:12px}
+.fe-l{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.fe-v{font-size:24px;font-weight:800;color:var(--text);margin-top:3px;line-height:1.1}
+.fe-s{font-size:11px;color:var(--text2);margin-top:3px}
+.fe-prog{height:10px;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden}.fe-prog div{height:100%;border-radius:6px;transition:width .5s}
+.fe-progl{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin:5px 0 4px}
+.fe-sec{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);margin:18px 0 8px}
+.fe-card .rel-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.fe-tbl{min-width:430px}.fe-tbl td small{display:block;font-size:10px;color:var(--text3)}
+.fe-al{display:flex;gap:8px;align-items:center;font-size:13px;padding:8px 11px;border-radius:9px;margin-bottom:6px;border:1px solid}
+.fe-warn{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}.fe-red{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}
+.fe-info{background:var(--cyan-bg);border-color:var(--cyan-bd);color:var(--cyan)}.fe-ok{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}
+.fe-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.fe-top{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;color:var(--text)}
+.fe-top b{margin-left:auto}.fe-tn{flex:1;min-width:0}.fe-tn small{display:block;font-size:11px;color:var(--text3)}.fe-medal{font-size:18px;width:24px;text-align:center}
+.fe-pulso{display:flex;gap:3px;align-items:flex-end;height:90px;padding-bottom:16px}
+.fe-bar{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative;cursor:pointer;border-radius:4px}
+.fe-bar i{display:block;width:100%;border-radius:3px 3px 0 0;min-height:1px}
+.fe-bar span{position:absolute;bottom:-15px;font-size:8px;color:var(--text3)}
+.fe-bar.sel{background:rgba(34,211,238,.12);outline:1px solid var(--cyan)}.fe-bar.fut{opacity:.35}
+.fe-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-bottom:10px}
+.fe-prev{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:20px}.fe-prev summary{cursor:pointer;font-size:13px;color:var(--text2);font-weight:600}
+.fe-prev pre{white-space:pre-wrap;font-family:inherit;font-size:13px;color:var(--text);margin:10px 0 0;line-height:1.5}
+@media(max-width:700px){.fe-tiles{grid-template-columns:repeat(2,1fr)}.fe-t3{grid-template-columns:1fr}.fe-cols{grid-template-columns:1fr}.fe-v{font-size:21px}.fe-card{padding:14px}}
 </style>
 </head>
 
@@ -482,11 +515,13 @@ img,canvas,svg{max-width:100%}
             <button class="vtog" onclick="setDV('mes')">Mês</button>
             <button class="vtog" onclick="setDV('log')">Log</button>
             <button class="vtog" onclick="setDV('rel')">Relatório</button>
+            <button class="vtog" onclick="setDV('fech')">Fechamento</button>
           </div>
           <div id="dv-dia"><div class="day-btns" id="day-btns"></div><div id="dia-content"><div class="empty"><i class="ti ti-refresh" style="animation:spin .8s linear infinite"></i><h3>Buscando dados...</h3><p>Aguarde a sincronização</p></div></div></div>
           <div id="dv-mes" style="display:none"><div id="mes-content"></div></div>
           <div id="dv-log" style="display:none"><div id="log-content"></div></div>
           <div id="dv-rel" style="display:none"><div id="rel-content"></div></div>
+          <div id="dv-fech" style="display:none"><div id="fech-content"></div></div>
         </div>
         <div class="screen" id="sc-presenca">
           <!-- Toggle Hoje / Histórico -->
@@ -1507,6 +1542,8 @@ function setDV(v){
   document.getElementById('dv-mes').style.display=v==='mes'?'block':'none';
   document.getElementById('dv-log').style.display=v==='log'?'block':'none';
   document.getElementById('dv-rel').style.display=v==='rel'?'block':'none';
+  document.getElementById('dv-fech').style.display=v==='fech'?'block':'none';
+  if(v==='fech')fechRender();
   if(v==='mes')renderMes();if(v==='log')renderLog();if(v==='rel')renderRelMensal();
 }
 function renderDash(){
@@ -3686,6 +3723,254 @@ async function salvarPresRetro(){
   new MutationObserver(function(){ if(!busy){busy=true;requestAnimationFrame(aplicar);} }).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['onclick','onchange','oninput','onblur']});
   setTimeout(aplicar,300);
 })();
+</script>
+
+<script>
+// ===== FECHAMENTO DIÁRIO — relatório por data para envio =====
+function fxCrc32(u8){let c,crc=-1;if(!fxCrc32.t){fxCrc32.t=[];for(let n=0;n<256;n++){c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;fxCrc32.t[n]=c;}}for(let i=0;i<u8.length;i++)crc=fxCrc32.t[(crc^u8[i])&255]^(crc>>>8);return(crc^-1)>>>0;}
+function fxZip(files){
+  const enc=new TextEncoder(),parts=[],cen=[];let off=0;
+  const d=new Date(),dt=((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate(),tm=(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1);
+  const u16=(v)=>[v&255,(v>>8)&255],u32=(v)=>[v&255,(v>>8)&255,(v>>16)&255,(v>>24)&255];
+  files.forEach(([name,txt])=>{
+    const nm=enc.encode(name),data=enc.encode(txt),crc=fxCrc32(data);
+    const lh=new Uint8Array([0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(0),...u16(tm),...u16(dt),...u32(crc),...u32(data.length),...u32(data.length),...u16(nm.length),...u16(0)]);
+    parts.push(lh,nm,data);
+    cen.push(new Uint8Array([0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(tm),...u16(dt),...u32(crc),...u32(data.length),...u32(data.length),...u16(nm.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nm);
+    off+=lh.length+nm.length+data.length;
+  });
+  let cs=0;cen.forEach(p=>cs+=p.length);
+  const end=new Uint8Array([0x50,0x4b,5,6,...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cs),...u32(off),...u16(0)]);
+  return new Blob([...parts,...cen,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function fxColNome(i){let n='';i++;while(i>0){const r=(i-1)%26;n=String.fromCharCode(65+r)+n;i=Math.floor((i-1)/26);}return n;}
+function fxXmlEsc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');}
+function fxSerial(iso){const p=iso.split('-').map(Number);return Math.round((Date.UTC(p[0],p[1]-1,p[2])-Date.UTC(1899,11,30))/864e5);}
+function fxXlsxMulti(sheets){
+  const ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+sheets.map((x,i)=>'<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('')+'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>';
+  const wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((x,i)=>'<sheet name="'+x.name+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join('')+'</sheets></workbook>';
+  const rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map((x,i)=>'<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join('')+'<Relationship Id="rId'+(sheets.length+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
+  const styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  const sheetXml=(sh)=>{
+    let x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0">'+(sh.freeze?'<pane xSplit="'+(sh.freeze[0]||0)+'" ySplit="'+(sh.freeze[1]||0)+'" topLeftCell="'+fxColNome(sh.freeze[0]||0)+((sh.freeze[1]||0)+1)+'" activePane="bottomRight" state="frozen"/>':'')+'</sheetView></sheetViews><cols>'+(sh.widths||[]).map((w,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>').join('')+'</cols><sheetData>';
+    sh.rows.forEach((row,ri)=>{x+='<row r="'+(ri+1)+'">'+row.map((c,ci)=>{
+      if(c===null||c===undefined)return'';const ref=fxColNome(ci)+(ri+1);
+      if(c.h!==undefined)return'<c r="'+ref+'" s="2" t="inlineStr"><is><t xml:space="preserve">'+fxXmlEsc(c.h)+'</t></is></c>';
+      if(c.s!==undefined)return'<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+fxXmlEsc(c.s)+'</t></is></c>';
+      if(c.d!==undefined)return'<c r="'+ref+'" s="1"><v>'+c.d+'</v></c>';
+      if(c.m!==undefined)return'<c r="'+ref+'" s="3"><v>'+c.m+'</v></c>';
+      if(c.t!==undefined)return'<c r="'+ref+'" s="2"><v>'+c.t+'</v></c>';
+      return'<c r="'+ref+'"><v>'+c.n+'</v></c>';}).join('')+'</row>';});
+    return x+'</sheetData></worksheet>';
+  };
+  const files=[['[Content_Types].xml',ct],['_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],['xl/workbook.xml',wb],['xl/_rels/workbook.xml.rels',rels],['xl/styles.xml',styles]];
+  sheets.forEach((sh,i)=>files.push(['xl/worksheets/sheet'+(i+1)+'.xml',sheetXml(sh)]));
+  return fxZip(files);
+}
+let fechDate=null;
+function fNum(v){return(v||0).toLocaleString('pt-BR');}
+function fAddDias(d,n){const p=d.split('-').map(Number);const x=new Date(p[0],p[1]-1,p[2]+n);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
+function fBufferAte(d){
+  let p=0,e=0;
+  Object.entries(state.movimentos||{}).forEach(([k,ms])=>{if(k>d)return;(ms||[]).forEach(m=>{p+=(m.prod||0);e+=(m.env||0);});});
+  return(state.bufferSaldoInicial||0)+p-e+(state.bufferAjuste||0);
+}
+function fTotDia(d){
+  const t={prod:0,rec:0,env:0,desc:0,n:0};
+  (state.movimentos[d]||[]).forEach(m=>{t.prod+=m.prod||0;t.rec+=m.rec||0;t.env+=m.env||0;t.desc+=m.desc||0;t.n++;});
+  return t;
+}
+function fechDados(d){
+  const turnos=turnosAtivos();
+  const porT={};turnos.forEach(t=>porT[t.key]={t,prod:0,rec:0,env:0,desc:0,n:0});
+  const sem={t:{key:'-',label:'Sem turno',horario:'lançamento geral'},prod:0,rec:0,env:0,desc:0,n:0};
+  (state.movimentos[d]||[]).forEach(m=>{
+    const x=(m.turno&&porT[m.turno])?porT[m.turno]:sem;
+    x.prod+=m.prod||0;x.rec+=m.rec||0;x.env+=m.env||0;x.desc+=m.desc||0;x.n++;
+  });
+  const linhas=turnos.map(t=>porT[t.key]);
+  if(sem.n)linhas.push(sem);
+  const tot=fTotDia(d);
+  const ontem=fTotDia(fAddDias(d,-1));
+  // presença
+  const pres={};
+  turnos.forEach(t=>{
+    const pt=state.presencas[d]&&state.presencas[d][t.key];
+    const r={lancado:!!(pt&&pt.presenca&&Object.keys(pt.presenca).length),p:0,a:0,outros:0,ausentes:[],total:0};
+    if(r.lancado)Object.entries(pt.presenca).forEach(([nome,st])=>{r.total++;if(st==='P')r.p++;else if(st==='A'){r.a++;r.ausentes.push(nome);}else r.outros++;});
+    pres[t.key]=r;
+  });
+  const afast=(state.afastamentos||[]).filter(a=>a.dataInicio<=d&&a.dataFim>=d);
+  // produção individual
+  const metaInd=(typeof calcMetaIndividual==='function')?calcMetaIndividual().metaPorPessoa:0;
+  const pessoas=[];
+  Object.entries((state.producaoPessoas||{})[d]||{}).forEach(([tk,dia])=>{
+    Object.entries((dia&&dia.pessoas)||{}).forEach(([nome,r])=>{if(r&&(r.prod||0)>0)pessoas.push({nome,turno:tk,prod:r.prod||0,motivo:r.motivo||''});});
+  });
+  pessoas.sort((a,b)=>b.prod-a.prod);
+  const top=pessoas.slice(0,3);
+  const abaixo=pessoas.filter(x=>x.prod<metaInd).sort((a,b)=>a.prod-b.prod);
+  // mês
+  const mes=d.slice(0,7),ano=+d.slice(0,4),mn=+d.slice(5,7);
+  const ultimo=new Date(ano,mn,0).getDate();
+  const dias=[];let acum=0,diasProd=0;
+  for(let i=1;i<=ultimo;i++){
+    const dd=mes+'-'+String(i).padStart(2,'0');
+    const tt=fTotDia(dd);const ate=dd<=d;
+    const porTurno={};turnos.forEach(t=>porTurno[t.key]=0);
+    (state.movimentos[dd]||[]).forEach(m=>{const k=(m.turno&&porTurno[m.turno]!==undefined)?m.turno:null;if(k)porTurno[k]+=m.prod||0;});
+    if(ate){acum+=tt.prod;if(tt.prod>0)diasProd++;}
+    dias.push({d:dd,i,ate,t:tt,porTurno,sel:dd===d});
+  }
+  const metaMes=getMetaMensal();
+  let restantes=0;for(let i=+d.slice(8,10)+1;i<=ultimo;i++){const w=new Date(ano,mn-1,i).getDay();if(w!==0)restantes++;}
+  const falta=Math.max(0,metaMes-acum);
+  const ritmo=restantes>0?Math.ceil(falta/restantes):0;
+  const mediaDia=diasProd?Math.round(acum/diasProd):0;
+  const buffer=fBufferAte(d);
+  // alertas
+  const alertas=[];
+  if(tot.prod<META_DIARIA&&tot.n)alertas.push({k:'warn',t:'Produção abaixo da meta do dia ('+fNum(tot.prod)+' de '+fNum(META_DIARIA)+')'});
+  if(!tot.n)alertas.push({k:'warn',t:'Nenhuma movimentação lançada neste dia'});
+  if(buffer<0)alertas.push({k:'red',t:'Buffer negativo ('+fNum(buffer)+')'});
+  if(tot.prod>0&&tot.desc/tot.prod>=0.1)alertas.push({k:'warn',t:'Descarte alto: '+Math.round(tot.desc/tot.prod*100)+'% da produção'});
+  turnos.forEach(t=>{const r=pres[t.key];if(!r.lancado&&!t.extra)alertas.push({k:'info',t:t.label+': presença não lançada'});else if(r.total&&r.a/r.total>=0.2)alertas.push({k:'red',t:t.label+': '+r.a+' ausente(s) — '+Math.round(r.a/r.total*100)+'%'});});
+  if(afast.length)alertas.push({k:'info',t:afast.length+' colaborador(es) em atestado/afastamento'});
+  return{d,turnos,linhas,tot,ontem,pres,afast,metaInd,top,abaixo,dias,acum,metaMes,restantes,ritmo,mediaDia,buffer,alertas,diasProd};
+}
+function fPct(a,b){return b>0?Math.round(a/b*100):0;}
+function fDelta(a,b){const x=a-b;return x===0?'= ontem':(x>0?'▲ +':'▼ ')+fNum(x)+' vs ontem';}
+function fechRender(){
+  const cont=document.getElementById('fech-content');if(!cont)return;
+  if(!fechDate)fechDate=today();
+  const D=fechDados(fechDate),d=fechDate,hoje=today();
+  const pct=fPct(D.tot.prod,META_DIARIA),pm=fPct(D.acum,D.metaMes);
+  const cor=pct>=100?'var(--green)':pct>=80?'var(--warn)':'var(--red)';
+  const maxBar=Math.max(1,...D.dias.map(x=>x.t.prod));
+  const tile=(l,v,sub,c)=>'<div class="fe-tile"><div class="fe-l">'+l+'</div><div class="fe-v"'+(c?' style="color:'+c+'"':'')+'>'+v+'</div>'+(sub?'<div class="fe-s">'+sub+'</div>':'')+'</div>';
+  const turnoRows=D.linhas.map(x=>{
+    const pr=D.pres[x.t.key];
+    const presTxt=!pr?'—':(pr.lancado?'<b>'+pr.p+'</b>/'+pr.total+(pr.a?' <span style="color:var(--red)">· '+pr.a+' falta(s)</span>':''):'<span style="color:var(--text3)">não lançada</span>');
+    return'<tr><td class="nm"><b>'+x.t.label+'</b><small>'+(x.t.horario||'')+'</small></td><td class="n g">'+fNum(x.prod)+'</td><td class="n">'+fNum(x.rec)+'</td><td class="n">'+fNum(x.env)+'</td><td class="n'+(x.desc?' r':'')+'">'+fNum(x.desc)+'</td><td class="n">'+presTxt+'</td></tr>';
+  }).join('');
+  const alertasHtml=D.alertas.length?D.alertas.map(a=>'<div class="fe-al fe-'+a.k+'"><i class="ti ti-'+(a.k==='info'?'info-circle':'alert-triangle')+'"></i>'+a.t+'</div>').join(''):'<div class="fe-al fe-ok"><i class="ti ti-circle-check"></i>Tudo em ordem neste dia</div>';
+  const topHtml=D.top.length?D.top.map((p,i)=>'<div class="fe-top"><span class="fe-medal">'+['🥇','🥈','🥉'][i]+'</span><span class="fe-tn">'+p.nome+'<small>'+(turnoInfo(p.turno).label||p.turno)+'</small></span><b>'+fNum(p.prod)+'</b></div>').join(''):'<div style="font-size:12px;color:var(--text3)">Sem produção individual lançada.</div>';
+  const abxHtml=D.abaixo.length?D.abaixo.slice(0,6).map(p=>'<div class="fe-top"><span class="fe-medal" style="color:var(--red)">▼</span><span class="fe-tn">'+p.nome+'<small>'+(p.motivo||'sem motivo informado')+'</small></span><b style="color:var(--red)">'+fNum(p.prod)+'</b></div>').join('')+(D.abaixo.length>6?'<div style="font-size:11px;color:var(--text3);margin-top:4px">+ '+(D.abaixo.length-6)+' abaixo da meta individual ('+D.metaInd+')</div>':''):'<div style="font-size:12px;color:var(--text3)">Ninguém abaixo da meta individual ('+D.metaInd+').</div>';
+  const pulso=D.dias.map(x=>'<div class="fe-bar'+(x.sel?' sel':'')+(x.ate?'':' fut')+'" title="'+x.i+'/'+d.slice(5,7)+': '+fNum(x.t.prod)+'" onclick="fechIr(\''+x.d+'\')"><i style="height:'+Math.max(x.t.prod?4:1,Math.round(x.t.prod/maxBar*100))+'%;background:'+(x.t.prod>=META_DIARIA?'var(--green)':x.t.prod>0?'var(--cyan)':'rgba(255,255,255,.12)')+'"></i><span>'+x.i+'</span></div>').join('');
+  cont.innerHTML=
+   '<div class="fe-nav"><button class="ds-btn" onclick="fechIr(fAddDias(fechDate,-1))" aria-label="Dia anterior"><i class="ti ti-chevron-left"></i></button>'+
+   '<input type="date" id="fech-date" value="'+d+'" max="'+hoje+'" onchange="fechIr(this.value)">'+
+   '<button class="ds-btn" onclick="fechIr(fAddDias(fechDate,1))" '+(d>=hoje?'disabled style="opacity:.35"':'')+' aria-label="Próximo dia"><i class="ti ti-chevron-right"></i></button>'+
+   '<button class="ds-btn'+(d===hoje?' active':'')+'" onclick="fechIr(today())">Hoje</button><button class="ds-btn'+(d===fAddDias(hoje,-1)?' active':'')+'" onclick="fechIr(fAddDias(today(),-1))">Ontem</button></div>'+
+   '<div class="fe-card">'+
+    '<div class="fe-head"><div><div class="fe-un">FEMSA '+unitName+' · Fechamento do dia</div><div class="fe-dt">'+dateFull(d)+'</div></div><div class="fe-badge" style="color:'+cor+';border-color:'+cor+'">'+pct+'% da meta</div></div>'+
+    '<div class="fe-tiles">'+tile('Produzidos',fNum(D.tot.prod),fDelta(D.tot.prod,D.ontem.prod),cor)+tile('Recebidos',fNum(D.tot.rec),fDelta(D.tot.rec,D.ontem.rec))+tile('Enviados',fNum(D.tot.env),fDelta(D.tot.env,D.ontem.env))+tile('Descarte',fNum(D.tot.desc),D.tot.prod?Math.round(D.tot.desc/D.tot.prod*100)+'% da produção':'',D.tot.desc?'var(--red)':'')+tile('Buffer',(D.buffer>=0?'+':'')+fNum(D.buffer),'estoque até este dia',D.buffer>=0?'var(--cyan)':'var(--red)')+'</div>'+
+    '<div class="fe-prog"><div style="width:'+Math.min(100,pct)+'%;background:'+cor+'"></div></div><div class="fe-progl"><span>Meta diária '+fNum(META_DIARIA)+'</span><span>'+(D.tot.prod>=META_DIARIA?'meta batida ✓':'faltaram '+fNum(META_DIARIA-D.tot.prod))+'</span></div>'+
+    '<div class="fe-sec">Por turno</div><div class="rel-wrap"><table class="rel-tbl fe-tbl"><thead><tr><th>Turno</th><th class="n">Prod.</th><th class="n">Rec.</th><th class="n">Env.</th><th class="n">Desc.</th><th class="n">Presença</th></tr></thead><tbody>'+turnoRows+'</tbody><tfoot><tr><td class="nm">Total</td><td class="n g">'+fNum(D.tot.prod)+'</td><td class="n">'+fNum(D.tot.rec)+'</td><td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td></tr></tfoot></table></div>'+
+    '<div class="fe-sec">Alertas</div>'+alertasHtml+
+    '<div class="fe-cols"><div><div class="fe-sec">Destaques do dia</div>'+topHtml+'</div><div><div class="fe-sec">Abaixo da meta individual</div>'+abxHtml+'</div></div>'+
+    '<div class="fe-sec">Mês até o dia '+(+d.slice(8,10))+' <small style="font-weight:500;color:var(--text3)">· toque numa barra para abrir o dia</small></div>'+
+    '<div class="fe-pulso">'+pulso+'</div>'+
+    '<div class="fe-tiles fe-t3">'+tile('Acumulado do mês',fNum(D.acum),pm+'% da meta de '+fNum(D.metaMes))+tile('Média por dia trabalhado',fNum(D.mediaDia),D.diasProd+' dia(s) com produção')+tile('Ritmo necessário',D.restantes?fNum(D.ritmo)+'/dia':'—',D.restantes?D.restantes+' dia(s) restantes (seg–sáb)':'mês encerrado')+'</div>'+
+   '</div>'+
+   '<div class="fe-acts"><button class="btn btn-primary" onclick="fechCopiar()"><i class="ti ti-brand-whatsapp" style="font-size:17px"></i> Copiar para WhatsApp</button>'+
+   '<button class="btn btn-ghost" onclick="fechWhats()"><i class="ti ti-send" style="font-size:16px"></i> Abrir no WhatsApp</button>'+
+   '<button class="btn btn-ghost" onclick="fechExcel()"><i class="ti ti-file-spreadsheet" style="font-size:16px"></i> Baixar Excel</button>'+
+   '<button class="btn btn-ghost" onclick="fechPDF()"><i class="ti ti-printer" style="font-size:16px"></i> Imprimir / PDF</button></div>'+
+   '<details class="fe-prev"><summary>Ver texto que será enviado</summary><pre id="fech-txt">'+fechTexto(D).replace(/[&<]/g,c=>c==='&'?'&amp;':'&lt;')+'</pre></details>';
+}
+function fechIr(d){if(!d)return;if(d>today())d=today();fechDate=d;fechRender();}
+function fechTexto(D){
+  const d=D.d,pct=fPct(D.tot.prod,META_DIARIA);
+  const L=[];
+  L.push('*FECHAMENTO FEMSA '+unitName.toUpperCase()+'*');
+  L.push('📅 '+dateFull(d));
+  L.push('');
+  L.push('📦 Produzidos: *'+fNum(D.tot.prod)+'* ('+pct+'% da meta de '+fNum(META_DIARIA)+') '+(D.tot.prod>=META_DIARIA?'✅':'⚠️'));
+  L.push('   '+fDelta(D.tot.prod,D.ontem.prod));
+  L.push('🚚 Recebidos: *'+fNum(D.tot.rec)+'*');
+  L.push('📤 Enviados: *'+fNum(D.tot.env)+'*');
+  L.push('🗑️ Descarte: *'+fNum(D.tot.desc)+'*');
+  L.push('🧱 Buffer: *'+(D.buffer>=0?'+':'')+fNum(D.buffer)+'*');
+  L.push('');
+  L.push('*Por turno*');
+  D.linhas.forEach(x=>{
+    const pr=D.pres[x.t.key];
+    L.push('• '+x.t.label+(x.t.horario&&x.t.key!=='-'?' ('+x.t.horario+')':'')+': Prod '+fNum(x.prod)+' | Rec '+fNum(x.rec)+' | Env '+fNum(x.env)+' | Desc '+fNum(x.desc));
+    if(pr)L.push('   👥 '+(pr.lancado?pr.p+'/'+pr.total+' presentes'+(pr.a?' — faltas: '+pr.ausentes.join(', '):''):'presença não lançada'));
+  });
+  if(D.top.length){L.push('');L.push('*Destaques*');D.top.forEach((p,i)=>L.push(['🥇','🥈','🥉'][i]+' '+p.nome+' — '+fNum(p.prod)));}
+  if(D.abaixo.length){L.push('');L.push('*Abaixo da meta individual ('+D.metaInd+')*');D.abaixo.slice(0,8).forEach(p=>L.push('• '+p.nome+' — '+fNum(p.prod)+(p.motivo?' ('+p.motivo+')':'')));}
+  const al=D.alertas.filter(a=>a.k!=='ok');
+  if(al.length){L.push('');L.push('*Alertas*');al.forEach(a=>L.push('⚠️ '+a.t));}
+  L.push('');
+  L.push('*Mês até hoje*');
+  L.push('Acumulado: *'+fNum(D.acum)+'* de '+fNum(D.metaMes)+' ('+fPct(D.acum,D.metaMes)+'%)');
+  if(D.restantes)L.push('Ritmo necessário: '+fNum(D.ritmo)+'/dia nos '+D.restantes+' dia(s) restantes');
+  return L.join('\n');
+}
+function fechCopiar(){
+  const t=fechTexto(fechDados(fechDate));
+  const ok=()=>showToast('Relatório copiado! Cole no WhatsApp.','ok');
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(ok).catch(()=>fechCopiarFallback(t,ok));}
+  else fechCopiarFallback(t,ok);
+}
+function fechCopiarFallback(t,ok){const a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy');ok();}catch(e){showToast('Não foi possível copiar. Use "Ver texto que será enviado".','warn');}document.body.removeChild(a);}
+function fechWhats(){window.open('https://wa.me/?text='+encodeURIComponent(fechTexto(fechDados(fechDate))),'_blank');}
+function fechBaixar(blob,nome){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nome;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);}
+function fechExcel(){
+  const D=fechDados(fechDate),d=D.d;
+  const tk=D.turnos.map(t=>t.key);
+  const s1rows=[
+    [{h:'FEMSA '+unitName.toUpperCase()+' — FECHAMENTO DO DIA'}],
+    [{s:dateFull(d)}],[],
+    [{h:'Indicador'},{h:'Valor'}],
+    [{s:'Produzidos'},{n:D.tot.prod}],[{s:'Meta diária'},{n:META_DIARIA}],[{s:'% da meta'},{n:fPct(D.tot.prod,META_DIARIA)}],
+    [{s:'Recebidos'},{n:D.tot.rec}],[{s:'Enviados'},{n:D.tot.env}],[{s:'Descarte'},{n:D.tot.desc}],[{s:'Buffer (estoque até o dia)'},{n:D.buffer}],[],
+    [{h:'Turno'},{h:'Horário'},{h:'Produzidos'},{h:'Recebidos'},{h:'Enviados'},{h:'Descarte'},{h:'Presentes'},{h:'Faltas'},{h:'Colaboradores faltantes'}]
+  ];
+  D.linhas.forEach(x=>{const pr=D.pres[x.t.key];s1rows.push([{s:x.t.label},{s:x.t.horario||''},{n:x.prod},{n:x.rec},{n:x.env},{n:x.desc},pr&&pr.lancado?{n:pr.p}:{s:'—'},pr&&pr.lancado?{n:pr.a}:{s:'—'},{s:pr?pr.ausentes.join(', '):''}]);});
+  s1rows.push([{h:'TOTAL'},null,{t:D.tot.prod},{t:D.tot.rec},{t:D.tot.env},{t:D.tot.desc}]);
+  if(D.top.length){s1rows.push([]);s1rows.push([{h:'Destaques do dia'},{h:'Turno'},{h:'Produção'}]);D.top.forEach(p=>s1rows.push([{s:p.nome},{s:turnoInfo(p.turno).label},{n:p.prod}]));}
+  if(D.abaixo.length){s1rows.push([]);s1rows.push([{h:'Abaixo da meta individual ('+D.metaInd+')'},{h:'Turno'},{h:'Produção'},{h:'Motivo'}]);D.abaixo.forEach(p=>s1rows.push([{s:p.nome},{s:turnoInfo(p.turno).label},{n:p.prod},{s:p.motivo||''}]));}
+  const s1={name:'Fechamento '+d.slice(8,10)+'-'+d.slice(5,7),widths:[34,16,14,14,14,14,12,10,40],rows:s1rows};
+  // aba mensal no padrão da planilha de controle
+  const hd1=[{h:'DATA'},{h:'DIA'}];D.turnos.forEach(t=>{hd1.push({h:t.label.toUpperCase()});});
+  hd1.push({h:'TOTAL PRODUZIDO'},{h:'RECEBIDOS'},{h:'ENVIADOS'},{h:'DESCARTE'},{h:'BUFFER'},{h:'% META'});
+  const SEM=['DOMINGO','SEGUNDA-FEIRA','TERÇA-FEIRA','QUARTA-FEIRA','QUINTA-FEIRA','SEXTA-FEIRA','SÁBADO'];
+  const tt={prod:0,rec:0,env:0,desc:0},tTurno={};tk.forEach(k=>tTurno[k]=0);
+  const rows2=[hd1];
+  D.dias.forEach(x=>{
+    const wd=SEM[new Date(x.d+'T12:00').getDay()];
+    const r=[{d:fxSerial(x.d)},{s:wd}];
+    if(!x.ate){tk.forEach(()=>r.push(null));r.push(null,null,null,null,null,null);rows2.push(r);return;}
+    tk.forEach(k=>{r.push({n:x.porTurno[k]});tTurno[k]+=x.porTurno[k];});
+    r.push({n:x.t.prod},{n:x.t.rec},{n:x.t.env},{n:x.t.desc},{n:fBufferAte(x.d)},{n:fPct(x.t.prod,META_DIARIA)});
+    tt.prod+=x.t.prod;tt.rec+=x.t.rec;tt.env+=x.t.env;tt.desc+=x.t.desc;rows2.push(r);
+  });
+  const tr=[{h:'TOTAL'},null];tk.forEach(k=>tr.push({t:tTurno[k]}));tr.push({t:tt.prod},{t:tt.rec},{t:tt.env},{t:tt.desc},null,null);rows2.push(tr);
+  rows2.push([]);rows2.push([{h:'META MENSAL'},{n:D.metaMes}]);rows2.push([{h:'META DIÁRIA'},{n:META_DIARIA}]);rows2.push([{h:'% DA META MENSAL'},{n:fPct(D.acum,D.metaMes)}]);
+  const s2={name:'Mês até '+d.slice(8,10)+'-'+d.slice(5,7),freeze:[2,1],widths:[12,18].concat(tk.map(()=>14)).concat([16,12,12,12,12,10]),rows:rows2};
+  fechBaixar(fxXlsxMulti([s1,s2]),'fechamento_'+unitName.toLowerCase()+'_'+d+'.xlsx');
+  showToast('Excel gerado!','ok');
+}
+function fechPDF(){
+  const D=fechDados(fechDate),d=D.d,pct=fPct(D.tot.prod,META_DIARIA);
+  const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const kp=(l,v,s)=>'<div class="k"><div class="kl">'+l+'</div><div class="kv">'+v+'</div><div class="ks">'+(s||'')+'</div></div>';
+  const trs=D.linhas.map(x=>{const pr=D.pres[x.t.key];return'<tr><td><b>'+esc(x.t.label)+'</b> <small>'+esc(x.t.horario||'')+'</small></td><td class="n">'+fNum(x.prod)+'</td><td class="n">'+fNum(x.rec)+'</td><td class="n">'+fNum(x.env)+'</td><td class="n">'+fNum(x.desc)+'</td><td class="n">'+(pr&&pr.lancado?pr.p+'/'+pr.total+(pr.a?' ('+pr.a+' falta)':''):'—')+'</td></tr>';}).join('');
+  const html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Fechamento '+d+'</title><style>@page{size:A4;margin:14mm}body{font-family:Arial,sans-serif;color:#111;margin:0}h1{font-size:20px;margin:0}.sub{color:#555;font-size:13px;margin:2px 0 14px}.top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #0a6f8f;padding-bottom:8px;margin-bottom:14px}.badge{font-size:22px;font-weight:700;color:'+(pct>=100?'#059669':pct>=80?'#d97706':'#dc2626')+'}.ks5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}.k{border:1px solid #d1d5db;border-radius:8px;padding:10px}.kl{font-size:10px;text-transform:uppercase;color:#6b7280;font-weight:700;letter-spacing:.05em}.kv{font-size:22px;font-weight:700;margin-top:2px}.ks{font-size:10px;color:#6b7280;margin-top:2px}.bar{height:9px;background:#e5e7eb;border-radius:5px;overflow:hidden;margin:4px 0 14px}.bar i{display:block;height:100%;background:'+(pct>=100?'#059669':pct>=80?'#d97706':'#dc2626')+';width:'+Math.min(100,pct)+'%}h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#0a6f8f;margin:16px 0 6px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#f3f4f6;text-align:left;padding:7px 8px;border-bottom:2px solid #d1d5db}td{padding:7px 8px;border-bottom:1px solid #e5e7eb}.n{text-align:right}th.n{text-align:right}tfoot td{font-weight:700;background:#f9fafb}small{color:#6b7280}.al{font-size:12px;padding:5px 0}.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}.ft{margin-top:18px;font-size:10px;color:#9ca3af;text-align:right}</style></head><body>'+
+   '<div class="top"><div><h1>FEMSA '+esc(unitName)+' — Fechamento do dia</h1><div class="sub">'+esc(dateFull(d))+'</div></div><div class="badge">'+pct+'% da meta</div></div>'+
+   '<div class="ks5">'+kp('Produzidos',fNum(D.tot.prod),fDelta(D.tot.prod,D.ontem.prod))+kp('Recebidos',fNum(D.tot.rec),fDelta(D.tot.rec,D.ontem.rec))+kp('Enviados',fNum(D.tot.env),fDelta(D.tot.env,D.ontem.env))+kp('Descarte',fNum(D.tot.desc),D.tot.prod?Math.round(D.tot.desc/D.tot.prod*100)+'% da produção':'')+kp('Buffer',(D.buffer>=0?'+':'')+fNum(D.buffer),'estoque até este dia')+'</div>'+
+   '<div class="bar"><i></i></div>'+
+   '<h2>Por turno</h2><table><thead><tr><th>Turno</th><th class="n">Prod.</th><th class="n">Rec.</th><th class="n">Env.</th><th class="n">Desc.</th><th class="n">Presença</th></tr></thead><tbody>'+trs+'</tbody><tfoot><tr><td>Total</td><td class="n">'+fNum(D.tot.prod)+'</td><td class="n">'+fNum(D.tot.rec)+'</td><td class="n">'+fNum(D.tot.env)+'</td><td class="n">'+fNum(D.tot.desc)+'</td><td></td></tr></tfoot></table>'+
+   (D.alertas.length?'<h2>Alertas</h2>'+D.alertas.map(a=>'<div class="al">⚠ '+esc(a.t)+'</div>').join(''):'')+
+   '<div class="cols"><div><h2>Destaques do dia</h2>'+(D.top.length?D.top.map((p,i)=>'<div class="al">'+(i+1)+'º <b>'+esc(p.nome)+'</b> — '+fNum(p.prod)+'</div>').join(''):'<div class="al">—</div>')+'</div><div><h2>Abaixo da meta individual ('+D.metaInd+')</h2>'+(D.abaixo.length?D.abaixo.slice(0,8).map(p=>'<div class="al"><b>'+esc(p.nome)+'</b> — '+fNum(p.prod)+(p.motivo?' <small>('+esc(p.motivo)+')</small>':'')+'</div>').join(''):'<div class="al">Ninguém</div>')+'</div></div>'+
+   '<h2>Mês até o dia '+(+d.slice(8,10))+'</h2><div class="ks5" style="grid-template-columns:repeat(3,1fr)">'+kp('Acumulado',fNum(D.acum),fPct(D.acum,D.metaMes)+'% da meta de '+fNum(D.metaMes))+kp('Média por dia trabalhado',fNum(D.mediaDia),D.diasProd+' dia(s)')+kp('Ritmo necessário',D.restantes?fNum(D.ritmo)+'/dia':'—',D.restantes?D.restantes+' dia(s) restantes':'mês encerrado')+'</div>'+
+   '<div class="ft">Gerado em '+new Date().toLocaleString('pt-BR')+' por '+esc(currentUser?currentUser.user:'')+'</div></body></html>';
+  const w=window.open('','_blank');if(!w){showToast('Libere pop-ups para imprimir.','warn');return;}
+  w.document.write(html);w.document.close();setTimeout(()=>{try{w.print();}catch(e){}},500);
+}
 </script>
 </body>
 </html>

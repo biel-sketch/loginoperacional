@@ -831,12 +831,18 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
       <select id="afast-nome"></select>
     </div>
     <div class="field"><label>Tipo</label>
-      <select id="afast-tipo">
+      <select id="afast-tipo" onchange="_afastTipoChange()">
         <option>Atestado Médico</option>
         <option>Afastamento</option>
         <option>Férias</option>
       </select>
     </div>
+    <div class="field" id="afast-backup-box" style="display:none"><label>Backup que vai cobrir o posto durante as férias</label>
+      <input type="text" id="afast-backup" list="backup-lista" placeholder="Nome do backup" autocomplete="off">
+      <label style="display:flex;gap:8px;align-items:center;font-size:12px;margin-top:6px;cursor:pointer"><input type="checkbox" id="afast-backup-depois"> Definir o backup depois (o posto fica marcado como "sem backup")</label>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.4">O backup é lançado como cobertura do posto em cada dia de trabalho de quem está de férias.</div>
+    </div>
+    <datalist id="backup-lista"></datalist>
     <div class="field"><label>Data início</label><input type="date" id="afast-inicio"></div>
     <div class="field"><label>Data fim</label><input type="date" id="afast-fim"></div>
     <div class="field"><label>Motivo / Observação</label><input type="text" id="afast-motivo" placeholder="Opcional"></div>
@@ -854,6 +860,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     <div class="field"><label>Colaborador que vai cobrir</label>
       <select id="cob-colab"></select>
     </div>
+    <div class="field"><label>ou digite o nome de um backup</label><input type="text" id="cob-backup" list="backup-lista" placeholder="Opcional — substitui o colaborador escolhido acima" autocomplete="off"></div>
     <div class="field"><label>Cliente (destino da cobertura)</label>
       <select id="cob-cliente" onchange="_coberturaModalFillPostos()"></select>
     </div>
@@ -1191,13 +1198,24 @@ function deveTrabalharHoje(colab, dateStr){
 }
 
 // === FIREBASE ===
+let _fbEtag=null;
 async function fbGet(){
-  const r=await fetch(FB_URL_MARILIA_OPS);
+  let r;
+  try{ r=await fetch(FB_URL_MARILIA_OPS,{headers:{'X-Firebase-ETag':'true'}}); }
+  catch(e){ r=await fetch(FB_URL_MARILIA_OPS); }
   if(!r.ok)throw new Error(r.status);
+  try{ _fbEtag=r.headers.get('ETag')||null; }catch(e){ _fbEtag=null; }
   return r.json();
 }
-async function fbPut(data){
-  const r=await fetch(FB_URL_MARILIA_OPS,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+// Escrita condicional (If-Match): se outra pessoa gravou entre a leitura e a escrita, a nuvem
+// responde 412 e o chamador relê, mescla de novo e tenta outra vez — ninguém sobrescreve ninguém.
+async function fbPut(data,condicional){
+  const hdr={'Content-Type':'application/json'};
+  if(condicional&&_fbEtag)hdr['if-match']=_fbEtag;
+  let r;
+  try{ r=await fetch(FB_URL_MARILIA_OPS,{method:'PUT',headers:hdr,body:JSON.stringify(data)}); }
+  catch(e){ if(!hdr['if-match'])throw e; delete hdr['if-match']; r=await fetch(FB_URL_MARILIA_OPS,{method:'PUT',headers:hdr,body:JSON.stringify(data)}); }
+  if(r.status===412){ const er=new Error('412'); er.code=412; throw er; }
   if(!r.ok)throw new Error(r.status);
   return r.json();
 }
@@ -1223,6 +1241,7 @@ function loadCache(){
       if(p.presDeletes) state.presDeletes=p.presDeletes;
       if(p.checkinDeletes) state.checkinDeletes=p.checkinDeletes;
     }
+    const bs=localStorage.getItem(LS_CACHE+'_base'); if(bs)_base=JSON.parse(bs);
   }catch(e){}
 }
 
@@ -1268,29 +1287,85 @@ function unirCheckins(cloudC,localC){
   });
   return mc;
 }
+// ===== Mescla de 3 vias (base = último estado sincronizado) =====
+// Com a base é possível distinguir "outra pessoa criou" de "alguém apagou": o que existia na
+// base e sumiu de um dos lados foi EXCLUÍDO e não volta; o que mudou só de um lado vale
+// aquele lado; o que mudou nos dois lados é mesclado campo a campo (local vence o empate).
+let _base=null;
+const _LISTAS=['colaboradores','clientes','supervisores','afastamentos'];
+function _eqJ(x,y){ return JSON.stringify(x)===JSON.stringify(y); }
+function _setBase(st){
+  try{
+    _base={}; _LISTAS.forEach(k=>{_base[k]=JSON.parse(JSON.stringify(st[k]||[]));});
+    localStorage.setItem(LS_CACHE+'_base',JSON.stringify(_base));
+  }catch(e){}
+}
+function temAlteracaoLocal(){
+  if(!_base)return false;
+  return _LISTAS.some(k=>!_eqJ(state[k]||[],_base[k]||[]));
+}
+function mesclarItem(b,l,c,subs){
+  const out={}, keys=new Set([...Object.keys(l||{}),...Object.keys(c||{})]);
+  keys.forEach(k=>{
+    const lv=l?l[k]:undefined, cv=c?c[k]:undefined, bv=b?b[k]:undefined;
+    let v;
+    if(_eqJ(lv,cv))v=lv;
+    else if(b&&_eqJ(lv,bv))v=cv;
+    else if(b&&_eqJ(cv,bv))v=lv;
+    else if(subs&&subs[k]&&Array.isArray(lv)&&Array.isArray(cv))v=mesclarLista(bv,lv,cv,subs[k]);
+    else v=lv;
+    if(v!==undefined)out[k]=v;
+  });
+  return out;
+}
+function mesclarLista(b,l,c,idFn,subs){
+  l=l||[]; c=c||[];
+  const B=new Map((b||[]).map(x=>[idFn(x),x])), L=new Map(l.map(x=>[idFn(x),x])), C=new Map(c.map(x=>[idFn(x),x]));
+  const out=[], usados=new Set();
+  const decide=id=>{
+    const bi=B.get(id), li=L.get(id), ci=C.get(id);
+    if(li&&ci)return mesclarItem(bi,li,ci,subs);
+    if(li&&!ci){ if(!bi)return li; return _eqJ(li,bi)?null:li; }   // sumiu na nuvem: só fica se foi editado aqui
+    if(!li&&ci){ return bi?null:ci; }                               // sumiu aqui: apagado (não volta)
+    return null;
+  };
+  c.forEach(x=>{ const id=idFn(x); usados.add(id); const r=decide(id); if(r)out.push(r); });
+  l.forEach(x=>{ const id=idFn(x); if(usados.has(id))return; usados.add(id); const r=decide(id); if(r)out.push(r); });
+  return out;
+}
+function mesclarEstado(cloud){
+  cloud=cloud||{};
+  const B=_base||{};
+  const R={};
+  if(currentRole==='supervisor'){
+    // supervisor só registra check-ins: nunca devolve à nuvem as próprias cópias dos cadastros
+    _LISTAS.forEach(k=>{ R[k]=cloud[k]!==undefined&&cloud[k]!==null?cloud[k]:(state[k]||[]); });
+  }else{
+    const idc=x=>x.nome, idi=x=>x.id;
+    const cfg={colaboradores:[idc,null],clientes:[idi,{postos:idi}],supervisores:[idi,{rota:idi}],afastamentos:[idi,null]};
+    _LISTAS.forEach(k=>{
+      const cl=cloud[k];
+      R[k]=(cl===undefined||cl===null)?(state[k]||[]):mesclarLista(B[k],state[k]||[],cl,cfg[k][0],cfg[k][1]);
+    });
+  }
+  const pd=mergePresDeleteLists(cloud.presDeletes,state.presDeletes);
+  const cd=mergeCheckinDeleteLists(cloud.checkinDeletes,state.checkinDeletes);
+  const mp=mergePresencasSafe(cloud.presencas,state.presencas);
+  const mc=unirCheckins(cloud.checkins,state.checkins);
+  applyPresDeletesToMap(mp,pd);
+  applyCheckinDeletesToMap(mc,cd);
+  return {colaboradores:R.colaboradores,presencas:mp,clientes:R.clientes,supervisores:R.supervisores,checkins:mc,afastamentos:R.afastamentos,presDeletes:pd,checkinDeletes:cd};
+}
+function _aplicarMesclado(m){
+  state.colaboradores=m.colaboradores; state.presencas=m.presencas; state.clientes=m.clientes||[];
+  state.supervisores=m.supervisores||[]; state.checkins=m.checkins||{}; state.afastamentos=m.afastamentos||[];
+  state.presDeletes=m.presDeletes||[]; state.checkinDeletes=m.checkinDeletes||[];
+}
 function mergeState(cloud){
   if(!cloud)return;
-  if(cloud.colaboradores&&cloud.colaboradores.length) state.colaboradores=cloud.colaboradores;
-  // Tombstones primeiro: preserva os que ainda não foram enviados (pendentes localmente)
-  // e aplica TODOS (nuvem + locais) sobre a cópia da nuvem antes de adotá-la — proteção
-  // extra caso outro dispositivo tenha reintroduzido um registro já apagado.
-  const presDeletesMerged=mergePresDeleteLists(cloud.presDeletes,state.presDeletes);
-  const checkinDeletesMerged=mergeCheckinDeleteLists(cloud.checkinDeletes,state.checkinDeletes);
-  state.presDeletes=presDeletesMerged;
-  state.checkinDeletes=checkinDeletesMerged;
-  if(cloud.presencas){
-    const mp=mergePresencasSafe(cloud.presencas,state.presencas);
-    applyPresDeletesToMap(mp,presDeletesMerged);
-    state.presencas=mp;
-  }
-  if(cloud.clientes) state.clientes=cloud.clientes;
-  if(cloud.supervisores) state.supervisores=cloud.supervisores;
-  if(cloud.checkins){
-    const mc=unirCheckins(cloud.checkins,state.checkins);
-    applyCheckinDeletesToMap(mc,checkinDeletesMerged);
-    state.checkins=mc;
-  }
-  if(cloud.afastamentos) state.afastamentos=cloud.afastamentos;
+  const m=mesclarEstado(cloud);
+  _aplicarMesclado(m);
+  _setBase(m);
 }
 
 async function syncFromCloud(){
@@ -1308,7 +1383,7 @@ async function syncFromCloud(){
   // Se há alterações locais que ainda não foram enviadas (ex: feitas offline),
   // envia-las primeiro com merge seguro, em vez de sobrescrever o estado local
   // com o que está na nuvem — evita perder o que foi feito offline ao reconectar.
-  if(hasPending()){
+  if(hasPending()||temAlteracaoLocal()){
     isSyncing=false;
     await pushToCloud();
     return;
@@ -1335,76 +1410,15 @@ async function pushToCloud(){
   pushInFlight++;
   setSyncDot('syncing','Salvando...');
   try{
-    let merged={colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{},afastamentos:state.afastamentos||[],presDeletes:state.presDeletes||[],checkinDeletes:state.checkinDeletes||[]};
-    try{
-      const cloud=await fbGet();
-      if(cloud){
-        const mp=mergePresencasSafe(cloud.presencas,state.presencas);
-        // Merge colaboradores por nome: mantém edições/adições locais, mas
-        // preserva quem outro usuário cadastrou na nuvem entre o último sync e agora
-        const cloudColabs=cloud.colaboradores||[];
-        const localNomes=new Set(state.colaboradores.map(c=>c.nome));
-        const mergedColabs=[...state.colaboradores];
-        cloudColabs.forEach(cc=>{ if(!localNomes.has(cc.nome)) mergedColabs.push(cc); });
-        // Merge clientes por id: mesma lógica — mantém edições locais e preserva
-        // clientes/postos/cargos cadastrados na nuvem por outro usuário
-        const cloudClientes=cloud.clientes||[];
-        const localIds=new Set((state.clientes||[]).map(c=>c.id));
-        const mergedClientes=[...(state.clientes||[])];
-        cloudClientes.forEach(cc=>{ if(!localIds.has(cc.id)) mergedClientes.push(cc); });
-        // Merge supervisores por id: mesma lógica dos clientes
-        const cloudSupervisores=cloud.supervisores||[];
-        let mergedSupervisores;
-        if(currentRole==='supervisor'&&cloudSupervisores.length){
-          // Supervisor só registra check-ins: nunca devolve à nuvem a própria cópia do
-          // cadastro de supervisores (poderia desfazer rota/senha alterada por um adm).
-          mergedSupervisores=[...cloudSupervisores];
-        }else{
-          const localSupIds=new Set((state.supervisores||[]).map(s=>s.id));
-          mergedSupervisores=[...(state.supervisores||[])];
-          cloudSupervisores.forEach(cs=>{ if(!localSupIds.has(cs.id)) mergedSupervisores.push(cs); });
-        }
-        // Merge checkins: união por data+supervisor, deduplicando por id do check-in
-        const mc=JSON.parse(JSON.stringify(cloud.checkins||{}));
-        Object.entries(state.checkins||{}).forEach(([d,bySup])=>{
-          if(!mc[d])mc[d]={};
-          Object.entries(bySup).forEach(([supId,lista])=>{
-            const existentesIds=new Set((mc[d][supId]||[]).map(c=>c.id));
-            const uniao=[...(mc[d][supId]||[])];
-            (lista||[]).forEach(c=>{ if(!existentesIds.has(c.id)){uniao.push(c);existentesIds.add(c.id);} });
-            mc[d][supId]=uniao;
-          });
-        });
-        // Merge afastamentos por id: mesma lógica dos clientes/supervisores
-        const cloudAfast=cloud.afastamentos||[];
-        const localAfastIds=new Set((state.afastamentos||[]).map(a=>a.id));
-        const mergedAfast=[...(state.afastamentos||[])];
-        cloudAfast.forEach(ca=>{ if(!localAfastIds.has(ca.id)) mergedAfast.push(ca); });
-        // Merge dos tombstones de exclusão: união nuvem+local (mantendo o mais recente
-        // por chave), e SÓ DEPOIS aplicados sobre mp/mc — isso é o que torna a exclusão
-        // definitiva mesmo se outro dispositivo, com dados antigos, reintroduziu o
-        // registro na nuvem entre a exclusão e este envio.
-        const mergedPresDeletes=mergePresDeleteLists(cloud.presDeletes,state.presDeletes);
-        const mergedCheckinDeletes=mergeCheckinDeleteLists(cloud.checkinDeletes,state.checkinDeletes);
-        applyPresDeletesToMap(mp,mergedPresDeletes);
-        applyCheckinDeletesToMap(mc,mergedCheckinDeletes);
-        merged={colaboradores:mergedColabs,presencas:mp,clientes:mergedClientes,supervisores:mergedSupervisores,checkins:mc,afastamentos:mergedAfast,presDeletes:mergedPresDeletes,checkinDeletes:mergedCheckinDeletes};
-      }
-    }catch(e){}
-    // Reaplica os tombstones mais uma vez (cobre o caso de fbGet acima ter falhado e
-    // 'merged' ainda ser só o estado local — sem isso, uma exclusão feita antes de outra
-    // ação local no mesmo ciclo offline poderia não ter sido aplicada ao objeto final).
-    applyPresDeletesToMap(merged.presencas,merged.presDeletes);
-    applyCheckinDeletesToMap(merged.checkins,merged.checkinDeletes);
-    await fbPut(merged);
-    state.colaboradores=merged.colaboradores;
-    state.presencas=merged.presencas;
-    state.clientes=merged.clientes||[];
-    state.supervisores=merged.supervisores||[];
-    state.checkins=merged.checkins||{};
-    state.afastamentos=merged.afastamentos||[];
-    state.presDeletes=merged.presDeletes||[];
-    state.checkinDeletes=merged.checkinDeletes||[];
+    let merged=null;
+    for(let tent=0;;tent++){
+      const cloud=await fbGet();                // se não der para ler a nuvem, NÃO grava às cegas
+      merged=mesclarEstado(cloud);
+      try{ await fbPut(merged,true); break; }
+      catch(e){ if(e&&e.code===412&&tent<4)continue; throw e; }
+    }
+    _aplicarMesclado(merged);
+    _setBase(merged);
     clearPending();
     saveCache();
     lastSync=new Date();
@@ -1419,38 +1433,9 @@ async function pushToCloud(){
     pushInFlight--;
   }
 }
-
-async function pushForceToCloud(){
-  pushInFlight++;
-  setSyncDot('syncing','Salvando...');
-  try{
-    // Supervisores lançam check-ins pelo celular enquanto um administrador pode estar
-    // salvando outra coisa. Antes de sobrescrever a nuvem, une os check-ins que já estão
-    // lá (e as exclusões pendentes) para não apagar o que acabou de ser registrado.
-    try{
-      const cloud=await fbGet();
-      if(cloud){
-        const delCk=mergeCheckinDeleteLists(cloud.checkinDeletes,state.checkinDeletes);
-        const mc=unirCheckins(cloud.checkins,state.checkins);
-        applyCheckinDeletesToMap(mc,delCk);
-        state.checkins=mc;
-        state.checkinDeletes=delCk;
-        if(currentRole==='supervisor'&&cloud.supervisores&&cloud.supervisores.length)state.supervisores=cloud.supervisores;
-      }
-    }catch(e){}
-    await fbPut({colaboradores:state.colaboradores,presencas:state.presencas,clientes:state.clientes||[],supervisores:state.supervisores||[],checkins:state.checkins||{},afastamentos:state.afastamentos||[],presDeletes:state.presDeletes||[],checkinDeletes:state.checkinDeletes||[]});
-    clearPending();
-    saveCache();
-    lastSync=new Date();
-    setSyncDot('ok','Salvo '+lastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
-  }catch(e){
-    markPending();
-    saveCache();
-    setSyncDot('err','Alterações pendentes — sem conexão');
-  }finally{
-    pushInFlight--;
-  }
-}
+// Antes sobrescrevia a nuvem inteira com a cópia local (apagava cadastros feitos por outras
+// pessoas e trazia de volta o que já tinha sido excluído). Agora usa a mesma mescla segura.
+async function pushForceToCloud(){ return pushToCloud(); }
 
 function startAutoSync(){syncFromCloud().then(scheduleNext).catch(scheduleNext);}
 function scheduleNext(){if(syncTimer)clearTimeout(syncTimer);if(!currentUser){syncTimer=null;return;}syncTimer=setTimeout(startAutoSync,SYNC_INTERVAL);}
@@ -1867,7 +1852,7 @@ function renderPresContent(){
         const nomeJs=nome.replace(/'/g,"\\'");
         html+='<div class="colab-pres-card" style="border-left:3px solid #a78bfa;background:rgba(167,139,250,.08)">';
         html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
-        html+='<div><div class="colab-name">'+nome+'</div>';
+        html+='<div><div class="colab-name">'+nome+(v.backup?' <span class="badge" style="background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid #a78bfa">backup</span>':'')+'</div>';
         html+='<div class="colab-info">'+(origem?'<span style="font-size:11px;color:var(--text3)">Posto de origem: '+origem+'</span>':'')+(v.motivo?'<div style="font-size:11px;color:var(--text2);margin-top:2px">'+v.motivo+'</div>':'')+'</div></div>';
         html+='<button onclick="excluirCobertura(\''+todayD+'\',\''+posto+'\',\''+nomeJs+'\')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text2);font-size:11px;cursor:pointer"><i class="ti ti-trash" style="font-size:12px"></i></button>';
         html+='</div></div>';
@@ -3310,14 +3295,18 @@ function kmEntre(a,b){
   return 2*R*Math.asin(Math.sqrt(h))*1.3;
 }
 const _sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let _geoNetFalhas=0;   // falhas de rede seguidas: depois de 3 o mapa é considerado fora do ar e o cronograma segue sem ele
 async function _nominatim(q){
+  const ac=new AbortController(), t=setTimeout(()=>ac.abort(),8000);
   try{
-    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q='+encodeURIComponent(q));
-    if(!r.ok)return null;
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q='+encodeURIComponent(q),{signal:ac.signal});
+    if(!r.ok){_geoNetFalhas++;return null;}
     const arr=await r.json();
+    _geoNetFalhas=0;
     if(!arr||!arr.length)return null;
     return{lat:parseFloat(arr[0].lat),lng:parseFloat(arr[0].lon)};
-  }catch(e){return null;}
+  }catch(e){_geoNetFalhas++;return null;}
+  finally{clearTimeout(t);}
 }
 // Localiza o cliente no mapa: endereço completo → sem número → bairro/cidade → CEP.
 // As coordenadas ficam salvas no próprio endereço (não precisa buscar de novo).
@@ -3338,6 +3327,7 @@ async function geocodeRota(r){
   const vistos=new Set();
   for(const q of qs){
     if(!q||vistos.has(q))continue; vistos.add(q);
+    if(_geoNetFalhas>=3)return false;
     const g=await _nominatim(q); await _sleep(1100);
     if(g){alvo.lat=g.lat;alvo.lng=g.lng;return true;}
   }
@@ -3354,8 +3344,11 @@ async function _cronGerar(sup,o,seed,onMsg){
   if(!N)throw new Error('Todos os clientes desta rota só trabalham em fim de semana/feriado; nada a distribuir nos dias úteis.');
   if(o.geo){
     const faltam=todas.filter(r=>!rotaCoords(r));
-    let i=0;
-    for(const r of faltam){ i++; onMsg('Localizando clientes no mapa ('+i+'/'+faltam.length+')…'); await geocodeRota(r); }
+    let i=0; _geoNetFalhas=0;
+    for(const r of faltam){
+      if(_geoNetFalhas>=3){ avisos.push('O serviço de mapas não respondeu: os clientes sem localização foram tratados como "perto de todos". Tente de novo mais tarde ou desmarque "localizar clientes".'); break; }
+      i++; onMsg('Localizando clientes no mapa ('+i+'/'+faltam.length+')…'); await geocodeRota(r);
+    }
   }
   const coords=rotas.map(rotaCoords);
   const dist=rotas.map((_,i)=>rotas.map((_,j)=>(i===j||!coords[i]||!coords[j])?0:kmEntre(coords[i],coords[j])));
@@ -3462,7 +3455,8 @@ async function _cronGerar(sup,o,seed,onMsg){
   // clientes de "dia inteiro": cada visita fica sozinha num dia (capacidade 1); as vagas que sobram vão para os outros dias
   const diaIntIdx=rotas.map((r,i)=>r.diaInteiro?i:-1).filter(i=>i>=0);
   if(diaIntIdx.length){
-    const nD=W*D, travado=new Set(), diaOcup=new Set();
+    const nD=W*D, travado=new Set(), diaOcup=new Set(), fixCnt=new Array(nD).fill(0);
+    fixInst.forEach(f=>{fixCnt[f.w*D+f.d]++;});
     grpRes.forEach(g=>g.dias.forEach(j=>travado.add(j)));
     diaIntIdx.forEach(i=>{
       const x=dem[i];
@@ -3481,15 +3475,21 @@ async function _cronGerar(sup,o,seed,onMsg){
         }
       }
       dias.forEach(j=>{
-        travado.add(j); diaOcup.add(j);
+        const fixosAqui=fixInst.filter(f=>f.w*D+f.d===j);
+        if(fixosAqui.some(f=>f.i!==i)){ // outro cliente de dia fixo cai no mesmo dia: não dá para isolar
+          avisos.push(rotaLabel(rotas[i])+': não foi possível deixá-lo sozinho em um dos dias porque outro cliente tem esse mesmo dia fixo cadastrado.');
+          return;
+        }
         let sobra=capDia[j]-1;
         if(sobra<0){ // dia sem vaga: toma uma de outro dia (o total de visitas não muda)
-          let dj=-1; for(let q=0;q<nD;q++){ if(q===j||diaOcup.has(q)||capDia[q]<1)continue; if(dj<0||capDia[q]>capDia[dj])dj=q; }
-          if(dj>=0){ capDia[dj]--; sobra=0; } else { avisos.push(rotaLabel(rotas[i])+': não há como reservar um dia inteiro.'); sobra=0; }
+          let dj=-1; for(let q=0;q<nD;q++){ if(q===j||diaOcup.has(q)||capDia[q]<=Math.max(1,fixCnt[q]))continue; if(dj<0||capDia[q]>capDia[dj])dj=q; }
+          if(dj<0){ avisos.push(rotaLabel(rotas[i])+': não há como reservar um dia inteiro.'); return; }
+          capDia[dj]--; sobra=0;
         }
+        travado.add(j); diaOcup.add(j);
         capDia[j]=1;
         while(sobra>0){ let dj=-1; for(let q=0;q<nD;q++){ if(q===j||travado.has(q))continue; if(dj<0||capDia[q]<capDia[dj])dj=q; } if(dj<0)for(let q=0;q<nD;q++){ if(q===j||diaOcup.has(q))continue; if(dj<0||capDia[q]<capDia[dj])dj=q; } if(dj<0)break; capDia[dj]++; sobra--; }
-        if(sobra>0)avisos.push(rotaLabel(rotas[i])+': dias de "dia inteiro" ocupam quase todo o cronograma — sobraram visitas sem vaga.');
+        if(sobra>0){ capDia[j]+=sobra; avisos.push(rotaLabel(rotas[i])+': dias de "dia inteiro" ocupam quase todo o cronograma — não foi possível isolar todos.'); }
       });
       grpRes.push({mem:[i],dias:dias.slice(),diaInteiro:true});
     });
@@ -4110,8 +4110,8 @@ async function grpSugerir(){
   _grpBusy=true; btn.disabled=true;
   try{
     const faltam=cand.filter(r=>!rotaCoords(r)&&(r.avulso?!!r.endereco:true));
-    let i=0;
-    for(const r of faltam){ i++; msg.textContent='Localizando clientes no mapa ('+i+'/'+faltam.length+')…'; await geocodeRota(r); }
+    let i=0; _geoNetFalhas=0;
+    for(const r of faltam){ if(_geoNetFalhas>=3)break; i++; msg.textContent='Localizando clientes no mapa ('+i+'/'+faltam.length+')…'; await geocodeRota(r); }
     msg.textContent='';
     // 1) clientes com localização: agrupamento por proximidade (todos do grupo a no máx. "raio" km uns dos outros)
     const com=cand.filter(r=>rotaCoords(r)), sem=cand.filter(r=>!rotaCoords(r));
@@ -4530,6 +4530,10 @@ function abrirAfastModal(id){
   document.getElementById('afast-inicio').value=reg?reg.dataInicio:today();
   document.getElementById('afast-fim').value=reg?reg.dataFim:today();
   document.getElementById('afast-motivo').value=reg?(reg.motivo||''):'';
+  document.getElementById('afast-backup').value=reg?(reg.backup||''):'';
+  document.getElementById('afast-backup-depois').checked=false;
+  _backupDatalist();
+  _afastTipoChange();
   const titleEl=document.querySelector('#afast-modal .modal-title');
   if(titleEl)titleEl.innerHTML='<i class="ti ti-file-certificate" style="color:var(--cyan)"></i>'+(reg?'Editar Atestado / Afastamento':'Novo Atestado / Afastamento');
   document.getElementById('afast-modal').style.display='flex';
@@ -4550,6 +4554,62 @@ function _afastModalFillColabs(selNome){
   sel.innerHTML=colabs.length?colabs.map(c=>'<option value="'+c.nome.replace(/"/g,'&quot;')+'">'+c.nome+'</option>').join(''):'<option value="">Nenhum colaborador neste posto</option>';
   if(selNome&&colabs.some(c=>c.nome===selNome))sel.value=selNome;
 }
+function _afastTipoChange(){
+  const f=document.getElementById('afast-tipo').value==='Férias';
+  document.getElementById('afast-backup-box').style.display=f?'block':'none';
+}
+function backupsConhecidos(){
+  const set=new Set();
+  (state.afastamentos||[]).forEach(a=>{ if(a.backup)set.add(a.backup); });
+  Object.values(state.presencas||{}).forEach(pd=>Object.values(pd).forEach(pp=>Object.entries(pp).forEach(([n,v])=>{ if(v&&v.backup)set.add(n); })));
+  return [...set].sort((a,b)=>a.localeCompare(b));
+}
+function _backupDatalist(){
+  const bk=backupsConhecidos(), el=document.getElementById('backup-lista'); if(!el)return;
+  const outros=colaboradoresAtivos().map(c=>c.nome).filter(n=>!bk.includes(n));
+  el.innerHTML=bk.concat(outros).map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'"></option>').join('');
+}
+// Lança (ou refaz) o backup como cobertura do posto em cada dia em que o colaborador de férias trabalharia.
+// reg=null + afastId → só remove as coberturas daquele afastamento.
+function sincronizarBackupAfast(reg,afastId){
+  const id=reg?reg.id:afastId;
+  const novos={};  // 'data|posto|nome' -> registro
+  if(reg&&reg.tipo==='Férias'&&reg.backup&&reg.postoId){
+    const colab=colaboradoresAtivos().find(c=>c.nome===reg.nome);
+    const orig=colaboradoresAtivos().find(c=>c.nome===reg.backup);
+    let d=new Date(reg.dataInicio+'T12:00'), fim=new Date(reg.dataFim+'T12:00'), g=0;
+    while(d<=fim&&g++<400){
+      const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      if(!colab||deveTrabalharHoje(colab,ds))
+        novos[ds+'|'+reg.postoId+'|'+reg.backup]={status:'C',ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',cobertura:true,backup:true,afastId:id,postoOrigemId:orig?orig.postoId:'',motivo:'Backup — férias de '+reg.nome};
+      d.setDate(d.getDate()+1);
+    }
+  }
+  Object.entries(state.presencas||{}).forEach(([ds,pd])=>Object.entries(pd).forEach(([posto,pp])=>Object.entries(pp).forEach(([nome,v])=>{
+    if(v&&v.afastId===id&&!novos[ds+'|'+posto+'|'+nome]){
+      delete pp[nome]; addPendingPresDelete(ds,posto,nome);
+      if(!Object.keys(pp).length)delete pd[posto];
+    }
+  })));
+  Object.entries(novos).forEach(([k,v])=>{
+    const [ds,posto,nome]=k.split('|');
+    if(!state.presencas[ds])state.presencas[ds]={};
+    if(!state.presencas[ds][posto])state.presencas[ds][posto]={};
+    const ex=state.presencas[ds][posto][nome];
+    if(ex&&ex.status!=='C')return;   // não sobrescreve presença já lançada de verdade
+    state.presencas[ds][posto][nome]=v;
+  });
+  return Object.keys(novos).length;
+}
+async function definirBackupAfast(id){
+  const a=(state.afastamentos||[]).find(x=>x.id===id); if(!a||!podeEditarPresenca())return;
+  const nome=(prompt('Nome do backup que vai cobrir '+a.nome+' (férias de '+a.dataInicio.split('-').reverse().join('/')+' a '+a.dataFim.split('-').reverse().join('/')+'):',a.backup||'')||'').trim();
+  if(!nome)return;
+  a.backup=nome;
+  const n=sincronizarBackupAfast(a);
+  showToast('Backup definido ('+n+' dia(s) de cobertura).','ok');
+  saveCache();renderAll();await pushToCloud();
+}
 function closeAfastModal(){ document.getElementById('afast-modal').style.display='none'; _editAfastId=null; }
 async function salvarAfastamento(){
   const nome=document.getElementById('afast-nome').value;
@@ -4561,9 +4621,16 @@ async function salvarAfastamento(){
   if(!dataInicio||!dataFim){showToast('Informe as duas datas.','warn');return;}
   if(dataFim<dataInicio){showToast('Data fim deve ser igual ou depois da data início.','warn');return;}
   const c=colaboradoresAtivos().find(x=>x.nome===nome);
+  let backup='';
+  if(tipo==='Férias'){
+    backup=document.getElementById('afast-backup').value.trim();
+    if(!backup&&!document.getElementById('afast-backup-depois').checked){showToast('Informe o backup que vai cobrir o posto (ou marque "definir depois").','warn');return;}
+    if(backup===nome){showToast('O backup não pode ser a própria pessoa de férias.','warn');return;}
+  }
   if(_editAfastId){
     const reg=(state.afastamentos||[]).find(a=>a.id===_editAfastId);
-    if(reg)Object.assign(reg,{nome,postoId:c?c.postoId:reg.postoId,cargoId:c?c.cargoId:reg.cargoId,tipo,dataInicio,dataFim,motivo,editadoPor:currentUser?currentUser.user:'?',editadoEm:new Date().toISOString()});
+    if(reg)Object.assign(reg,{nome,postoId:c?c.postoId:reg.postoId,cargoId:c?c.cargoId:reg.cargoId,tipo,dataInicio,dataFim,motivo,backup,editadoPor:currentUser?currentUser.user:'?',editadoEm:new Date().toISOString()});
+    if(reg)sincronizarBackupAfast(reg);
     _editAfastId=null;
     closeAfastModal();
     showToast(tipo+' atualizado!','ok');
@@ -4572,11 +4639,12 @@ async function salvarAfastamento(){
   }
   const registro={
     id:uid(), nome, postoId:c?c.postoId:'', cargoId:c?c.cargoId:'',
-    tipo, dataInicio, dataFim, motivo,
+    tipo, dataInicio, dataFim, motivo, backup,
     criadoPor:currentUser?currentUser.user:'?', criadoEm:new Date().toISOString()
   };
   if(!state.afastamentos)state.afastamentos=[];
   state.afastamentos.push(registro);
+  sincronizarBackupAfast(registro);
   closeAfastModal();
   showToast(tipo+' salvo!','ok');
   saveCache();await pushForceToCloud();renderAll();
@@ -4587,6 +4655,7 @@ async function excluirAfastamento(id){
   if(!reg)return;
   if(!confirm('Remover este registro de '+reg.tipo+' de '+reg.nome+'? Irreversível.'))return;
   state.afastamentos=(state.afastamentos||[]).filter(a=>a.id!==id);
+  sincronizarBackupAfast(null,id);
   showToast('Registro removido.','ok');
   saveCache();await pushForceToCloud();renderAll();
 }
@@ -4594,7 +4663,7 @@ function buildAfastamentosHojeAlertCard(dataRef){
   const ativos=afastamentosAtivosHoje(dataRef);
   if(!ativos.length)return'';
   const ehHoje=!dataRef||dataRef===today();
-  const item=a=>'<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><i class="ti ti-file-certificate" style="font-size:14px;color:var(--warn);flex-shrink:0"></i><span style="font-size:13px;color:var(--text)"><strong>'+a.nome+'</strong> · '+a.tipo+' até '+dateFull(a.dataFim).split(' de ').slice(0,2).join(' de ')+'</span></div>';
+  const item=a=>'<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><i class="ti ti-file-certificate" style="font-size:14px;color:var(--warn);flex-shrink:0"></i><span style="font-size:13px;color:var(--text)"><strong>'+a.nome+'</strong> · '+a.tipo+' até '+dateFull(a.dataFim).split(' de ').slice(0,2).join(' de ')+(a.tipo==='Férias'?(a.backup?' · <span style="color:#a78bfa">backup: '+supEsc(a.backup)+'</span>':' · <b style="color:var(--red)">posto SEM BACKUP</b>'):'')+'</span></div>';
   return'<div class="card" style="border-color:var(--warn-bd);background:var(--warn-bg);margin-bottom:16px">'+
     '<div class="card-title" style="color:var(--warn)"><i class="ti ti-alert-triangle"></i>'+ativos.length+' colaborador(es) de atestado/afastamento'+(ehHoje?' hoje':' nesta data')+'</div>'+
     ativos.map(item).join('')+'</div>';
@@ -4606,7 +4675,8 @@ function buildAfastamentosCard(){
   const linha=(a,destaque)=>'<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'+
     '<div style="width:8px;height:8px;border-radius:50%;background:'+(a.tipo==='Atestado Médico'?'var(--warn)':a.tipo==='Férias'?'var(--green)':'var(--purple,#a78bfa)')+';flex-shrink:0"></div>'+
     '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">'+a.nome+'</div>'+
-    '<div style="font-size:11px;color:var(--text2)">'+a.tipo+' · '+a.dataInicio.split('-').reverse().join('/')+' a '+a.dataFim.split('-').reverse().join('/')+(a.motivo?' · '+a.motivo:'')+'</div></div>'+
+    '<div style="font-size:11px;color:var(--text2)">'+a.tipo+' · '+a.dataInicio.split('-').reverse().join('/')+' a '+a.dataFim.split('-').reverse().join('/')+(a.motivo?' · '+a.motivo:'')+(a.tipo==='Férias'?(a.backup?' · <span style="color:#a78bfa">Backup: '+supEsc(a.backup)+'</span>':' · <span style="color:var(--red)">SEM BACKUP</span>'):'')+'</div></div>'+
+    (a.tipo==='Férias'&&!a.backup&&isAdmin?'<button onclick="definirBackupAfast(\''+a.id+'\')" style="background:var(--purple-bg,rgba(167,139,250,.12));border:1px solid #a78bfa;border-radius:7px;padding:5px 8px;color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">Definir backup</button>':'')+
     (destaque?'<span class="badge b-warn" style="flex-shrink:0">ATIVO HOJE</span>':'')+
     (isAdmin?'<button onclick="abrirAfastModal(\''+a.id+'\')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text2);font-size:11px;cursor:pointer;flex-shrink:0"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')+
     (isAdmin?'<button onclick="excluirAfastamento(\''+a.id+'\')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text2);font-size:11px;cursor:pointer;flex-shrink:0"><i class="ti ti-trash" style="font-size:12px"></i></button>':'')+
@@ -4633,6 +4703,8 @@ function abrirCoberturaModal(){
   _coberturaModalFillPostos();
   document.getElementById('cob-data').value=today();
   document.getElementById('cob-motivo').value='';
+  document.getElementById('cob-backup').value='';
+  _backupDatalist();
   document.getElementById('cobertura-modal').style.display='flex';
 }
 function _coberturaModalFillPostos(){
@@ -4645,7 +4717,8 @@ function _coberturaModalFillPostos(){
 function closeCoberturaModal(){ document.getElementById('cobertura-modal').style.display='none'; }
 async function salvarCobertura(){
   if(!podeEditarPresenca()){showToast('Apenas administradores podem lançar cobertura de posto.','err');return;}
-  const nome=document.getElementById('cob-colab').value;
+  const bkTxt=(document.getElementById('cob-backup').value||'').trim();
+  const nome=bkTxt||document.getElementById('cob-colab').value;
   const postoId=document.getElementById('cob-posto').value;
   const data=document.getElementById('cob-data').value;
   const motivo=document.getElementById('cob-motivo').value.trim();
@@ -4654,7 +4727,7 @@ async function salvarCobertura(){
   const colab=colaboradoresAtivos().find(c=>c.nome===nome);
   if(!state.presencas[data])state.presencas[data]={};
   if(!state.presencas[data][postoId])state.presencas[data][postoId]={};
-  state.presencas[data][postoId][nome]={status:'C',ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',cobertura:true,postoOrigemId:colab?colab.postoId:'',motivo};
+  state.presencas[data][postoId][nome]={status:'C',ts:new Date().toISOString(),who:currentUser?currentUser.user:'?',cobertura:true,backup:!!bkTxt&&!colab,postoOrigemId:colab?colab.postoId:'',motivo};
   closeCoberturaModal();
   showToast('Cobertura lançada!','ok');
   saveCache();

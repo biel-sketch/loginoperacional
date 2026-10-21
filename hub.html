@@ -409,11 +409,23 @@ function hubTimeAgo(ts){
   if(h<24)return'há '+h+'h';
   return'há '+Math.floor(h/24)+'d';
 }
+// Só baixa o documento da unidade se o carimbo "_v" mudou desde a última leitura (economiza downloads do Firebase)
+const _hubCache={};
+async function hubFetchDoc(url){
+  const c=_hubCache[url];
+  try{
+    const rv=await fetch(url.replace('.json','/_v.json'),{cache:'no-store'});
+    if(rv.ok){ const v=await rv.json(); if(v!=null&&c&&c.v===v)return c.data; }
+  }catch(e){}
+  const r=await fetch(url,{cache:'no-store'});
+  if(!r.ok)throw new Error(r.status);
+  const data=await r.json()||{};
+  _hubCache[url]={v:data._v||null,data};
+  return data;
+}
 async function hubCarregarUnidade(u){
   try{
-    const r=await fetch(u.fbUrl,{cache:'no-store'});
-    if(!r.ok)throw new Error(r.status);
-    const data=await r.json()||{};
+    const data=await hubFetchDoc(u.fbUrl);
     const colaboradores=(data.colaboradores||[]).filter(c=>c.ativo!==false);
     const quadro=colaboradores.length;
     const todayD=hubToday();
@@ -498,9 +510,7 @@ function hubDeveTrabalhar(colab,dateStr){
 }
 async function hubCarregarMariliaOps(){
   try{
-    const r=await fetch(FB_URL_MARILIA_OPS,{cache:'no-store'});
-    if(!r.ok)throw new Error(r.status);
-    const data=await r.json()||{};
+    const data=await hubFetchDoc(FB_URL_MARILIA_OPS);
     const colaboradores=(data.colaboradores||[]).filter(c=>c.ativo!==false);
     const todayD=hubToday();
     const presDay=(data.presencas&&data.presencas[todayD])||{};
@@ -539,7 +549,8 @@ async function hubCarregarMariliaOps(){
     if(lbl)lbl.textContent='Sem conexão';
   }
 }
-function hubCarregarTudo(){HUB_UNITS.forEach(hubCarregarUnidade);hubCarregarMariliaOps();}
+function hubCarregarTudo(){if(document.hidden)return;HUB_UNITS.forEach(hubCarregarUnidade);hubCarregarMariliaOps();}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)hubCarregarTudo();});
 document.addEventListener('DOMContentLoaded',hubCarregarTudo);
 setInterval(hubCarregarTudo,60000);
 </script>

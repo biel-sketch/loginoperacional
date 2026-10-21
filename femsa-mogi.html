@@ -678,6 +678,31 @@ const LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1
 <script>
 const META_DIARIA=2000,SYNC_INTERVAL=180000;
 const FB_URL='https://painel-operacional-96032-default-rtdb.firebaseio.com/mogi.json';
+
+// ===== Economia de downloads do Firebase =====
+// Cada documento tem um carimbo "_v" que muda a cada gravação. O auto-sync primeiro lê SÓ esse carimbo
+// (poucos bytes) e só baixa o documento inteiro quando alguém realmente gravou algo novo.
+const FB_V_URL=FB_URL.replace('.json','/_v.json');
+let _vVisto=null, _vPend=null;
+async function fbPrecisaBaixar(){
+  try{
+    const r=await fetch(FB_V_URL,{cache:'no-store'});
+    if(!r.ok)return true;
+    const v=await r.json();
+    return v==null||v!==_vVisto;
+  }catch(e){return true;}
+}
+(function(){
+  const _f=window.fetch.bind(window);
+  window.fetch=function(u,o){
+    if(u===FB_URL&&o&&o.method==='PUT'&&typeof o.body==='string'){
+      try{ const b=JSON.parse(o.body); _vPend=Date.now()+'-'+Math.random().toString(36).slice(2,8); b._v=_vPend; o=Object.assign({},o,{body:JSON.stringify(b)}); }catch(e){ _vPend=null; }
+      const pv=_vPend;
+      return _f(u,o).then(r=>{ if(r.ok&&pv)_vVisto=pv; return r; });
+    }
+    return _f(u,o);
+  };
+})();
 const LS_CACHE='mogi_cache',LS_UNIT='mogi_unit';
 const USERS=[
   {user:'Gustavo',   senha:'LoginBH26',  role:'gestor'},
@@ -1046,6 +1071,7 @@ function usuarioEstaEditando(){
 }
 async function syncFromCloud(){
   if(isSyncing||resetLock)return;
+  if(document.hidden)return;   // aba em segundo plano não consulta a nuvem (o sync volta ao abrir a aba)
   isSyncing=true;
   if(hasPending()){
     isSyncing=false;
@@ -1054,9 +1080,17 @@ async function syncFromCloud(){
   }
   setSyncDot('syncing','Sincronizando...');
   try{
+    if(!(await fbPrecisaBaixar())){   // nada novo na nuvem: não baixa o documento
+      saveCache();
+      lastSync=new Date();
+      setSyncDot('ok','Sincronizado '+lastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+      isSyncing=false;
+      return;
+    }
     const r=await fetch(FB_URL);
     if(!r.ok)throw new Error(r.status);
     const data=await r.json();
+    _vVisto=(data&&data._v)||null;
     if(resetLock){isSyncing=false;return;}
     if(data)mergeState(data);
     saveCache(); // sempre salva timestamp mesmo sem dados novos

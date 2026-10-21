@@ -580,6 +580,16 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
       <label>Turno</label>
       <select id="modal-turno"></select>
     </div>
+    <div class="modal-field">
+      <label>Data de admissão <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
+      <input type="date" id="modal-admissao">
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">Antes dessa data ele não entra na lista de produção do dia.</div>
+    </div>
+    <div class="modal-field" id="modal-demissao-box">
+      <label>Último dia de trabalho <span style="font-weight:400;color:var(--text3)">(usado ao excluir; por padrão, ontem)</span></label>
+      <input type="date" id="modal-demissao">
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">A produção lançada até essa data continua aparecendo e somando.</div>
+    </div>
     <div class="modal-btns">
       <button class="modal-btn-primary" id="modal-save-btn" onclick="saveColabModal()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
       <button class="modal-btn-ghost" onclick="closeColabModal()">Cancelar</button>
@@ -745,6 +755,45 @@ let currentUser=null,currentRole=null,unitName='Mogi';
 // Firebase - no api key or bin id vars needed
 let isSyncing=false,lastSync=null,syncTimer=null,resetLock=false;
 function colaboradoresAtivos(){ return state.colaboradores.filter(c=>c.ativo!==false); }
+// ----- Admissão / desligamento: o histórico de produção nunca some -----
+function _dataLocalIso(iso){const d=new Date(iso);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// O colaborador conta num dia se já tinha sido admitido e ainda não tinha sido desligado.
+// Excluídos antes desta regra (sem data de desligamento) valem até o dia da exclusão.
+function colabNoDia(c,date){
+  if(c.renomeadoPara)return false;
+  if(c.dataAdmissao&&date<c.dataAdmissao)return false;
+  const fim=c.dataDemissao||(c.ativo===false&&c.excluidoEm?_dataLocalIso(c.excluidoEm):'');
+  if(fim&&date>fim)return false;
+  if(c.ativo===false&&!fim)return false;
+  return true;
+}
+// Quem aparece na produção individual de uma data/turno: quem trabalhava naquele dia
+// + TODO nome que já tem produção lançada ali (mesmo excluído, renomeado ou de outro turno).
+function colabsProdDoDia(date,turno){
+  const reg=((state.producaoPessoas||{})[date]||{})[turno];
+  const pess=(reg&&reg.pessoas)||{};
+  const lista=state.colaboradores.filter(c=>c.turno===turno&&produzPallets(c)&&(colabNoDia(c,date)||pess[c.nome]));
+  const nomes=new Set(lista.map(c=>c.nome));
+  Object.keys(pess).forEach(n=>{
+    if(nomes.has(n))return;
+    const c=state.colaboradores.find(x=>x.nome===n&&!x.renomeadoPara)||{nome:n,_ex:true};
+    lista.push(Object.assign({},c,{turno,_hist:true})); nomes.add(n);
+  });
+  return lista;
+}
+function _ontemIso(){const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function exTag(c){return (c&&(c.ativo===false||c._ex))?' <span style="font-size:10px;font-weight:600;color:var(--text3)">(ex-colaborador)</span>':'';}
+// Renomear não pode perder o histórico: leva produção, presença e afastamentos para o nome novo.
+function migrarNomeColab(velho,novo){
+  Object.values(state.producaoPessoas||{}).forEach(ts=>Object.values(ts||{}).forEach(t=>{
+    const p=t&&t.pessoas; if(p&&p[velho]!==undefined){ if(p[novo]===undefined)p[novo]=p[velho]; delete p[velho]; }
+  }));
+  Object.values(state.presencas||{}).forEach(ts=>Object.values(ts||{}).forEach(t=>{
+    if(!t||typeof t!=='object')return;
+    Object.values(t).forEach(sub=>{ if(sub&&typeof sub==='object'&&!Array.isArray(sub)&&sub[velho]!==undefined){ if(sub[novo]===undefined)sub[novo]=sub[velho]; delete sub[velho]; } });
+  }));
+  (state.afastamentos||[]).forEach(a=>{ if(a.nome===velho)a.nome=novo; });
+}
 function markPending(){ try{ localStorage.setItem(LS_CACHE+'_pending','1'); }catch(e){} }
 function clearPending(){ try{ localStorage.removeItem(LS_CACHE+'_pending'); }catch(e){} }
 function hasPending(){ try{ return localStorage.getItem(LS_CACHE+'_pending')==='1'; }catch(e){ return false; } }
@@ -1498,14 +1547,14 @@ function buildProducaoPorTurnoCard(){
 function buildProducaoIndividualHojeCard(){
   const diaD=selDate||today();
   const info=calcMetaIndividual();
-  const producers=colaboradoresAtivos().filter(produzPallets);
+  const producers=[].concat(...Object.keys(Object.assign({},...TURNOS.map(t=>({[t.key]:1})),(state.producaoPessoas||{})[diaD]||{})).map(t=>colabsProdDoDia(diaD,t)));
   if(!producers.length)return'';
   const porTurno={};
   producers.forEach(c=>{
     const reg=state.producaoPessoas[diaD]&&state.producaoPessoas[diaD][c.turno]&&state.producaoPessoas[diaD][c.turno].pessoas&&state.producaoPessoas[diaD][c.turno].pessoas[c.nome];
     const prod=reg?(reg.prod||0):0;
     if(!porTurno[c.turno])porTurno[c.turno]=[];
-    porTurno[c.turno].push({nome:c.nome,prod});
+    porTurno[c.turno].push({nome:c.nome+exTag(c),prod});
   });
   const turnosComGente=TURNOS.filter(t=>porTurno[t.key]&&porTurno[t.key].length);
   if(!turnosComGente.length)return'';
@@ -2132,7 +2181,7 @@ function renderProdPessoas(){
   const saved=dia&&dia.savedAt;
   const infoEl=document.getElementById('prod-pessoas-info');
   if(infoEl)infoEl.innerHTML='Meta individual hoje: <strong style="color:var(--cyan)">'+info.metaPorPessoa+'</strong> pallets/pessoa'+(saved?' <span style="color:var(--green);font-weight:700">· salvo</span>':'');
-  const colabs=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===selTurnoProd);
+  const colabs=colabsProdDoDia(today(),selTurnoProd);
   const listEl=document.getElementById('prod-pessoas-list');if(!listEl)return;
   if(!colabs.length){listEl.innerHTML='<div class="empty" style="padding:16px 0"><i class="ti ti-users"></i><h3>Nenhum colaborador de Conserto de Paletes nesse turno</h3></div>';return;}
   const pessoas=(dia&&dia.pessoas)||{};
@@ -2146,10 +2195,10 @@ function renderProdPessoas(){
     const safeId=c.nome.replace(/[^a-zA-Z0-9]/g,'_');
     const nomeJs=c.nome.replace(/'/g,"\\'");
     const falta=info.metaPorPessoa-(reg.prod||0);
-    if(fora)return'<div class="prow fora st-'+st.k+'"><div class="prow-main"><div class="prow-nome"><div class="n">'+c.nome+'</div><div class="prow-fora">Não entra na produção de hoje</div></div>'+stChip(st)+'</div></div>';
+    if(fora)return'<div class="prow fora st-'+st.k+'"><div class="prow-main"><div class="prow-nome"><div class="n">'+c.nome+exTag(c)+'</div><div class="prow-fora">Não entra na produção de hoje</div></div>'+stChip(st)+'</div></div>';
     return'<div class="prow'+(st.k?' st-'+st.k:'')+'">'+
       '<div class="prow-main">'+
-      '<div class="prow-nome"><div class="n">'+c.nome+'</div><div class="m" style="color:'+(abaixo?'var(--text3)':'var(--green)')+'">'+stChip(st)+' '+(abaixo?'meta '+info.metaPorPessoa+' · faltam '+falta:'meta batida ✓')+'</div></div>'+
+      '<div class="prow-nome"><div class="n">'+c.nome+exTag(c)+'</div><div class="m" style="color:'+(abaixo?'var(--text3)':'var(--green)')+'">'+stChip(st)+' '+(abaixo?'meta '+info.metaPorPessoa+' · faltam '+falta:'meta batida ✓')+'</div></div>'+
       '<div class="num-wrap"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" inputmode="numeric" min="0" '+(saved?'disabled':'')+' value="'+(reg.prod||'')+'" placeholder="0" onfocus="this.select()" oninput="setProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderProdPessoas()"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
       '</div>'+
       (abaixo&&!saved?'<select id="motivo-'+safeId+'" onchange="setMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
@@ -2191,7 +2240,7 @@ function setMotivoPessoa(nome,val){
 async function salvarProducaoPessoas(){
   const dia=_prodBuf();
   const info=calcMetaIndividual();
-  const colabs=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===selTurnoProd);
+  const colabs=colabsProdDoDia(today(),selTurnoProd).filter(c=>c.ativo!==false&&!c._ex);
   for(const c of colabs){
     const reg=dia.pessoas[c.nome];
     const prod=reg?(reg.prod||0):0;
@@ -2236,7 +2285,7 @@ function renderRetroProdPessoas(){
   const{date,turno}=_retroSel();
   if(!date||!turno){wrap.innerHTML='';return;}
   const info=calcMetaIndividual();
-  const colabs=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===turno);
+  const colabs=colabsProdDoDia(date,turno);
   const dia=state.producaoPessoas[date]&&state.producaoPessoas[date][turno];
   const pessoas=(dia&&dia.pessoas)||{};
   if(!colabs.length){wrap.innerHTML='<div style="font-size:12px;color:var(--text2);padding:6px 0 4px">Nenhum colaborador de Conserto de Paletes nesse turno.</div>';return;}
@@ -2244,12 +2293,12 @@ function renderRetroProdPessoas(){
     colabs.map(c=>{
       const reg=pessoas[c.nome]||{prod:0,motivo:''};
       const st=statusProdDia(c,date);
-      if(st.fora&&!(reg.prod>0))return'<div class="prow fora st-'+st.k+'"><div class="prow-main"><div class="prow-nome"><div class="n">'+c.nome+'</div><div class="prow-fora">Não entra na produção</div></div>'+stChip(st)+'</div></div>';
+      if(st.fora&&!(reg.prod>0))return'<div class="prow fora st-'+st.k+'"><div class="prow-main"><div class="prow-nome"><div class="n">'+c.nome+exTag(c)+'</div><div class="prow-fora">Não entra na produção</div></div>'+stChip(st)+'</div></div>';
       const abaixo=reg.prod<info.metaPorPessoa&&!st.fora;
       const nomeJs=c.nome.replace(/'/g,"\\'");
       return'<div class="prow'+(st.k?' st-'+st.k:'')+'" style="padding:8px 0 8px 10px">'+
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'+
-        '<div style="font-size:13px;font-weight:600;color:var(--text);min-width:0">'+c.nome+' '+stChip(st)+'</div>'+
+        '<div style="font-size:13px;font-weight:600;color:var(--text);min-width:0">'+c.nome+exTag(c)+' '+stChip(st)+'</div>'+
         '<div class="num-wrap" style="width:150px"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" value="'+(reg.prod||'')+'" placeholder="0" oninput="setRetroProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderRetroProdPessoas()"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
         '</div>'+
         (abaixo?'<select style="width:100%;margin-top:6px;padding:7px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px" onchange="setRetroMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
@@ -2296,7 +2345,7 @@ async function lancarRetroativo(){
   if(inclGeral&&!rec&&!prod&&!env&&!desc){showToast('Informe pelo menos um valor no lançamento geral.','warn');return;}
   if(inclIndividual){
     const info=calcMetaIndividual();
-    const colabsTurno=colaboradoresAtivos().filter(c=>produzPallets(c)&&c.turno===turno);
+    const colabsTurno=colabsProdDoDia(data,turno).filter(c=>c.ativo!==false&&!c._ex);
     const diaProd=_prodBuf(data,turno);
     for(const c of colabsTurno){
       const reg=diaProd.pessoas[c.nome];
@@ -2457,7 +2506,7 @@ function renderEquipe(){
   else{colabs.forEach(function(c){var i=state.colaboradores.indexOf(c);html+='<div class="colab-item"><div class="colab-av">'+c.nome.slice(0,2).toUpperCase()+'</div><div style="flex:1;min-width:0"><div class="colab-name">'+c.nome+'</div><div class="colab-role">'+turnoNomeCompleto(c.turno)+'</div></div>'+(isAdmin?'<button onclick="editColab('+i+')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text2);font-size:11px;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')+'</div>';});}
   html+='</div>';
   if(canDelete){
-    var excluidos=state.colaboradores.filter(function(c){return c.ativo===false;});
+    var excluidos=state.colaboradores.filter(function(c){return c.ativo===false&&!c.renomeadoPara;});
     if(excluidos.length){
       html+='<div class="card"><div class="card-title"><i class="ti ti-trash" style="color:var(--red)"></i>Colaboradores excluídos ('+excluidos.length+')</div>';
       excluidos.forEach(function(c){
@@ -2486,6 +2535,9 @@ function openColabModal(idx){
   document.getElementById('modal-cargo').value = cargoAtual;
   atualizarTurnosDoModal(isEdit ? c.turno : null);
   document.getElementById('modal-atividade').value = isEdit ? (c.atividade||'Conserto de Paletes') : 'Conserto de Paletes';
+  document.getElementById('modal-admissao').value = isEdit ? (c.dataAdmissao||'') : '';
+  document.getElementById('modal-demissao').value = isEdit ? (c.dataDemissao||_ontemIso()) : _ontemIso();
+  document.getElementById('modal-demissao-box').style.display = isEdit ? 'block' : 'none';
   document.getElementById('modal-delete-btn').style.display = (isEdit&&podeGerirEquipe()) ? 'block' : 'none';
   document.getElementById('modal-save-btn').className = 'modal-btn-primary';
   document.getElementById('colab-modal').style.display = 'flex';
@@ -2559,13 +2611,33 @@ async function saveColabModal(){
   const atividade = document.getElementById('modal-atividade').value || 'Conserto de Paletes';
   if(!nome){ document.getElementById('modal-nome').style.borderColor='var(--red)'; return; }
   document.getElementById('modal-nome').style.borderColor='';
+  const dataAdmissao = document.getElementById('modal-admissao').value || '';
   if(_modalEditIdx >= 0){
     const c = state.colaboradores[_modalEditIdx];
-    state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo,atividade});
+    if(nome!==c.nome){
+      if(state.colaboradores.some(x=>x!==c&&x.nome===nome&&!x.renomeadoPara)){ showToast('Já existe um colaborador com esse nome.','warn'); return; }
+      // o registro antigo fica guardado (oculto) para o nome velho não ressurgir da nuvem; o histórico vai para o nome novo
+      migrarNomeColab(c.nome,nome);
+      const antigo=Object.assign({},c,{ativo:false,renomeadoPara:nome,excluidoEm:new Date().toISOString()});
+      state.colaboradores.push(antigo);
+      state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo,atividade,dataAdmissao});
+    } else {
+      state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo,atividade,dataAdmissao});
+    }
     showToast('Colaborador atualizado!','ok');
   } else {
-    state.colaboradores.push({nome,turno,cargo,atividade,wpp:''});
-    showToast('Colaborador adicionado!','ok');
+    const ex=state.colaboradores.find(x=>x.nome===nome&&!x.renomeadoPara);
+    if(ex&&ex.ativo!==false){ showToast('Já existe um colaborador ativo com esse nome.','warn'); return; }
+    if(ex){
+      // já foi excluído: reaproveita o cadastro (mantém todo o histórico dele) em vez de criar outro com o mesmo nome
+      if(!confirm('"'+nome+'" já foi excluído antes. Reativar o cadastro dele (o histórico é mantido)?')) return;
+      Object.assign(ex,{turno,cargo,atividade,ativo:true,dataAdmissao:dataAdmissao||ex.dataAdmissao||''});
+      delete ex.excluidoEm; delete ex.excluidoPor; delete ex.dataDemissao;
+      showToast('Colaborador reativado!','ok');
+    } else {
+      state.colaboradores.push({nome,turno,cargo,atividade,wpp:'',dataAdmissao});
+      showToast('Colaborador adicionado!','ok');
+    }
   }
   closeColabModal();
   saveCache(); await pushToCloud(); renderEquipe();
@@ -2574,6 +2646,8 @@ async function deleteColabModal(){
   if(!podeGerirEquipe())return;
   const c = state.colaboradores[_modalEditIdx];
   if(!confirm('Excluir '+c.nome+'? O histórico de presença será mantido e você pode restaurar depois em "Colaboradores excluídos".')) return;
+  const dd=document.getElementById('modal-demissao').value||_ontemIso();
+  c.dataDemissao=dd;
   c.ativo=false;
   c.excluidoEm=new Date().toISOString();
   c.excluidoPor=currentUser?currentUser.user:'?';
@@ -2589,6 +2663,7 @@ async function restaurarColab(idx){
   c.ativo=true;
   delete c.excluidoEm;
   delete c.excluidoPor;
+  delete c.dataDemissao;
   showToast(c.nome+' restaurado!','ok');
   saveCache(); await pushToCloud(); renderEquipe();
 }

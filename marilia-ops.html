@@ -759,9 +759,9 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     <div class="field"><label>Duração da visita (min) — deixe vazio para usar o padrão do cronograma</label>
       <input type="number" id="rota-modal-dur" min="15" max="480" step="5" placeholder="padrão (ex.: 60) · clientes com vários postos: 120">
     </div>
-    <div class="field"><label>Grupo de visita no mesmo dia (clientes próximos)</label>
-      <input type="text" id="rota-modal-grupo" list="rota-grupos-lista" maxlength="40" placeholder="ex.: Dori + Grespan — use o mesmo nome nos clientes que devem ser visitados juntos">
-      <datalist id="rota-grupos-lista"></datalist>
+    <div class="field" id="rota-grupo-box"><label>Visitar no mesmo dia junto com (clientes próximos)</label>
+      <div id="rota-modal-grupo-lista" style="max-height:170px;overflow:auto;border:1px solid var(--border);border-radius:9px;padding:2px 10px"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.4">Marque os clientes que devem ser visitados <b>juntos, no mesmo dia</b>. No cronograma os dois aparecem no mesmo dia, um depois do outro. Gere o cronograma de novo depois de mudar.</div>
     </div>
     <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:2px 0 10px;cursor:pointer"><input type="checkbox" id="rota-modal-diainteiro" style="margin-top:2px"> <span>Este cliente ocupa o <b>dia inteiro</b>: o supervisor passa o dia todo nele e o cronograma <b>não coloca nenhum outro cliente</b> nesse dia.</span></label>
     <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:2px 0 10px;cursor:pointer"><input type="checkbox" id="rota-modal-escr" style="margin-top:2px"> <span>Este local é o <b>escritório da Login Serv</b>: nos dias de daily scrum a visita é o próprio scrum (não gera 2 visitas no mesmo dia).</span></label>
@@ -1101,8 +1101,8 @@ const USERS = [
   {user:'Debora',    senha:'Login@982',  role:'admin'},
   {user:'Simone',    senha:'Login@982',  role:'admin'},
   {user:'João',      senha:'Login@982',  role:'superadmin'},
-   {user:'Mariana',      senha:'Login@982',  role:'superadmin'},
   {user:'Gabriel',   senha:'L@gin982',   role:'superadmin'},
+  {user:'Mariana',   senha:'Login@982',  role:'superadmin'},
 ];
 
 const NOTIF_RECIPIENTS = [
@@ -3736,7 +3736,7 @@ function _cronMostra(sup,r){
       const dx=c.dias.find(x=>x.w===w&&x.d===d);
       const scx=c.scrum&&c.scrum.dows.includes(its[0]?its[0].dow:-1);
       h+='<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12px"><b>'+DIAS_CURTO[its[0]?its[0].dow:(c.dowL||CRON_DOW_PADRAO[c.D]||[])[d]]+'</b> <span style="color:var(--text3)">· '+(km?fmtNum(km.km):'0')+' km'+(dx?' · '+supEsc(expTxt(dx)):'')+(scx?' · <span style="color:var(--cyan)">'+supEsc(scrumTxt(c.scrum))+'</span>':'')+'</span>';
-      its.forEach(i=>{ const rr=porId[i.rotaId]; h+='<div style="padding-left:12px;color:var(--text)">'+i.ordem+'. '+supEsc(rr?rotaLabel(rr):'?')+(visitaTxt(i)?' <span style="color:var(--text2)">· '+supEsc(visitaTxt(i))+'</span>':'')+'</div>'; });
+      its.forEach(i=>{ const rr=porId[i.rotaId]; const gp=rr?grupoParceiros(rr):[]; h+='<div style="padding-left:12px;color:var(--text)">'+i.ordem+'. '+supEsc(rr?rotaLabel(rr):'?')+(visitaTxt(i)?' <span style="color:var(--text2)">· '+supEsc(visitaTxt(i))+'</span>':'')+(gp.length?' <span style="color:var(--cyan)">· <i class="ti ti-link"></i> junto com '+supEsc(gp.join(', '))+'</span>':'')+'</div>'; });
       h+='</div>';
     }
     const fs=c.itens.filter(i=>i.w===w&&i.d===99).sort((a,b)=>a.ordem-b.ordem);
@@ -3832,6 +3832,14 @@ function cronoCalc(sup,dates,hoje){
 }
 
 const CRONO_ICONE={feito:'ti-circle-check',hoje:'ti-clock',perdida:'ti-circle-x',futuro:'ti-circle-dashed',extra:'ti-plus'};
+// Quem é visitado junto com este cliente (mesmo grupo), de qualquer supervisor
+function grupoParceiros(r){
+  if(!r||!r.grupoDia)return [];
+  for(const sp of (state.supervisores||[])){
+    if((sp.rota||[]).some(x=>x.id===r.id))return (sp.rota||[]).filter(x=>x.id!==r.id&&x.grupoDia===r.grupoDia).map(rotaLabel);
+  }
+  return [];
+}
 function cronoChip(it){
   const r=it.r;
   const sub=[];
@@ -3842,6 +3850,7 @@ function cronoChip(it){
   else if(it.st==='extra')sub.push(it.hora?'fora do dia · '+it.hora:'fora do dia previsto');
   if(r.avulso)sub.push('não cadastrado');
   if(r.diaInteiro)sub.push('dia inteiro');
+  { const gp=grupoParceiros(r); if(gp.length)sub.push('junto com '+gp.join(', ')); }
   const end=rotaEnderecoTxt(r);
   return '<div class="crono-chip '+it.st+'" title="'+supEsc(rotaLabel(r)+(end?' — '+end:''))+'"><i class="ti '+CRONO_ICONE[it.st]+'"></i><div><div>'+(it.ag&&!it.ag.legacy?it.ag.ordem+'. ':'')+supEsc(rotaLabel(r))+'</div>'+(sub.length?'<small>'+supEsc(sub.join(' · '))+'</small>':'')+'</div></div>';
 }
@@ -4173,6 +4182,36 @@ async function grpAplicarSug(){
   sel.forEach(g=>{ const n=g.nome.trim(); (sup.rota||[]).forEach(r=>{ if(g.ids.includes(r.id))r.grupoDia=n; }); });
   _grpSug=null; await _grpPersist(sel.length+' grupo(s) criado(s)!'); renderGruposModal();
 }
+let _rotaGrupoSel=[];
+function _rotaGrupoRender(sup,selfId){
+  const el=document.getElementById('rota-modal-grupo-lista'); if(!el)return;
+  const outros=(sup.rota||[]).filter(x=>x.id!==selfId&&!x.diaInteiro&&!x.escritorio&&!rotaSoFds(x));
+  el.innerHTML=outros.length?outros.map(x=>{
+    const em=x.grupoDia&&!_rotaGrupoSel.includes(x.id)?'<span style="font-size:10px;color:var(--warn)">já está em "'+supEsc(x.grupoDia)+'"</span>':'';
+    return '<label style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer"><input type="checkbox" '+(_rotaGrupoSel.includes(x.id)?'checked ':'')+'onchange="_rotaGrupoTog(\''+x.id+'\',this.checked)"> <span style="flex:1;min-width:0">'+supEsc(rotaLabel(x))+'<span style="display:block;font-size:11px;color:var(--text2)">'+supEsc(rotaCidade(x)||rotaEnderecoTxt(x)||'')+'</span></span>'+em+'</label>';
+  }).join(''):'<div style="font-size:12px;color:var(--text3);padding:8px 0">Não há outros clientes na rota deste supervisor.</div>';
+}
+function _rotaGrupoTog(id,on){ const i=_rotaGrupoSel.indexOf(id); if(on&&i<0)_rotaGrupoSel.push(id); if(!on&&i>=0)_rotaGrupoSel.splice(i,1); }
+// Aplica a escolha do modal: o cliente e os marcados passam a formar UM grupo (mesmo nome em todos)
+function _rotaAplicaGrupo(sup,item){
+  const antigo=item.grupoDia||'';
+  const parceiros=item.diaInteiro?[]:_rotaGrupoSel.filter(id=>(sup.rota||[]).some(x=>x.id===id&&x.id!==item.id));
+  item.grupoDia='';
+  if(parceiros.length){
+    const ps=parceiros.map(id=>sup.rota.find(x=>x.id===id));
+    let nome=antigo||(ps.find(x=>x.grupoDia)||{}).grupoDia||'';
+    if(!nome){
+      nome=[item].concat(ps).slice(0,3).map(x=>rotaLabel(x).split(' — ')[0].slice(0,14)).join(' + ').slice(0,40);
+      const usados=new Set((sup.rota||[]).filter(x=>x!==item&&!parceiros.includes(x.id)).map(x=>x.grupoDia).filter(Boolean));
+      let base=nome,q=2; while(usados.has(nome)){nome=base.slice(0,36)+' '+q++;}
+    }
+    (sup.rota||[]).forEach(x=>{ if(x.grupoDia===nome&&x!==item&&!parceiros.includes(x.id))x.grupoDia=''; });
+    item.grupoDia=nome; ps.forEach(x=>{x.grupoDia=nome;});
+  }else if(antigo){
+    // saiu do grupo: os outros continuam se ainda forem 2 ou mais
+  }
+  _grpLimpaUnitarios(sup);
+}
 function abrirRotaModal(supervisorId,rotaId){
   if(!podeEditarSupervisores()){showToast('Apenas administradores/gestores podem editar rotas.','err');return;}
   const sup=findSupervisor(supervisorId);
@@ -4191,10 +4230,10 @@ function abrirRotaModal(supervisorId,rotaId){
   document.getElementById('rota-avulso-end').value=r&&r.avulso?(r.endereco||''):'';
   document.getElementById('rota-modal-freq').value=r?(Number(r.frequenciaSemanal)||1):1;
   document.getElementById('rota-modal-dur').value=r&&r.durMin>0?r.durMin:'';
-  document.getElementById('rota-modal-grupo').value=r&&r.grupoDia?r.grupoDia:'';
+  _rotaGrupoSel=(r&&r.grupoDia)?(sup.rota||[]).filter(x=>x.grupoDia===r.grupoDia&&x.id!==r.id).map(x=>x.id):[];
+  _rotaGrupoRender(sup,r?r.id:null);
   document.getElementById('rota-modal-escr').checked=!!(r&&r.escritorio);
   document.getElementById('rota-modal-diainteiro').checked=!!(r&&r.diaInteiro);
-  document.getElementById('rota-grupos-lista').innerHTML=[...new Set((sup.rota||[]).map(x=>x.grupoDia).filter(Boolean))].map(g=>'<option value="'+supEsc(g)+'">').join('');
   document.getElementById('rota-modal-freqciclo').value=r&&r.freqCiclo?r.freqCiclo:'';
   _rotaDias=r&&r.dias?[...r.dias]:[];
   _rotaDiasModo=r&&r.diasModo==='alguns'?'alguns':'';
@@ -4295,23 +4334,25 @@ async function salvarRotaModal(){
   const dias=[..._rotaDias].sort((a,b)=>DIAS_ORDEM.indexOf(a)-DIAS_ORDEM.indexOf(b));
   dados.freqCiclo=document.getElementById('rota-modal-freqciclo').value||'';
   dados.durMin=Math.max(0,Math.min(480,parseInt(document.getElementById('rota-modal-dur').value,10)||0));
-  dados.grupoDia=(document.getElementById('rota-modal-grupo').value||'').trim();
+  dados.grupoDia='';
   dados.escritorio=!!document.getElementById('rota-modal-escr').checked;
   dados.diaInteiro=!!document.getElementById('rota-modal-diainteiro').checked;
-  if(dados.diaInteiro)dados.grupoDia='';
   const util=dias.filter(x=>x>=1&&x<=5).length;
   dados.diasModo=(!dados.freqCiclo&&util>=2&&_rotaDiasModo==='alguns')?'alguns':'';
   dados.semIni=dados.freqCiclo?(parseInt(document.getElementById('rota-modal-semini').value,10)||0):'';
   const freq=dados.diasModo==='alguns'?Math.min(util-1,Math.max(1,parseInt(document.getElementById('rota-modal-alguns').value,10)||1)):(dias.length?dias.length:Math.max(1,parseInt(document.getElementById('rota-modal-freq').value,10)||1));
   if(!sup.rota)sup.rota=[];
+  let salvo=null;
   if(_rotaModalId){
     const r=sup.rota.find(x=>x.id===_rotaModalId);
-    if(r)Object.assign(r,dados,{dias,frequenciaSemanal:freq});
+    if(r){ const gAnt=r.grupoDia||''; Object.assign(r,dados,{dias,frequenciaSemanal:freq,grupoDia:gAnt}); salvo=r; }
   }else{
-    sup.rota.push(Object.assign({id:uid()},dados,{dias,frequenciaSemanal:freq}));
+    salvo=Object.assign({id:uid()},dados,{dias,frequenciaSemanal:freq,grupoDia:''});
+    sup.rota.push(salvo);
   }
+  if(salvo)_rotaAplicaGrupo(sup,salvo);
   closeRotaModal();
-  showToast('Rota salva!','ok');
+  showToast(salvo&&salvo.grupoDia?'Rota salva! Gere o cronograma de novo para os clientes do grupo ficarem no mesmo dia.':'Rota salva!','ok');
   saveCache();await pushToCloud();renderSupervisores();
 }
 async function excluirRota(supervisorId,rotaId){

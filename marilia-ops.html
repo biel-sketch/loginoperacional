@@ -131,6 +131,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .field input,.field select,.field textarea{width:100%;padding:10px 13px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);font-size:14px;font-family:inherit;transition:border-color .18s}
 .field input:focus,.field select:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px var(--cyan-bg)}
 .field select option{background:#0f1923}
+.field label.chk-row,label.chk-row{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text);opacity:1;margin:0;cursor:pointer}
+.field label.chk-row input,label.chk-row input{width:auto;flex:none;padding:0;margin:0;accent-color:var(--cyan)}
+.chk-row .chk-t{flex:1;min-width:0}
+.chk-row .chk-s{display:block;font-size:11px;color:var(--text2)}
 
 /* Histórico */
 .hist-mes-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
@@ -714,7 +718,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
         <select id="rota-modal-cliente" onchange="_rotaModalFillPostos()"></select>
       </div>
       <div class="field"><label>Posto</label>
-        <select id="rota-modal-posto" onchange="_rotaTurnosReset()"></select>
+        <select id="rota-modal-posto" onchange="_rotaTurnosReset();_rotaGrupoRender()"></select>
       </div>
     </div>
     <div class="field" id="rota-turnos-field" style="display:none"><label>Turnos que o supervisor visita neste cliente</label>
@@ -759,8 +763,9 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     <div class="field"><label>Duração da visita (min) — deixe vazio para usar o padrão do cronograma</label>
       <input type="number" id="rota-modal-dur" min="15" max="480" step="5" placeholder="padrão (ex.: 60) · clientes com vários postos: 120">
     </div>
-    <div class="field" id="rota-grupo-box"><label>Visitar no mesmo dia junto com (clientes próximos)</label>
-      <div id="rota-modal-grupo-lista" style="max-height:170px;overflow:auto;border:1px solid var(--border);border-radius:9px;padding:2px 10px"></div>
+    <div class="field" id="rota-grupo-box"><label>Visitar no mesmo dia junto com (clientes próximos) <span id="rota-grupo-info" style="text-transform:none;letter-spacing:0;color:var(--text2);font-weight:400"></span></label>
+      <input type="text" id="rota-grupo-busca" placeholder="Buscar cliente ou cidade…" oninput="_rotaGrupoRender()" style="margin-bottom:6px" autocomplete="off">
+      <div id="rota-modal-grupo-lista" style="max-height:230px;overflow:auto;border:1px solid var(--border);border-radius:9px;padding:0 12px"></div>
       <div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.4">Marque os clientes que devem ser visitados <b>juntos, no mesmo dia</b>. No cronograma os dois aparecem no mesmo dia, um depois do outro. Gere o cronograma de novo depois de mudar.</div>
     </div>
     <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:2px 0 10px;cursor:pointer"><input type="checkbox" id="rota-modal-diainteiro" style="margin-top:2px"> <span>Este cliente ocupa o <b>dia inteiro</b>: o supervisor passa o dia todo nele e o cronograma <b>não coloca nenhum outro cliente</b> nesse dia.</span></label>
@@ -4077,7 +4082,7 @@ function renderGruposModal(){
     h+='<div class="field"><label>Clientes do grupo (marque 2 ou mais)</label><div style="max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:9px;padding:4px 10px">';
     elig.forEach(r=>{
       const outro=r.grupoDia&&r.grupoDia!==g.original;
-      h+='<label style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer"><input type="checkbox" '+(g.ids.includes(r.id)?'checked ':'')+'onchange="_grpToggle(\''+r.id+'\',this.checked)"> <span style="flex:1;min-width:0">'+supEsc(rotaLabel(r))+'<span style="display:block;font-size:11px;color:var(--text2)">'+supEsc(rotaCidade(r)||rotaEnderecoTxt(r)||'sem endereço')+'</span></span>'+(outro?'<span style="font-size:10px;color:var(--warn)">está em "'+supEsc(r.grupoDia)+'"</span>':'')+'</label>';
+      h+='<label class="chk-row"><input type="checkbox" '+(g.ids.includes(r.id)?'checked ':'')+'onchange="_grpToggle(\''+r.id+'\',this.checked)"><span class="chk-t">'+supEsc(rotaLabel(r))+'<span class="chk-s">'+supEsc(rotaCidade(r)||rotaEnderecoTxt(r)||'sem endereço')+'</span></span>'+(outro?'<span style="font-size:10px;color:var(--warn)">está em "'+supEsc(r.grupoDia)+'"</span>':'')+'</label>';
     });
     h+='</div></div>';
     h+='<div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="grpSalvar()"><i class="ti ti-check"></i> Salvar grupo</button><button class="btn btn-ghost btn-sm" onclick="_grpEdit=null;renderGruposModal()">Cancelar</button></div>';
@@ -4183,19 +4188,54 @@ async function grpAplicarSug(){
   _grpSug=null; await _grpPersist(sel.length+' grupo(s) criado(s)!'); renderGruposModal();
 }
 let _rotaGrupoSel=[];
-function _rotaGrupoRender(sup,selfId){
-  const el=document.getElementById('rota-modal-grupo-lista'); if(!el)return;
-  const outros=(sup.rota||[]).filter(x=>x.id!==selfId&&!x.diaInteiro&&!x.escritorio&&!rotaSoFds(x));
-  el.innerHTML=outros.length?outros.map(x=>{
-    const em=x.grupoDia&&!_rotaGrupoSel.includes(x.id)?'<span style="font-size:10px;color:var(--warn)">já está em "'+supEsc(x.grupoDia)+'"</span>':'';
-    return '<label style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer"><input type="checkbox" '+(_rotaGrupoSel.includes(x.id)?'checked ':'')+'onchange="_rotaGrupoTog(\''+x.id+'\',this.checked)"> <span style="flex:1;min-width:0">'+supEsc(rotaLabel(x))+'<span style="display:block;font-size:11px;color:var(--text2)">'+supEsc(rotaCidade(x)||rotaEnderecoTxt(x)||'')+'</span></span>'+em+'</label>';
-  }).join(''):'<div style="font-size:12px;color:var(--text3);padding:8px 0">Não há outros clientes na rota deste supervisor.</div>';
+let _rotaGrupoSup=null,_rotaGrupoSelf=null;
+// Candidatos: clientes já na rota deste supervisor + TODOS os postos cadastrados que ainda não estão nela
+function _rotaGrupoCands(sup,selfId){
+  const out=[];
+  const postoSelf=(function(){ const e=document.getElementById('rota-modal-posto'); return e?e.value:''; })();
+  const naRota=new Set();
+  (sup.rota||[]).forEach(x=>{
+    if(!x.avulso&&x.postoId)naRota.add(x.postoId);
+    if(!x.avulso&&x.todosPostos)rotaPostosLista(x).forEach(q=>naRota.add(q.posto.id));
+    if(x.id===selfId||x.diaInteiro||x.escritorio||rotaSoFds(x))return;
+    out.push({key:'r:'+x.id,label:rotaLabel(x),sub:rotaCidade(x)||rotaEnderecoTxt(x)||'',nota:x.grupoDia?'já está em "'+x.grupoDia+'"':''});
+  });
+  const donos={}; (state.supervisores||[]).forEach(sp=>{ if(sp.id===sup.id)return; (sp.rota||[]).forEach(x=>{ if(!x.avulso&&x.postoId)donos[x.postoId]=sp.nome; }); });
+  clientesAtivos().forEach(cl=>{ (cl.postos||[]).forEach(po=>{
+    if(naRota.has(po.id)||po.id===postoSelf)return;
+    const e=(po.endereco&&po.endereco.municipio)?po.endereco:cl.endereco;
+    out.push({key:'p:'+po.id,label:postoLabel(po.id),sub:((e&&e.municipio)||''),nota:donos[po.id]?'na rota de '+donos[po.id]:'fora da rota — será adicionado'});
+  }); });
+  return out;
 }
-function _rotaGrupoTog(id,on){ const i=_rotaGrupoSel.indexOf(id); if(on&&i<0)_rotaGrupoSel.push(id); if(!on&&i>=0)_rotaGrupoSel.splice(i,1); }
+function _rotaGrupoRender(sup,selfId){
+  if(sup){_rotaGrupoSup=sup;_rotaGrupoSelf=selfId;} else {sup=_rotaGrupoSup;selfId=_rotaGrupoSelf;}
+  const el=document.getElementById('rota-modal-grupo-lista'); if(!el||!sup)return;
+  const q=_normTxt((document.getElementById('rota-grupo-busca')||{}).value||'');
+  let l=_rotaGrupoCands(sup,selfId);
+  const marcados=l.filter(c=>_rotaGrupoSel.includes(c.key));
+  l=l.filter(c=>!q||_normTxt(c.label+' '+c.sub).includes(q));
+  l.sort((a,b)=>(_rotaGrupoSel.includes(b.key)-_rotaGrupoSel.includes(a.key))||a.label.localeCompare(b.label));
+  el.innerHTML=l.length?l.map(c=>'<label class="chk-row"><input type="checkbox" '+(_rotaGrupoSel.includes(c.key)?'checked ':'')+'onchange="_rotaGrupoTog(\''+c.key+'\',this.checked)"><span class="chk-t">'+supEsc(c.label)+(c.sub?'<span class="chk-s">'+supEsc(c.sub)+'</span>':'')+'</span>'+(c.nota?'<span style="font-size:10px;color:var(--warn);text-align:right;max-width:38%">'+supEsc(c.nota)+'</span>':'')+'</label>').join(''):'<div style="font-size:12px;color:var(--text3);padding:10px 0">Nenhum cliente encontrado'+(q?' para "'+supEsc(q)+'"':'')+'.</div>';
+  const info=document.getElementById('rota-grupo-info'); if(info)info.textContent=marcados.length?marcados.length+' selecionado(s)':'';
+}
+function _rotaGrupoTog(id,on){ const i=_rotaGrupoSel.indexOf(id); if(on&&i<0)_rotaGrupoSel.push(id); if(!on&&i>=0)_rotaGrupoSel.splice(i,1); const info=document.getElementById('rota-grupo-info'); if(info)info.textContent=_rotaGrupoSel.length?_rotaGrupoSel.length+' selecionado(s)':''; }
 // Aplica a escolha do modal: o cliente e os marcados passam a formar UM grupo (mesmo nome em todos)
 function _rotaAplicaGrupo(sup,item){
   const antigo=item.grupoDia||'';
-  const parceiros=item.diaInteiro?[]:_rotaGrupoSel.filter(id=>(sup.rota||[]).some(x=>x.id===id&&x.id!==item.id));
+  const parceiros=[];
+  if(!item.diaInteiro){
+    _rotaGrupoSel.forEach(k=>{
+      if(k.startsWith('r:')){ const id=k.slice(2); if(id!==item.id&&(sup.rota||[]).some(x=>x.id===id))parceiros.push(id); }
+      else if(k.startsWith('p:')){
+        const po=k.slice(2);
+        if(po===item.postoId)return;
+        let ex=(sup.rota||[]).find(x=>!x.avulso&&x.postoId===po);
+        if(!ex){ ex={id:uid(),avulso:false,postoId:po,todosPostos:false,clienteId:'',clienteNome:'',localNome:'',endereco:'',turnosVisita:[],freqCiclo:'',durMin:0,grupoDia:'',escritorio:false,diaInteiro:false,diasModo:'',semIni:'',dias:[],frequenciaSemanal:1}; sup.rota.push(ex); }
+        if(ex.id!==item.id)parceiros.push(ex.id);
+      }
+    });
+  }
   item.grupoDia='';
   if(parceiros.length){
     const ps=parceiros.map(id=>sup.rota.find(x=>x.id===id));
@@ -4230,7 +4270,8 @@ function abrirRotaModal(supervisorId,rotaId){
   document.getElementById('rota-avulso-end').value=r&&r.avulso?(r.endereco||''):'';
   document.getElementById('rota-modal-freq').value=r?(Number(r.frequenciaSemanal)||1):1;
   document.getElementById('rota-modal-dur').value=r&&r.durMin>0?r.durMin:'';
-  _rotaGrupoSel=(r&&r.grupoDia)?(sup.rota||[]).filter(x=>x.grupoDia===r.grupoDia&&x.id!==r.id).map(x=>x.id):[];
+  _rotaGrupoSel=(r&&r.grupoDia)?(sup.rota||[]).filter(x=>x.grupoDia===r.grupoDia&&x.id!==r.id).map(x=>'r:'+x.id):[];
+  { const bq=document.getElementById('rota-grupo-busca'); if(bq)bq.value=''; }
   _rotaGrupoRender(sup,r?r.id:null);
   document.getElementById('rota-modal-escr').checked=!!(r&&r.escritorio);
   document.getElementById('rota-modal-diainteiro').checked=!!(r&&r.diaInteiro);

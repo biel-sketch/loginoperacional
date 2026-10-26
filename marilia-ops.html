@@ -715,7 +715,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     </div>
     <div id="rota-bloco-cad">
       <div class="field"><label>Cliente</label>
-        <select id="rota-modal-cliente" onchange="_rotaModalFillPostos()"></select>
+        <select id="rota-modal-cliente" onchange="_rotaModalFillPostos();_rotaGrupoRender()"></select>
       </div>
       <div class="field"><label>Posto</label>
         <select id="rota-modal-posto" onchange="_rotaTurnosReset();_rotaGrupoRender()"></select>
@@ -4190,22 +4190,27 @@ async function grpAplicarSug(){
 let _rotaGrupoSel=[];
 let _rotaGrupoSup=null,_rotaGrupoSelf=null;
 // Candidatos: clientes já na rota deste supervisor + TODOS os postos cadastrados que ainda não estão nela
+function _rotaCliId(x){ if(!x||x.avulso)return ''; if(x.todosPostos)return x.clienteId||''; const f=x.postoId?findPosto(x.postoId):null; return f?f.cliente.id:''; }
+// Candidatos: CLIENTES inteiros (todos os postos juntos) + locais avulsos da rota
 function _rotaGrupoCands(sup,selfId){
   const out=[];
-  const postoSelf=(function(){ const e=document.getElementById('rota-modal-posto'); return e?e.value:''; })();
-  const naRota=new Set();
+  const cliSelf=(function(){ const e=document.getElementById('rota-modal-cliente'); return e?e.value:''; })();
+  const bloq=new Set();
   (sup.rota||[]).forEach(x=>{
-    if(!x.avulso&&x.postoId)naRota.add(x.postoId);
-    if(!x.avulso&&x.todosPostos)rotaPostosLista(x).forEach(q=>naRota.add(q.posto.id));
-    if(x.id===selfId||x.diaInteiro||x.escritorio||rotaSoFds(x))return;
-    out.push({key:'r:'+x.id,label:rotaLabel(x),sub:rotaCidade(x)||rotaEnderecoTxt(x)||'',nota:x.grupoDia?'já está em "'+x.grupoDia+'"':''});
+    if(x.id===selfId)return;
+    if(x.diaInteiro||x.escritorio||rotaSoFds(x)){ const c=_rotaCliId(x); if(c)bloq.add(c); return; }
+    if(x.avulso)out.push({key:'r:'+x.id,label:rotaLabel(x),sub:rotaCidade(x)||rotaEnderecoTxt(x)||'',nota:x.grupoDia?'já está em "'+x.grupoDia+'"':''});
   });
-  const donos={}; (state.supervisores||[]).forEach(sp=>{ if(sp.id===sup.id)return; (sp.rota||[]).forEach(x=>{ if(!x.avulso&&x.postoId)donos[x.postoId]=sp.nome; }); });
-  clientesAtivos().forEach(cl=>{ (cl.postos||[]).forEach(po=>{
-    if(naRota.has(po.id)||po.id===postoSelf)return;
-    const e=(po.endereco&&po.endereco.municipio)?po.endereco:cl.endereco;
-    out.push({key:'p:'+po.id,label:postoLabel(po.id),sub:((e&&e.municipio)||''),nota:donos[po.id]?'na rota de '+donos[po.id]:'fora da rota — será adicionado'});
-  }); });
+  const donos={}; (state.supervisores||[]).forEach(sp=>{ if(sp.id===sup.id)return; (sp.rota||[]).forEach(x=>{ const c=_rotaCliId(x); if(c)donos[c]=sp.nome; }); });
+  clientesAtivos().forEach(cl=>{
+    if(cl.id===cliSelf||bloq.has(cl.id))return;
+    const its=(sup.rota||[]).filter(x=>x.id!==selfId&&_rotaCliId(x)===cl.id);
+    const g=(its.find(x=>x.grupoDia)||{}).grupoDia;
+    const e=(cl.endereco&&cl.endereco.municipio)?cl.endereco:((cl.postos||[]).map(p=>p.endereco).find(x=>x&&x.municipio));
+    const np=(cl.postos||[]).length;
+    out.push({key:'c:'+cl.id,label:cl.nome,sub:((e&&e.municipio)||'')+(np?(((e&&e.municipio)?' · ':'')+np+' posto'+(np>1?'s':'')+' (todos juntos)'):''),
+      nota:g?'já está em "'+g+'"':(its.length?'':(donos[cl.id]?'na rota de '+donos[cl.id]:'fora da rota — será adicionado'))});
+  });
   return out;
 }
 function _rotaGrupoRender(sup,selfId){
@@ -4227,12 +4232,11 @@ function _rotaAplicaGrupo(sup,item){
   if(!item.diaInteiro){
     _rotaGrupoSel.forEach(k=>{
       if(k.startsWith('r:')){ const id=k.slice(2); if(id!==item.id&&(sup.rota||[]).some(x=>x.id===id))parceiros.push(id); }
-      else if(k.startsWith('p:')){
-        const po=k.slice(2);
-        if(po===item.postoId)return;
-        let ex=(sup.rota||[]).find(x=>!x.avulso&&x.postoId===po);
-        if(!ex){ ex={id:uid(),avulso:false,postoId:po,todosPostos:false,clienteId:'',clienteNome:'',localNome:'',endereco:'',turnosVisita:[],freqCiclo:'',durMin:0,grupoDia:'',escritorio:false,diaInteiro:false,diasModo:'',semIni:'',dias:[],frequenciaSemanal:1}; sup.rota.push(ex); }
-        if(ex.id!==item.id)parceiros.push(ex.id);
+      else if(k.startsWith('c:')){
+        const cid=k.slice(2);
+        let its=(sup.rota||[]).filter(x=>x.id!==item.id&&_rotaCliId(x)===cid);
+        if(!its.length){ const ex={id:uid(),avulso:false,postoId:'',todosPostos:true,clienteId:cid,clienteNome:'',localNome:'',endereco:'',turnosVisita:[],freqCiclo:'',durMin:0,grupoDia:'',escritorio:false,diaInteiro:false,diasModo:'',semIni:'',dias:[],frequenciaSemanal:1}; sup.rota.push(ex); its=[ex]; }
+        its.forEach(x=>parceiros.push(x.id));
       }
     });
   }
@@ -4241,7 +4245,7 @@ function _rotaAplicaGrupo(sup,item){
     const ps=parceiros.map(id=>sup.rota.find(x=>x.id===id));
     let nome=antigo||(ps.find(x=>x.grupoDia)||{}).grupoDia||'';
     if(!nome){
-      nome=[item].concat(ps).slice(0,3).map(x=>rotaLabel(x).split(' — ')[0].slice(0,14)).join(' + ').slice(0,40);
+      nome=[item].concat(ps).slice(0,3).map(x=>rotaLabel(x).split(/ — | · /)[0].slice(0,14)).join(' + ').slice(0,40);
       const usados=new Set((sup.rota||[]).filter(x=>x!==item&&!parceiros.includes(x.id)).map(x=>x.grupoDia).filter(Boolean));
       let base=nome,q=2; while(usados.has(nome)){nome=base.slice(0,36)+' '+q++;}
     }
@@ -4270,7 +4274,7 @@ function abrirRotaModal(supervisorId,rotaId){
   document.getElementById('rota-avulso-end').value=r&&r.avulso?(r.endereco||''):'';
   document.getElementById('rota-modal-freq').value=r?(Number(r.frequenciaSemanal)||1):1;
   document.getElementById('rota-modal-dur').value=r&&r.durMin>0?r.durMin:'';
-  _rotaGrupoSel=(r&&r.grupoDia)?(sup.rota||[]).filter(x=>x.grupoDia===r.grupoDia&&x.id!==r.id).map(x=>'r:'+x.id):[];
+  _rotaGrupoSel=(r&&r.grupoDia)?[...new Set((sup.rota||[]).filter(x=>x.grupoDia===r.grupoDia&&x.id!==r.id).map(x=>x.avulso?'r:'+x.id:'c:'+_rotaCliId(x)))].filter(k=>k!=='c:'):[];
   { const bq=document.getElementById('rota-grupo-busca'); if(bq)bq.value=''; }
   _rotaGrupoRender(sup,r?r.id:null);
   document.getElementById('rota-modal-escr').checked=!!(r&&r.escritorio);

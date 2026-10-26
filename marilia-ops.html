@@ -2927,7 +2927,7 @@ async function cronNucleo(cfg){
   let soma=0,n=0;
   for(let i=0;i<nCli;i++)for(let j=i+1;j<nCli;j++){ if(dist[i][j]>0){soma+=dist[i][j];n++;} }
   const escala=n?soma/n:5;
-  const DI=new Set(cfg.diaInt||[]), DIA=1500;
+  const DI=new Set(cfg.diaInt||[]), DIA=1500, DG=cfg.diaGrp||null;
   const GRP=700, PER=1000, DUP=1000, CAP=300, HOR=800, SPC=300, REP=0.5*escala, SAME=1.5*escala;
 
   const memo=new Map();
@@ -3025,7 +3025,7 @@ async function cronNucleo(cfg){
       const ag0=agendaDia(pd0.ordem,scrumDia[dI]); if(ag0.viol){pen+=HOR*ag0.viol;vh+=ag0.viol;}
       const cl=ids.map(id=>inst[id].cli);
       for(let a=0;a<cl.length;a++)for(let b=a+1;b<cl.length;b++) if(cl[a]===cl[b]){pen+=DUP;viol++;}
-      if(DI.size&&cl.length>1&&cl.some(c=>DI.has(c))){pen+=DIA*(cl.length-1);viol++;}
+      if(DI.size&&cl.length>1&&cl.some(c=>DI.has(c))){ const g0=DG?DG[cl[0]]:-1; if(!(g0>=0&&cl.every(c=>DG[c]===g0))){pen+=DIA*(cl.length-1);viol++;} }
       for(const c of cl){ wk[c*W+w]++; mask[c*W+w]|=(1<<d); }
       for(const id of ids){ const x=inst[id]; if((x.permD&&!x.permD.includes(d))||(x.permW&&!x.permW.includes(w))){pen+=PER;viol++;} }
       keys[dI]=cl.slice().sort((a,b)=>a-b).join(',');
@@ -3426,6 +3426,9 @@ async function _cronGerar(sup,o,seed,onMsg){
   });
   const scrumDia=[]; for(let dI=0;dI<W*D;dI++)scrumDia.push(!!(o.scrum&&o.scrum.dows.includes(dowL[dI%D])));
   const igualIdx=[...Array(N).keys()].filter(i=>dem[i].tipo==='igual');
+  const diEf=rotas.map(r=>!!(r.diaInteiro||(r.grupoDia&&rotas.some(q=>q.diaInteiro&&q.grupoDia===r.grupoDia))));
+  const diGrp={}; rotas.forEach((r,i)=>{ if(diEf[i]&&r.grupoDia)(diGrp[r.grupoDia]=diGrp[r.grupoDia]||[]).push(i); });
+  const diGrpDe=new Array(rotas.length).fill(-1), diGrpL=Object.values(diGrp).filter(a=>a.length>1); diGrpL.forEach((a,g)=>a.forEach(i=>{diGrpDe[i]=g;}));
   let capDia; const grpRes=[];
   if(igualIdx.length){
     const fixoTot=cont.reduce((x,y)=>x+y,0), restoT=W*D*V-fixoTot;
@@ -3459,7 +3462,7 @@ async function _cronGerar(sup,o,seed,onMsg){
     // grupos de clientes próximos (visita no mesmo dia): reserva dias com capacidade para o grupo inteiro,
     // tirando as vagas de dias mais cheios — o total de visitas não muda
     (function(){
-      const gm={}; rotas.forEach((r,i)=>{ if(r.grupoDia&&!r.diaInteiro)(gm[r.grupoDia]=gm[r.grupoDia]||[]).push(i); });
+      const gm={}; rotas.forEach((r,i)=>{ if(r.grupoDia&&!diEf[rotas.indexOf(r)])(gm[r.grupoDia]=gm[r.grupoDia]||[]).push(i); });
       const gl=Object.values(gm).filter(a=>a.length>1).sort((a,b)=>b.length-a.length);
       const reservado=new Set();
       gl.forEach(g=>{
@@ -3479,19 +3482,22 @@ async function _cronGerar(sup,o,seed,onMsg){
     })();
   }
   // clientes de "dia inteiro": cada visita fica sozinha num dia (capacidade 1); as vagas que sobram vão para os outros dias
-  const diaIntIdx=rotas.map((r,i)=>r.diaInteiro?i:-1).filter(i=>i>=0);
+  const diaIntIdx=rotas.map((r,i)=>diEf[i]?i:-1).filter(i=>i>=0);
   if(diaIntIdx.length){
     const nD=W*D, travado=new Set(), diaOcup=new Set(), fixCnt=new Array(nD).fill(0);
     fixInst.forEach(f=>{fixCnt[f.w*D+f.d]++;});
     grpRes.forEach(g=>g.dias.forEach(j=>travado.add(j)));
     diaIntIdx.forEach(i=>{
+      const gI=diGrpDe[i]>=0?diGrpL[diGrpDe[i]]:null;
+      if(gI&&gI[0]!==i)return; // só o 1º do grupo reserva os dias; os outros dividem o mesmo dia
+      const mem=gI||[i], sg=mem.length;
       const x=dem[i];
       let dias=[];
       if(x.tipo==='fixo'){ dias=fixInst.filter(f=>f.i===i).map(f=>f.w*D+f.d); }
       else{
         const pd=(x.perm&&x.perm.length)?x.perm.map(dw=>dowL.indexOf(dw)).filter(q=>q>=0):dowL.map((_,q)=>q);
         const sem=x.semIni!==undefined?(x.cnt===2?[x.semIni%W,(x.semIni+Math.round(W/2))%W]:[x.semIni%W]):null;
-        for(let k=0;k<cont[i];k++){
+        for(let k=0;k<(gI?Math.min(...mem.map(m=>cont[m]||0)):cont[i]);k++){
           const w=sem?sem[k%sem.length]:(k+i)%W; let bj=-1;
           for(const d of pd){ const j=w*D+d; if(travado.has(j)||dias.includes(j))continue; if(scrumDia[j]&&pd.length>1)continue; if(bj<0||capDia[j]<capDia[bj])bj=j; }
           if(bj<0)for(const d of pd){ const j=w*D+d; if(travado.has(j)||dias.includes(j))continue; if(bj<0||capDia[j]<capDia[bj])bj=j; }
@@ -3502,28 +3508,29 @@ async function _cronGerar(sup,o,seed,onMsg){
       }
       dias.forEach(j=>{
         const fixosAqui=fixInst.filter(f=>f.w*D+f.d===j);
-        if(fixosAqui.some(f=>f.i!==i)){ // outro cliente de dia fixo cai no mesmo dia: não dá para isolar
+        if(fixosAqui.some(f=>!mem.includes(f.i))){ // outro cliente de dia fixo cai no mesmo dia: não dá para isolar
           avisos.push(rotaLabel(rotas[i])+': não foi possível deixá-lo sozinho em um dos dias porque outro cliente tem esse mesmo dia fixo cadastrado.');
           return;
         }
-        let sobra=capDia[j]-1;
-        if(sobra<0){ // dia sem vaga: toma uma de outro dia (o total de visitas não muda)
+        let sobra=capDia[j]-sg;
+        while(sobra<0){ // dia sem vagas suficientes: toma de outros dias (o total de visitas não muda)
           let dj=-1; for(let q=0;q<nD;q++){ if(q===j||diaOcup.has(q)||capDia[q]<=Math.max(1,fixCnt[q]))continue; if(dj<0||capDia[q]>capDia[dj])dj=q; }
           if(dj<0){ avisos.push(rotaLabel(rotas[i])+': não há como reservar um dia inteiro.'); return; }
-          capDia[dj]--; sobra=0;
+          capDia[dj]--; sobra++;
         }
         travado.add(j); diaOcup.add(j);
-        capDia[j]=1;
+        capDia[j]=sg;
         while(sobra>0){ let dj=-1; for(let q=0;q<nD;q++){ if(q===j||travado.has(q))continue; if(dj<0||capDia[q]<capDia[dj])dj=q; } if(dj<0)for(let q=0;q<nD;q++){ if(q===j||diaOcup.has(q))continue; if(dj<0||capDia[q]<capDia[dj])dj=q; } if(dj<0)break; capDia[dj]++; sobra--; }
         if(sobra>0){ capDia[j]+=sobra; avisos.push(rotaLabel(rotas[i])+': dias de "dia inteiro" ocupam quase todo o cronograma — não foi possível isolar todos.'); }
       });
-      grpRes.push({mem:[i],dias:dias.slice(),diaInteiro:true});
+      grpRes.push({mem:mem.slice(),dias:dias.slice(),diaInteiro:true});
     });
   }
+  const diGrp2=i=>diGrpDe[i]>=0?diGrpL[diGrpDe[i]].length:1;
   const occ=new Array(N).fill(0), inst=[];
   const novoInst=(i,extra)=>{
     const gl=grupos[i], g=gl.length?gl[(occ[i]+seed+i)%gl.length]:null;
-    const x=Object.assign({cli:i,dur:(rotas[i].diaInteiro?Math.max(60,Math.round(H.jornada/2)):(rotas[i].durMin>0?Number(rotas[i].durMin):H.dur)),bucket:g?Math.floor(g.min/90):-1,grupo:g,win:g?g.win:null,noite:g?!!g.noite:false},extra||{});
+    const x=Object.assign({cli:i,dur:(diEf[i]?(diGrpDe[i]>=0?Math.max(60,Math.round(H.jornada*0.75/diGrp2(i))):Math.max(60,Math.round(H.jornada/2))):(rotas[i].durMin>0?Number(rotas[i].durMin):H.dur)),bucket:g?Math.floor(g.min/90):-1,grupo:g,win:g?g.win:null,noite:g?!!g.noite:false},extra||{});
     const dm=dem[i];
     if(dm.perm&&dm.perm.length){ const pd=dm.perm.map(dw=>dowL.indexOf(dw)).filter(q=>q>=0); if(pd.length)x.permD=pd; }
     if(dm.semIni!==undefined){ x.permW=[(dm.semIni+Math.round(W/2)*(dm.cnt===2?occ[i]:0))%W]; }
@@ -3534,7 +3541,7 @@ async function _cronGerar(sup,o,seed,onMsg){
   for(let i=0;i<N;i++){ const fx=dem[i].tipo==='fixo'?cont[i]:0; for(let k=0;k<cont[i]-fx;k++)novoInst(i); }
   let res=null;
   for(let a=0;a<3;a++){
-    const r2=await cronNucleo({nCli:N,dist,inst,W,D,V,capDia,grpRes,diaInt:diaIntIdx,grp:(function(){const m={};rotas.forEach((r,i)=>{if(r.grupoDia&&!r.diaInteiro){(m[r.grupoDia]=m[r.grupoDia]||[]).push(i);}});return Object.values(m).filter(a=>a.length>1);})(),scrum:o.scrum,scrumDia,horario:H,esp:rotas.map(r=>r.freqCiclo==='quinzenal'),seed:seed+a*7919,onProgress:p=>onMsg('Otimizando trajetos e horários… '+Math.round(p*100)+'%')});
+    const r2=await cronNucleo({nCli:N,dist,inst,W,D,V,capDia,grpRes,diaInt:diaIntIdx,grp:(function(){const m={};rotas.forEach((r,i)=>{if(r.grupoDia){(m[r.grupoDia]=m[r.grupoDia]||[]).push(i);}});return Object.values(m).filter(a=>a.length>1);})(),diaGrp:diGrpDe,scrum:o.scrum,scrumDia,horario:H,esp:rotas.map(r=>r.freqCiclo==='quinzenal'),seed:seed+a*7919,onProgress:p=>onMsg('Otimizando trajetos e horários… '+Math.round(p*100)+'%')});
     if(!res||(r2.viol+r2.violH)<(res.viol+res.violH))res=r2;
     if(r2.viol===0&&r2.violH===0)break;
   }
@@ -4069,7 +4076,7 @@ function abrirGruposModal(supId){
   renderGruposModal();
 }
 function closeGruposModal(){ if(_grpBusy)return; document.getElementById('grupos-modal').style.display='none'; renderSupervisores(); }
-function _grpElegiveis(sup){ return (sup.rota||[]).filter(r=>!r.diaInteiro&&!r.escritorio&&!rotaSoFds(r)); }
+function _grpElegiveis(sup){ return (sup.rota||[]).filter(r=>!r.escritorio&&!rotaSoFds(r)); }
 function _grpMapa(sup){ const m={}; (sup.rota||[]).forEach(r=>{ if(r.grupoDia)(m[r.grupoDia]=m[r.grupoDia]||[]).push(r); }); return m; }
 function renderGruposModal(){
   const sup=findSupervisor(_grpSupId); const el=document.getElementById('grp-corpo'); if(!sup||!el)return;
@@ -4198,7 +4205,7 @@ function _rotaGrupoCands(sup,selfId){
   const bloq=new Set();
   (sup.rota||[]).forEach(x=>{
     if(x.id===selfId)return;
-    if(x.diaInteiro||x.escritorio||rotaSoFds(x)){ const c=_rotaCliId(x); if(c)bloq.add(c); return; }
+    if(x.escritorio||rotaSoFds(x)){ const c=_rotaCliId(x); if(c)bloq.add(c); return; }
     if(x.avulso)out.push({key:'r:'+x.id,label:rotaLabel(x),sub:rotaCidade(x)||rotaEnderecoTxt(x)||'',nota:x.grupoDia?'já está em "'+x.grupoDia+'"':''});
   });
   const donos={}; (state.supervisores||[]).forEach(sp=>{ if(sp.id===sup.id)return; (sp.rota||[]).forEach(x=>{ const c=_rotaCliId(x); if(c)donos[c]=sp.nome; }); });
@@ -4229,7 +4236,7 @@ function _rotaGrupoTog(id,on){ const i=_rotaGrupoSel.indexOf(id); if(on&&i<0)_ro
 function _rotaAplicaGrupo(sup,item){
   const antigo=item.grupoDia||'';
   const parceiros=[];
-  if(!item.diaInteiro){
+  if(!item.escritorio){
     _rotaGrupoSel.forEach(k=>{
       if(k.startsWith('r:')){ const id=k.slice(2); if(id!==item.id&&(sup.rota||[]).some(x=>x.id===id))parceiros.push(id); }
       else if(k.startsWith('c:')){

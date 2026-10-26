@@ -390,9 +390,9 @@ html,body{
 <script>
 // === Busca de dados ao vivo pra Aparecida e Mogi (via Firebase) ===
 const HUB_UNITS=[
-  {prefix:'ap',dotId:'dot-aparecida',lblId:'lbl-aparecida',fbUrl:'https://painel-operacional-96032-default-rtdb.firebaseio.com/aparecida.json',turnos:['A','B','C','D']},
-  {prefix:'ma',dotId:'dot-marilia',lblId:'lbl-marilia',fbUrl:'https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia.json',turnos:['A','B','C','D']},
-  {prefix:'mg',dotId:'dot-mogi',lblId:'lbl-mogi',fbUrl:'https://painel-operacional-96032-default-rtdb.firebaseio.com/mogi.json',turnos:['OPM','OPT','OPC','AXM','AXT','AXC']},
+  {prefix:'ap',dotId:'dot-aparecida',lblId:'lbl-aparecida',fbUrl:'https://operacional-5e36a-default-rtdb.firebaseio.com/aparecida.json',turnos:['A','B','C','D']},
+  {prefix:'ma',dotId:'dot-marilia',lblId:'lbl-marilia',fbUrl:'https://operacional-5e36a-default-rtdb.firebaseio.com/marilia.json',turnos:['A','B','C','D']},
+  {prefix:'mg',dotId:'dot-mogi',lblId:'lbl-mogi',fbUrl:'https://operacional-5e36a-default-rtdb.firebaseio.com/mogi.json',turnos:['OPM','OPT','OPC','AXM','AXT','AXC']},
 ];
 function hubToday(){
   const d=new Date();
@@ -491,7 +491,7 @@ async function hubCarregarUnidade(u){
 }
 
 // === Marília Operações (postos de segurança/serviços — modelo por posto+ciclo) ===
-const FB_URL_MARILIA_OPS='https://painel-operacional-96032-default-rtdb.firebaseio.com/marilia_ops.json';
+const FB_URL_MARILIA_OPS='https://operacional-5e36a-default-rtdb.firebaseio.com/marilia_ops.json';
 const MOPS_POSTOS=['Acim','Americas','ClinicPrev','Dallas','Dori','Emdurb','Grespan','Jazam','Mirai Marilia','Mirai Tupa','Moradas','Mustache','Pib','Prever','Ravena','TSERVICE','Tamoyo','Velocity'];
 function hubIsFimSemana(dateStr){
   const dow=new Date(dateStr+'T12:00').getDay();

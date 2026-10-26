@@ -733,9 +733,10 @@ img,canvas,svg{max-width:100%}
     </div>
     <div class="modal-field">
       <label>Turno</label>
-      <select id="modal-turno">
+      <select id="modal-turno" onchange="if(this.value==='C'){var a=document.getElementById('modal-atividade');if(a)a.value='Amarração';}">
         <option value="A">Turno A — 06h00 às 14h20</option>
         <option value="B">Turno B — 14h00 às 22h20</option>
+        <option value="C">Turno C — 22h00 às 06h20 (somente Amarração)</option>
         <option value="D" id="modal-turno-d-opt" style="display:none">Turno Extraordinário</option>
       </select>
     </div>
@@ -3867,7 +3868,7 @@ function osRenderForm(){
    '<div class="modal-field os-w2"><label>Veículo</label>'+seg('veic',[['CARRETA','Carreta'],['TRUCK','Truck'],['RODOTREM','Rodotrem']])+'</div>'+
    '<div class="modal-field"><label>Nº da OS (documento)</label><input id="os-doc" inputmode="numeric" value="'+osEsc(f.doc)+'" oninput="osSet(\'doc\',this.value)" placeholder="ex.: 156278"></div>'+
    '<div class="modal-field"><label>Data</label><input type="date" id="os-data" value="'+f.data+'" max="'+today()+'" onchange="osSet(\'data\',this.value)"></div>'+
-   '<div class="modal-field"><label>Turno</label><select id="os-turno" onchange="osSet(\'turno\',this.value)">'+['A','B','C'].map(t=>'<option value="'+t+'"'+(f.turno===t?' selected':'')+'>Turno '+t+(t==='C'?' (3º turno · 22h–06h)':'')+'</option>').join('')+'</select></div>'+
+   '<div class="modal-field"><label>Turno</label><select id="os-turno" onchange="osSet(\'turno\',this.value)">'+['A','B','C'].map(t=>'<option value="'+t+'"'+(f.turno===t?' selected':'')+'>Turno '+t+(t==='C'?' (3º turno · 22h–06h20)':'')+'</option>').join('')+'</select></div>'+
    '<div class="modal-field os-w2"><label>Cliente</label><div style="display:flex;gap:8px"><select id="os-cli" style="flex:1;min-width:0" onchange="osSet(\'cnpj\',this.value)"><option value="">Selecione o cliente…</option>'+cli.map(c=>'<option value="'+c.cnpj+'"'+(f.cnpj===c.cnpj?' selected':'')+'>'+osEsc(c.nome)+'</option>').join('')+'</select><button type="button" class="ds-btn" onclick="osAbrirCliente()" title="Novo cliente"><i class="ti ti-plus"></i></button></div></div>'+
    '<div class="modal-field"><label>Cavalo (placa)</label><input id="os-cav" value="'+osEsc(f.cavalo)+'" oninput="osMaskPlaca(this);osSet(\'cavalo\',this.value)" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="8" placeholder="AAA-0A00" style="text-transform:uppercase;letter-spacing:.08em;font-weight:600"></div>'+
    (f.veic==='TRUCK'?'':'<div class="modal-field"><label>'+(f.veic==='RODOTREM'?'Carreta 1':'Carreta (placa)')+'</label><input id="os-car" value="'+osEsc(f.carreta)+'" oninput="osMaskPlaca(this);osSet(\'carreta\',this.value)" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="8" placeholder="AAA-0A00" style="text-transform:uppercase;letter-spacing:.08em;font-weight:600"></div>')+

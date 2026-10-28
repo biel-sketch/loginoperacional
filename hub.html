@@ -390,9 +390,9 @@ html,body{
 <script>
 // === Busca de dados ao vivo pra Aparecida e Mogi (via Firebase) ===
 const HUB_UNITS=[
-  {prefix:'ap',dotId:'dot-aparecida',lblId:'lbl-aparecida',fbUrl:'https://operacional-5e36a-default-rtdb.firebaseio.com/aparecida.json',turnos:['A','B','C','D']},
-  {prefix:'ma',dotId:'dot-marilia',lblId:'lbl-marilia',fbUrl:'https://operacional-5e36a-default-rtdb.firebaseio.com/marilia.json',turnos:['A','B','C','D']},
-  {prefix:'mg',dotId:'dot-mogi',lblId:'lbl-mogi',fbUrl:'https://operacional-5e36a-default-rtdb.firebaseio.com/mogi.json',turnos:['OPM','OPT','OPC','AXM','AXT','AXC']},
+  {prefix:'ap',dotId:'dot-aparecida',lblId:'lbl-aparecida',fbUrl:'https://login-operacional-default-rtdb.firebaseio.com/aparecida.json',turnos:['A','B','C','D']},
+  {prefix:'ma',dotId:'dot-marilia',lblId:'lbl-marilia',fbUrl:'https://login-operacional-default-rtdb.firebaseio.com/marilia.json',turnos:['A','B','C','D']},
+  {prefix:'mg',dotId:'dot-mogi',lblId:'lbl-mogi',fbUrl:'https://login-operacional-default-rtdb.firebaseio.com/mogi.json',turnos:['OPM','OPT','OPC','AXM','AXT','AXC']},
 ];
 function hubToday(){
   const d=new Date();
@@ -411,16 +411,43 @@ function hubTimeAgo(ts){
 }
 // Só baixa o documento da unidade se o carimbo "_v" mudou desde a última leitura (economiza downloads do Firebase)
 const _hubCache={};
-async function hubFetchDoc(url){
-  const c=_hubCache[url];
-  try{
-    const rv=await fetch(url.replace('.json','/_v.json'),{cache:'no-store'});
-    if(rv.ok){ const v=await rv.json(); if(v!=null&&c&&c.v===v)return c.data; }
-  }catch(e){}
+// O Hub não baixa mais o documento inteiro de cada painel: lê só o carimbo "_v" e, quando algo mudou,
+// busca apenas os pedaços que mostra (equipe, hoje, totais resumidos).
+async function hubJson(url){
   const r=await fetch(url,{cache:'no-store'});
   if(!r.ok)throw new Error(r.status);
-  const data=await r.json()||{};
-  _hubCache[url]={v:data._v||null,data};
+  return r.json();
+}
+const _enc=encodeURIComponent;
+async function hubFetchDoc(url){
+  const c=_hubCache[url];
+  const base=url.replace('.json','');
+  const hoje=hubToday(), ym=hoje.slice(0,7);
+  let v=null;
+  try{ v=await hubJson(base+'/_v.json'); }catch(e){}
+  if(v!=null&&c&&c.v===v&&c.dia===hoje)return c.data;
+  const ma=/\/marilia\.json$/.test(url), ops=/\/marilia_ops\.json$/.test(url);
+  const q=(p,extra)=>hubJson(base+'/'+p+'.json'+(extra||''));
+  const nulo=()=>null;
+  const [colaboradores,presHoje,movHoje,hub,bufSaldo,bufAj,bufDia]=await Promise.all([
+    q('colaboradores'),
+    q('presencas/'+hoje),
+    ops?Promise.resolve(null):q('movimentos/'+hoje),
+    q('hub'),
+    ops?Promise.resolve(null):q('bufferSaldoInicial'),
+    ops?Promise.resolve(null):q('bufferAjuste'),
+    ma?q('bufferDia','?orderBy='+_enc('"$key"')+'&endAt='+_enc('"'+hoje+'"')+'&limitToLast=5'):Promise.resolve(null)
+  ]);
+  let data;
+  if(!hub){   // painel ainda não gravou o resumo: usa o documento inteiro (só até o próximo salvamento)
+    data=await hubJson(url)||{};
+  }else{
+    data={colaboradores:colaboradores||[],presencas:presHoje?{[hoje]:presHoje}:{},movimentos:movHoje?{[hoje]:movHoje}:{},hub,
+      bufferSaldoInicial:bufSaldo||0,bufferAjuste:bufAj||0,bufferDia:bufDia||{},
+      osAmarracao:[],osValores:[]};
+    if(!Array.isArray(data.colaboradores))data.colaboradores=Object.values(data.colaboradores).filter(Boolean);
+  }
+  _hubCache[url]={v:v,dia:hoje,data};
   return data;
 }
 async function hubCarregarUnidade(u){
@@ -439,7 +466,8 @@ async function hubCarregarUnidade(u){
       });
     });
     let totP=0,totE=0;
-    Object.values(data.movimentos||{}).forEach(ms=>{(ms||[]).forEach(m=>{if(!m)return;totP+=(m.prod||0);totE+=(m.env||0);});});
+    if(data.hub&&data.hub.totP!==undefined){totP=data.hub.totP||0;totE=data.hub.totE||0;}
+    else Object.values(data.movimentos||{}).forEach(ms=>{(ms||[]).forEach(m=>{if(!m)return;totP+=(m.prod||0);totE+=(m.env||0);});});
     let dP=0,dE=0,dD=0;
     ((data.movimentos&&data.movimentos[todayD])||[]).forEach(m=>{ if(!m)return; dP+=(m.prod||0); dE+=(m.env||0); dD+=(m.desc||0); });
     hubSetTxt(u.prefix+'-prod-dia',dP);
@@ -455,7 +483,8 @@ async function hubCarregarUnidade(u){
       const OSC={CARRETA:'C',TRUCK:'T',RODOTREM:'R'};
       const vals={};(data.osValores||[]).forEach(x=>{if(x&&!x.del&&x.v!==null&&x.v!==undefined&&x.v!=='')vals[x.k]=Number(x.v);});
       let nA=0,nD=0,vt=0,sem=0;
-      (data.osAmarracao||[]).forEach(r=>{
+      if(data.hub&&data.hub.osMeses){ const dd=(data.hub.osDias||{})[todayD]||{}; nA=dd.A||0; nD=dd.D||0; const mm=data.hub.osMeses[todayD.slice(0,7)]; if(mm){vt=mm.vt||0;sem=mm.sem||0;} }
+      else (data.osAmarracao||[]).forEach(r=>{
         if(!r||r.del)return;
         if(r.data===todayD){if(r.op==='A')nA++;else nD++;}
         if(String(r.data||'').slice(0,7)!==todayD.slice(0,7))return;
@@ -477,6 +506,7 @@ async function hubCarregarUnidade(u){
     let latest=null;
     Object.values(data.movimentos||{}).forEach(ms=>{(ms||[]).forEach(m=>{if(m&&m.ts&&(!latest||m.ts>latest))latest=m.ts;});});
     Object.values(data.presencas||{}).forEach(pd=>{Object.values(pd||{}).forEach(pt=>{if(pt&&pt.savedAt&&(!latest||pt.savedAt>latest))latest=pt.savedAt;});});
+    if(data.hub&&data.hub.latest&&(!latest||data.hub.latest>latest))latest=data.hub.latest;
     const ago=hubTimeAgo(latest);
     hubSetTxt(u.prefix+'-freshness-lbl',ago?('Atualizado '+ago):'Sem lançamentos ainda');
     const dot=document.getElementById(u.dotId),lbl=document.getElementById(u.lblId);
@@ -491,7 +521,7 @@ async function hubCarregarUnidade(u){
 }
 
 // === Marília Operações (postos de segurança/serviços — modelo por posto+ciclo) ===
-const FB_URL_MARILIA_OPS='https://operacional-5e36a-default-rtdb.firebaseio.com/marilia_ops.json';
+const FB_URL_MARILIA_OPS='https://login-operacional-default-rtdb.firebaseio.com/marilia_ops.json';
 const MOPS_POSTOS=['Acim','Americas','ClinicPrev','Dallas','Dori','Emdurb','Grespan','Jazam','Mirai Marilia','Mirai Tupa','Moradas','Mustache','Pib','Prever','Ravena','TSERVICE','Tamoyo','Velocity'];
 function hubIsFimSemana(dateStr){
   const dow=new Date(dateStr+'T12:00').getDay();
@@ -534,6 +564,7 @@ async function hubCarregarMariliaOps(){
         Object.values(nomes||{}).forEach(v=>{if(v&&v.ts&&(!latest||v.ts>latest))latest=v.ts;});
       });
     });
+    if(data.hub&&data.hub.latest&&(!latest||data.hub.latest>latest))latest=data.hub.latest;
     hubSetTxt('mops-escalados',totalEscalados);
     hubSetTxt('mops-presentes',totalPresentes);
     hubSetTxt('mops-ausentes',totalAusentes);

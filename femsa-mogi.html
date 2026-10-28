@@ -687,32 +687,167 @@ const LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1
 
 <script>
 const META_DIARIA=2000,SYNC_INTERVAL=180000;
-const FB_URL='https://operacional-5e36a-default-rtdb.firebaseio.com/mogi.json';
+const FB_URL='https://login-operacional-default-rtdb.firebaseio.com/mogi.json';
 
-// ===== Economia de downloads do Firebase =====
-// Cada documento tem um carimbo "_v" que muda a cada gravação. O auto-sync primeiro lê SÓ esse carimbo
-// (poucos bytes) e só baixa o documento inteiro quando alguém realmente gravou algo novo.
+// ===== Transporte Firebase econômico =====
+// Leitura: o documento inteiro é baixado UMA vez (stream); depois só chegam as mudanças.
+// Escrita: só o que mudou é enviado (PATCH) e a resposta vem vazia (print=silent).
+// Sem alteração na nuvem (carimbo "_v" igual), nada é baixado.
 const FB_V_URL=FB_URL.replace('.json','/_v.json');
-let _vVisto=null, _vPend=null;
-async function fbPrecisaBaixar(){
-  try{
-    const r=await fetch(FB_V_URL,{cache:'no-store'});
-    if(!r.ok)return true;
-    const v=await r.json();
-    return v==null||v!==_vVisto;
-  }catch(e){return true;}
+const FB_LS_V='fbv_'+FB_URL;
+let _vVisto=null, _vPend=null, _vProprio=null, _vAplicado=null;
+try{ _vVisto=localStorage.getItem(FB_LS_V)||null; }catch(e){}
+let _mirror=null, _es=null, _esPronto=false, _esUltimo=0, _mergeT=null, _esHideT=null;
+let _rev=0, _revAp=0;   // _rev sobe a cada mudança recebida da nuvem; _revAp = última já aplicada ao estado local
+function _fbSalvaV(){ try{ if(_vVisto)localStorage.setItem(FB_LS_V,_vVisto); }catch(e){} _fbHubGarante(); }
+function _fbHubResumo(m){   // totais pequenos para o Hub (evita que ele baixe o histórico inteiro)
+  let p=0,e=0,latest='';
+  Object.values(m.movimentos||{}).forEach(ms=>(ms||[]).forEach(x=>{ if(!x)return; p+=(x.prod||0); e+=(x.env||0); if(x.ts&&x.ts>latest)latest=x.ts; }));
+  Object.values(m.presencas||{}).forEach(pd=>Object.values(pd||{}).forEach(pt=>{ if(pt&&pt.savedAt&&pt.savedAt>latest)latest=pt.savedAt; }));
+  return {totP:p,totE:e,latest};
 }
+let _hubInit=false;
+function _fbHubGarante(){ if(_hubInit||!_mirror||_mirror.hub||typeof currentUser==='undefined'||!currentUser)return; _hubInit=true; setTimeout(()=>{ try{pushToCloud();}catch(e){} },4000); }
+
+function _fbClone(o){ return (o===undefined||o===null)?o:JSON.parse(JSON.stringify(o)); }
+function _fbNorm(x){ // objetos com chaves 0..n-1 voltam a ser listas (como o GET faz); buracos saem
+  if(Array.isArray(x))return x.filter(v=>v!=null).map(_fbNorm);
+  if(x&&typeof x==='object'){
+    const ks=Object.keys(x);
+    if(ks.length&&ks.every(k=>/^\d+$/.test(k))&&Math.max(...ks.map(Number))<ks.length*2+2){
+      const a=[]; ks.map(Number).sort((p,q)=>p-q).forEach(i=>{ if(x[i]!=null)a.push(_fbNorm(x[i])); }); return a;
+    }
+    const o={}; ks.forEach(k=>{ o[k]=_fbNorm(x[k]); }); return o;
+  }
+  return x;
+}
+function _fbSetPath(root,path,val){
+  const ks=path.split('/').filter(Boolean);
+  if(!ks.length)return (val==null?{}:val);
+  if(root==null||typeof root!=='object')root={};
+  let o=root;
+  for(let i=0;i<ks.length-1;i++){ const k=ks[i]; if(o[k]==null||typeof o[k]!=='object')o[k]={}; o=o[k]; }
+  const last=ks[ks.length-1];
+  if(val==null){ if(Array.isArray(o))o[last]=null; else delete o[last]; } else o[last]=val;
+  return root;
+}
+function _fbEvento(ev,patch){
+  _esUltimo=Date.now();
+  let d; try{ d=JSON.parse(ev.data); }catch(e){ return; }
+  if(!d)return;
+  const path=d.path||'/', data=d.data;
+  _rev++;
+  if(path==='/'&&!patch){ _mirror=(data==null?{}:data); _esPronto=true; }
+  else{
+    if(_mirror==null)_mirror={};
+    if(patch){ Object.keys(data||{}).forEach(k=>{ _mirror=_fbSetPath(_mirror,(path==='/'?'':path)+'/'+k,data[k]); }); }
+    else _mirror=_fbSetPath(_mirror,path,data);
+  }
+  if(_esPronto)_fbAgendarAplicar();
+}
+function _fbAgendarAplicar(){ clearTimeout(_mergeT); _mergeT=setTimeout(_fbAplicar,800); }
+function _fbAplicar(){
+  if(!_mirror||resetLock)return;
+  if(_rev===_revAp)return;             // nada novo desde a última aplicação
+  if(isSyncing||hasPending()){ _mergeT=setTimeout(_fbAplicar,1500); return; }
+  const rev=_rev, v=_mirror._v||null;
+  const antes=JSON.stringify(state);
+  _revAp=rev; _vVisto=v; _vAplicado=v; _fbSalvaV();
+  try{
+    mergeState(_fbNorm(_fbClone(_mirror)));
+    saveCache(); lastSync=new Date();
+    setSyncDot('ok','Sincronizado '+lastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){ console.error('Stream:',e); return; }
+  const eco=(JSON.stringify(state)===antes);   // nada mudou na tela: não redesenha
+  if(!eco&&!usuarioEstaEditando())renderAll();
+}
+function _fbAbrirStream(){
+  if(_es)return true;
+  if(typeof EventSource==='undefined')return false;
+  try{ _es=new EventSource(FB_URL); }catch(e){ _es=null; return false; }
+  _esPronto=false; _esUltimo=Date.now();
+  _es.addEventListener('put',e=>_fbEvento(e,false));
+  _es.addEventListener('patch',e=>_fbEvento(e,true));
+  _es.addEventListener('keep-alive',()=>{ _esUltimo=Date.now(); });
+  _es.addEventListener('cancel',_fbFecharStream);
+  _es.addEventListener('auth_revoked',_fbFecharStream);
+  _es.onerror=_fbFecharStream;   // sem reconexão automática (cada reconexão baixaria tudo de novo)
+  return true;
+}
+function _fbFecharStream(){ if(_es){ try{_es.close();}catch(e){} } _es=null; _esPronto=false; }
+function _fbEsperaPronto(ms){ return new Promise(res=>{ const t0=Date.now(); (function w(){ if(_esPronto||!_es||Date.now()-t0>ms)return res(_esPronto); setTimeout(w,100); })(); }); }
+async function fbProbe(){
+  try{ const r=await fetch(FB_V_URL,{cache:'no-store'}); if(!r.ok)return undefined; return await r.json(); }catch(e){ return undefined; }
+}
+// Devolve o documento da nuvem (cópia) ou null quando nada mudou desde a última leitura.
+async function fbLerNuvem(sempre){
+  const entrega=()=>{ _revAp=_rev; return _fbNorm(_fbClone(_mirror)); };
+  if(_es&&_esPronto&&_mirror&&Date.now()-_esUltimo>120000){ _fbFecharStream(); }   // stream mudo: descarta
+  if(_es&&_esPronto&&_mirror){
+    if(!sempre&&_rev===_revAp)return null;
+    return entrega();
+  }
+  const v=await fbProbe();
+  if(v!==undefined&&v!==null){
+    if(_mirror&&_mirror._v===v){ if(!sempre&&_rev===_revAp)return null; return entrega(); }
+    if(!sempre&&v===_vVisto&&!_mirror)return null;   // página recarregada e nada mudou: usa o cache local
+  }
+  if(!document.hidden&&_fbAbrirStream()&&await _fbEsperaPronto(25000))return entrega();
+  _fbFecharStream();
+  const r=await fetch(FB_URL); if(!r.ok)throw new Error(r.status);
+  const data=await r.json(); _mirror=data||{}; _rev++;
+  return entrega();
+}
+function _fbDiff(p,a,b,d,out){
+  if(a==null&&b==null)return;
+  if(JSON.stringify(a)===JSON.stringify(b))return;
+  const oa=a&&typeof a==='object', ob=b&&typeof b==='object';
+  if(oa&&ob&&d<3){
+    Object.keys(b).forEach(k=>{ _fbDiff(p?p+'/'+k:k,a[k],b[k],d+1,out); });
+    Object.keys(a).forEach(k=>{ if(a[k]!=null&&(b[k]===undefined||b[k]===null))out[p?p+'/'+k:k]=null; });
+    return;
+  }
+  out[p]=(b===undefined?null:b);
+}
+// Grava só as diferenças em relação ao que está na nuvem. Devolve {ok,status}.
+async function fbGravar(merged){
+  const novo=_fbClone(merged); delete novo._v;
+  const H={'Content-Type':'application/json'};
+  const base=(_mirror&&typeof _mirror==='object'&&Object.keys(_mirror).length)?_mirror:null;
+  const pv=Date.now()+'-'+Math.random().toString(36).slice(2,8);
+  let r;
+  if(base){
+    const up={}; _fbDiff('',base,novo,0,up); delete up._v;
+    if(!Object.keys(up).length)return {ok:true,status:204,semMudanca:true};
+    up._v=pv;
+    r=await fetch(FB_URL+'?print=silent',{method:'PATCH',headers:H,body:JSON.stringify(up)});
+    if(r.ok){ Object.keys(up).forEach(k=>{ _mirror=_fbSetPath(_mirror,k,up[k]); }); }
+  }else{
+    novo._v=pv;
+    r=await fetch(FB_URL+'?print=silent',{method:'PUT',headers:H,body:JSON.stringify(novo)});
+    if(r.ok)_mirror=_fbClone(novo);
+  }
+  if(r.ok){ _vPend=pv; _vProprio=pv; _vVisto=pv; _vAplicado=pv; _fbSalvaV(); }
+  return r;
+}
+// Resets (substituição total): mesma regra de carimbo e resposta vazia
 (function(){
   const _f=window.fetch.bind(window);
   window.fetch=function(u,o){
     if(u===FB_URL&&o&&o.method==='PUT'&&typeof o.body==='string'){
-      try{ const b=JSON.parse(o.body); _vPend=Date.now()+'-'+Math.random().toString(36).slice(2,8); b._v=_vPend; o=Object.assign({},o,{body:JSON.stringify(b)}); }catch(e){ _vPend=null; }
-      const pv=_vPend;
-      return _f(u,o).then(r=>{ if(r.ok&&pv)_vVisto=pv; return r; });
+      let pv=null;
+      try{ const b=JSON.parse(o.body); pv=Date.now()+'-'+Math.random().toString(36).slice(2,8); b._v=pv; o=Object.assign({},o,{body:JSON.stringify(b)}); }catch(e){ pv=null; }
+      return _f(FB_URL+'?print=silent',o).then(r=>{ if(r.ok&&pv){ _vPend=pv; _vProprio=pv; _vVisto=pv; _vAplicado=pv; _fbSalvaV(); try{ _mirror=JSON.parse(o.body); }catch(e){} } return r; });
     }
     return _f(u,o);
   };
 })();
+// Aba escondida por muitas horas: encerra o stream (volta a conferir só o carimbo ao reabrir)
+document.addEventListener('visibilitychange',()=>{
+  clearTimeout(_esHideT);
+  if(document.hidden)_esHideT=setTimeout(()=>{ if(document.hidden)_fbFecharStream(); },120*60*1000);
+});
+
 const LS_CACHE='mogi_cache',LS_UNIT='mogi_unit';
 const USERS=[
   {user:'Gustavo',   senha:'LoginBH26',  role:'gestor'},
@@ -978,7 +1113,7 @@ function mergeState(cloud){
     state.configTs=cloud.configTs;
   }
 }
-function saveCache(){try{localStorage.setItem(LS_CACHE,JSON.stringify(state));localStorage.setItem('mogi_cache_ts',Date.now());}catch(e){}}
+function saveCache(){try{localStorage.setItem(LS_CACHE,JSON.stringify(state));_fbSalvaV();localStorage.setItem('mogi_cache_ts',Date.now());}catch(e){}}
 
 // === SISTEMA DE NOTIFICAÇÕES WHATSAPP ===
 
@@ -1130,17 +1265,15 @@ async function syncFromCloud(){
   }
   setSyncDot('syncing','Sincronizando...');
   try{
-    if(!(await fbPrecisaBaixar())){   // nada novo na nuvem: não baixa o documento
+    const data=await fbLerNuvem(false);
+    if(data===null){   // nada novo na nuvem: não baixa o documento
       saveCache();
       lastSync=new Date();
       setSyncDot('ok','Sincronizado '+lastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
       isSyncing=false;
       return;
     }
-    const r=await fetch(FB_URL);
-    if(!r.ok)throw new Error(r.status);
-    const data=await r.json();
-    _vVisto=(data&&data._v)||null;
+    _vVisto=(data&&data._v)||null; _vAplicado=_vVisto; _fbSalvaV();
     if(resetLock){isSyncing=false;return;}
     if(data)mergeState(data);
     saveCache(); // sempre salva timestamp mesmo sem dados novos
@@ -1162,7 +1295,7 @@ async function pushToCloud(){
     // Read current cloud state for smart merge
     let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||''};
     try{
-      const r=await fetch(FB_URL);
+      const r={ok:true,json:async()=>fbLerNuvem(true)};
       if(r.ok){
         const cloud=await r.json();
         if(cloud){
@@ -1232,7 +1365,9 @@ async function pushToCloud(){
         }
       }
     }catch(e){}
-    const rp=await fetch(FB_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(merged)});
+    if(merged.auditoria&&merged.auditoria.length>600)merged.auditoria=merged.auditoria.slice(-400);
+    merged.hub=_fbHubResumo(merged);
+    const rp=await fbGravar(merged);
     if(!rp.ok)throw new Error(rp.status);
     state.colaboradores=merged.colaboradores;
     state.movimentos=merged.movimentos;

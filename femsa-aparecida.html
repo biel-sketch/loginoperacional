@@ -929,6 +929,8 @@ async function fbLerNuvem(sempre){
   return entrega();
 }
 function _fbDiff(p,a,b,d,out){
+  const vz=x=>x!=null&&typeof x==='object'&&!Object.keys(x).length;   // o Firebase não guarda {} nem []: vazio = ausente
+  if(vz(a))a=null; if(vz(b))b=null;
   if(a==null&&b==null)return;
   if(JSON.stringify(a)===JSON.stringify(b))return;
   const oa=a&&typeof a==='object', ob=b&&typeof b==='object';
@@ -992,8 +994,8 @@ const USERS=[
   {user:'lançamentos', senha:'login@aparecida', role:'lancamentos'},
   {user:'Financeiro', senha:'L@gin982', role:'admin'},
 ];
-const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:''}];
-let state={premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:''};
+const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:'',_padrao:true},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:'',_padrao:true}];
+let state={premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:'',movimentosResetTs:'',colaboradoresResetTs:'',removidos:{}};
 const ATIVIDADES=['Recuperação de Pallets','Produção de Insumos','Operação de Empilhadeira','Inspeção da Qualidade'];
 function produzPallets(c){return !c.atividade||c.atividade==='Recuperação de Pallets';}
 // Situação do colaborador no dia (presença do turno dele + afastamentos): define cor e se entra na produção
@@ -1029,9 +1031,10 @@ function colabNoDia(c,date){
 // Quem aparece na produção individual de uma data/turno: quem trabalhava naquele dia
 // + TODO nome que já tem produção lançada ali (mesmo excluído, renomeado ou de outro turno).
 function colabsProdDoDia(date,turno){
+  const _vistos=new Set();
   const reg=((state.producaoPessoas||{})[date]||{})[turno];
   const pess=(reg&&reg.pessoas)||{};
-  const lista=state.colaboradores.filter(c=>c.turno===turno&&produzPallets(c)&&(colabNoDia(c,date)||pess[c.nome]));
+  const lista=state.colaboradores.filter(c=>{ if(c.renomeadoPara||c.turno!==turno||!produzPallets(c)||!(colabNoDia(c,date)||pess[c.nome])||_vistos.has(c.nome))return false; _vistos.add(c.nome); return true; });
   const nomes=new Set(lista.map(c=>c.nome));
   Object.keys(pess).forEach(n=>{
     if(nomes.has(n))return;
@@ -1187,70 +1190,148 @@ async function fbFetch(method='GET', body=null){
   return r.json();
 }
 
-function _mantemLocalNoMerge(localSavedAt,cloudSavedAt,resetTs,localTouchedAt){
-  // Regra única usada em toda mesclagem por data+turno:
-  // - rascunho local ainda não salvo -> protege, MAS só se foi editado depois do
-  //   último reset explícito (senão é sobra de um rascunho antigo, nunca finalizado,
-  //   de uma aba/dispositivo esquecido aberto — não pode ressuscitar um reset)
-  // - dado local salvo ANTES do último reset explícito -> descarta (respeita o reset)
-  // - senão, o savedAt mais recente vence (nuvem sem esse registro = savedAt '' = lançamento novo vence)
-  if(!localSavedAt){
-    if(resetTs&&(!localTouchedAt||localTouchedAt<resetTs))return false;
-    return true;
-  }
-  if(resetTs&&localSavedAt<resetTs)return false;
-  return localSavedAt>=cloudSavedAt;
+// ===== MESCLAGEM POR CARIMBO DE TEMPO =====
+// Regra única (vale para baixar da nuvem E para enviar): cada registro carrega o horário da sua última
+// alteração e, ao juntar dois aparelhos, o MAIS RECENTE vence. Assim um aparelho desatualizado (cache velho,
+// alterações pendentes de quando o banco estava fora) nunca desfaz o que outro aparelho já salvou.
+function _recTs(v){ if(!v)return ''; const a=v.savedAt||'', b=v.touchedAt||''; return a>b?a:b; }
+function _sobreviveReset(v,resetTs){   // registro local anterior ao último reset explícito não volta
+  if(!resetTs)return true;
+  const t=_recTs(v); return !!t&&t>=resetTs;
 }
-function mergeDatedTurnos(localObj,cloudObj,resetTs){
-  // Mescla objetos no formato {data:{turno:{savedAt,...}}} sem nunca descartar
-  // um rascunho local ainda não salvo (savedAt vazio) que esteja sendo editado agora —
-  // evita que a sincronização de fundo apague o que está sendo digitado antes de
-  // confirmar. Um reset explícito (resetTs) descarta qualquer dado local mais antigo
-  // que ele, mesmo já salvo, e também descarta rascunhos não salvos que não foram
-  // tocados depois do reset (sobra de aba/dispositivo esquecido aberto).
+function _mesclaTurnoPessoas(l,c){      // produção individual: mescla pessoa a pessoa (duas pessoas digitando ao mesmo tempo não se apagam)
+  const lw=_recTs(l)>=_recTs(c);         // empate → lado local
+  const base=lw?l:c;
+  const lp=l.pessoas||{}, cp=c.pessoas||{}, pessoas={};
+  new Set([...Object.keys(cp),...Object.keys(lp)]).forEach(n=>{
+    const a=lp[n], b=cp[n];
+    if(a===undefined){pessoas[n]=b;return;}
+    if(b===undefined){pessoas[n]=a;return;}
+    const ta=(a&&a.t)||'', tb=(b&&b.t)||'';
+    pessoas[n]=ta>tb?a:tb>ta?b:(lw?a:b);
+  });
+  const out=Object.assign({},base); out.pessoas=pessoas; return out;
+}
+function mergeDatedTurnos(localObj,cloudObj,resetTs,porPessoa){
   const out=JSON.parse(JSON.stringify(cloudObj||{}));
   Object.entries(localObj||{}).forEach(([d,turnos])=>{
     Object.entries(turnos||{}).forEach(([t,v])=>{
-      const localSavedAt=(v&&v.savedAt)||'';
-      const localTouchedAt=(v&&v.touchedAt)||'';
-      const cloudSavedAt=(cloudObj&&cloudObj[d]&&cloudObj[d][t]&&cloudObj[d][t].savedAt)||'';
-      if(_mantemLocalNoMerge(localSavedAt,cloudSavedAt,resetTs,localTouchedAt)){
-        if(!out[d])out[d]={};
-        out[d][t]=v;
-      }
+      if(!v||typeof v!=='object')return;
+      if(!_sobreviveReset(v,resetTs))return;
+      const c=out[d]&&out[d][t];
+      if(!c){ if(!out[d])out[d]={}; out[d][t]=v; return; }
+      out[d][t]=porPessoa?_mesclaTurnoPessoas(v,c):(_recTs(v)>=_recTs(c)?v:c);
     });
   });
   return out;
 }
+function _kColab(c){ return c.nome; }
+function _vencedorColab(a,b){           // a e b = mesmo colaborador; maior updTs vence; empate: o excluído vence (exclusão não "volta" sozinha)
+  const ta=a.updTs||'', tb=b.updTs||'';
+  if(ta!==tb)return ta>tb?a:b;
+  if(a.ativo===false&&b.ativo!==false)return a;
+  if(b.ativo===false&&a.ativo!==false)return b;
+  return b;                              // empate total: o da nuvem (b)
+}
+function mergeColabs(local,cloud,resetTs){
+  const out=[], idx=new Map(), temNuvem=!!(cloud&&cloud.length);
+  (cloud||[]).forEach(c=>{
+    if(!c||c.nome===undefined)return;
+    const k=_kColab(c);
+    if(idx.has(k)){ const i=idx.get(k); out[i]=_vencedorColab(out[i],c); return; }   // duplicado na nuvem: fica um só
+    idx.set(k,out.length); out.push(c);
+  });
+  (local||[]).forEach(c=>{
+    if(!c||c.nome===undefined)return;
+    const k=_kColab(c);
+    if(idx.has(k)){ const i=idx.get(k); out[i]=_vencedorColab(c,out[i]); return; }
+    if(temNuvem&&c._padrao&&!c.updTs)return;                                          // colaboradores de exemplo não sobem para a nuvem
+    if(resetTs&&(c.updTs||'')<resetTs)return;                                         // anterior a "Zerar colaboradores"
+    idx.set(k,out.length); out.push(c);
+  });
+  return out;
+}
+function _movRev(m){ const a=m.updTs||'', b=m.editadoEm||''; return a>b?a:b; }
+function _chaveRem(pref,id){ return pref+String(id).replace(/[^0-9A-Za-z_]/g,''); }
+function mergeMovs(local,cloud,removidos,resetTs){
+  const out={};
+  new Set([...Object.keys(cloud||{}),...Object.keys(local||{})]).forEach(d=>{
+    const porTs=new Map();
+    ((cloud||{})[d]||[]).forEach(m=>{ if(m&&m.ts)porTs.set(m.ts,m); });
+    ((local||{})[d]||[]).forEach(m=>{
+      if(!m||!m.ts)return;
+      if(resetTs&&m.ts<resetTs)return;
+      const c=porTs.get(m.ts);
+      if(!c||_movRev(m)>_movRev(c))porTs.set(m.ts,m);
+    });
+    const arr=[...porTs.values()].filter(m=>!(removidos&&removidos[_chaveRem('m',m.ts)])).sort((a,b)=>a.ts.localeCompare(b.ts));
+    if(arr.length)out[d]=arr;
+  });
+  return out;
+}
+function mergeAfast(local,cloud,removidos){
+  const out=[], ids=new Set();
+  [...(cloud||[]),...(local||[])].forEach(a=>{
+    if(!a||ids.has(a.id))return;
+    if(removidos&&removidos[_chaveRem('a',a.id)])return;
+    ids.add(a.id); out.push(a);
+  });
+  return out;
+}
+function mergeAudit(local,cloud){
+  const seen=new Set(), out=[];
+  [...(cloud||[]),...(local||[])].forEach(a=>{ if(!a||seen.has(a.ts))return; seen.add(a.ts); out.push(a); });
+  return out.sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+}
+function _uniaoRemovidos(a,b){
+  const o=Object.assign({},b||{});
+  Object.entries(a||{}).forEach(([k,v])=>{ if((o[k]||'')<v)o[k]=v; });
+  return o;
+}
+// nomes antigos de quem foi renomeado voltam para o nome novo (um aparelho desatualizado pode ter gravado com o nome velho)
+function _normalizaRenomeados(){
+  (state.colaboradores||[]).forEach(c=>{
+    if(!c.renomeadoPara)return;
+    if(state.colaboradores.some(x=>x.nome===c.nome&&!x.renomeadoPara))return;   // o nome velho foi reaproveitado por outra pessoa
+    migrarNomeColab(c.nome,c.renomeadoPara);
+  });
+}
+const _maxTs=(a,b)=>((a||'')>=(b||'')?(a||''):(b||''));
+// Traz para dentro do estado local tudo o que há na nuvem, SEM apagar nada que só existe aqui.
 function mergeState(cloud){
   if(!cloud)return;
-  if(cloud.colaboradores&&cloud.colaboradores.length)state.colaboradores=cloud.colaboradores;
-  if(cloud.movimentos)state.movimentos=cloud.movimentos;
-  const presResetTs=(cloud.presencasResetTs||'')>=(state.presencasResetTs||'')?(cloud.presencasResetTs||''):state.presencasResetTs;
-  const prodResetTs=(cloud.producaoResetTs||'')>=(state.producaoResetTs||'')?(cloud.producaoResetTs||''):state.producaoResetTs;
-  if(cloud.presencas)state.presencas=mergeDatedTurnos(state.presencas,cloud.presencas,presResetTs);
-  if(cloud.producaoPessoas)state.producaoPessoas=mergeDatedTurnos(state.producaoPessoas,cloud.producaoPessoas,prodResetTs);
+  state.removidos=_uniaoRemovidos(state.removidos,cloud.removidos);
+  state.colaboradoresResetTs=_maxTs(cloud.colaboradoresResetTs,state.colaboradoresResetTs);
+  state.movimentosResetTs=_maxTs(cloud.movimentosResetTs,state.movimentosResetTs);
+  const presResetTs=_maxTs(cloud.presencasResetTs,state.presencasResetTs);
+  const prodResetTs=_maxTs(cloud.producaoResetTs,state.producaoResetTs);
+  state.colaboradores=mergeColabs(state.colaboradores,cloud.colaboradores,state.colaboradoresResetTs);
+  state.movimentos=mergeMovs(state.movimentos,cloud.movimentos,state.removidos,state.movimentosResetTs);
+  state.presencas=mergeDatedTurnos(state.presencas,cloud.presencas,presResetTs,false);
+  state.producaoPessoas=mergeDatedTurnos(state.producaoPessoas,cloud.producaoPessoas,prodResetTs,true);
   state.presencasResetTs=presResetTs;
   state.producaoResetTs=prodResetTs;
-  if(cloud.auditoria)state.auditoria=cloud.auditoria;
-  if(cloud.afastamentos){
-    const localIds=new Set((state.afastamentos||[]).map(a=>a.id));
-    const merged=[...(state.afastamentos||[])];
-    cloud.afastamentos.forEach(ca=>{if(!localIds.has(ca.id))merged.push(ca);});
-    state.afastamentos=merged;
-  }
+  _normalizaRenomeados();
+  state.auditoria=mergeAudit(state.auditoria,cloud.auditoria);
+  state.afastamentos=mergeAfast(state.afastamentos,cloud.afastamentos,state.removidos);
   if(cloud.premiacao)state.premiacao=mergePrem(state.premiacao,cloud.premiacao);
   if(cloud.premiacaoCfg)state.premiacaoCfg=mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg);
-  if(cloud.bufferAjuste!==undefined)state.bufferAjuste=cloud.bufferAjuste;
-  if(cloud.bufferAjusteTs!==undefined)state.bufferAjusteTs=cloud.bufferAjusteTs;
-  if(reconciliarProducao())setTimeout(()=>{try{saveCache();_pushSoon();}catch(e){}},0);
-  if(cloud.configTs!==undefined){
+  if(cloud.bufferAjuste!==undefined&&(cloud.bufferAjusteTs||'')>=(state.bufferAjusteTs||'')){
+    state.bufferAjuste=cloud.bufferAjuste; state.bufferAjusteTs=cloud.bufferAjusteTs||'';
+  }
+  if(cloud.configTs!==undefined&&(cloud.configTs||'')>=(state.configTs||'')){
     state.metaMensal=cloud.metaMensal;
     state.bufferSaldoInicial=cloud.bufferSaldoInicial||0;
     state.metaIndividualFixa=cloud.metaIndividualFixa!==undefined?cloud.metaIndividualFixa:120;
     state.turnoExtra=cloud.turnoExtra||{ativo:false,horario:'',inicioMin:null};
     state.configTs=cloud.configTs;
   }
+  if(reconciliarProducao())setTimeout(()=>{try{saveCache();_pushSoon();}catch(e){}},0);
+}
+function _docDoEstado(){
+  const d={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',movimentosResetTs:state.movimentosResetTs||'',colaboradoresResetTs:state.colaboradoresResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{}};
+  if(state.removidos&&Object.keys(state.removidos).length)d.removidos=state.removidos;
+  return d;
 }
 function saveCache(){try{localStorage.setItem(LS_CACHE,JSON.stringify(state));_fbSalvaV();localStorage.setItem('femsa_cache_ts',Date.now());}catch(e){}}
 
@@ -1429,116 +1510,34 @@ async function syncFromCloud(){
   if(!usuarioEstaEditando())renderAll();
 }
 
-async function pushToCloud(){
-  if(resetLock){markPending();return;}
-  reconciliarProducao();
+// Envio: primeiro junta o que há na nuvem DENTRO do estado local (mesma regra do download), depois grava só as diferenças.
+// Os envios entram numa fila (um por vez) e devolvem true/false — quem chama sabe se realmente foi para a nuvem.
+let _pushCadeia=Promise.resolve();
+function pushToCloud(){ const p=_pushCadeia.then(_pushToCloud,_pushToCloud); _pushCadeia=p.catch(()=>false); return p; }
+async function _pushToCloud(){
+  if(resetLock){markPending();return false;}
   setSyncDot('syncing','Salvando...');
   try{
-    // Read current cloud state for smart merge
-    let merged={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{}};
-    try{
-      const r={ok:true,json:async()=>fbLerNuvem(true)};
-      if(r.ok){
-        const cloud=await r.json();
-        if(cloud){
-          const mm=JSON.parse(JSON.stringify(cloud.movimentos||{}));
-          Object.entries(state.movimentos).forEach(([d,ms])=>{
-            if(!mm[d])mm[d]=[];
-            const ex=new Set(mm[d].map(m=>m.ts));
-            ms.forEach(m=>{
-              if(!ex.has(m.ts)){mm[d].push(m);return;}
-              if(m.auto){const cm=mm[d].find(x=>x.ts===m.ts);if(cm&&(m.updTs||'')>(cm.updTs||'')){cm.prod=m.prod;cm.updTs=m.updTs;cm.who=m.who;}}
-              else if(m.legadoDup||m.prodLegado!==undefined){const cm=mm[d].find(x=>x.ts===m.ts);if(cm){cm.prod=m.prod;if(m.legadoDup){cm.legadoDup=true;cm.prodLegado=m.prodLegado;}else{delete cm.legadoDup;delete cm.prodLegado;}}}
-            });
-            mm[d].sort((a,b)=>a.ts.localeCompare(b.ts));
-          });
-          const presResetTs=(cloud.presencasResetTs||'')>=(state.presencasResetTs||'')?(cloud.presencasResetTs||''):state.presencasResetTs;
-          const prodResetTs=(cloud.producaoResetTs||'')>=(state.producaoResetTs||'')?(cloud.producaoResetTs||''):state.producaoResetTs;
-          const mp=JSON.parse(JSON.stringify(cloud.presencas||{}));
-          Object.entries(state.presencas).forEach(([d,ts])=>{
-            Object.entries(ts).forEach(([t,v])=>{
-              const localSavedAt=v&&v.savedAt||'';
-              const localTouchedAt=v&&v.touchedAt||'';
-              const cloudSavedAt=(cloud.presencas&&cloud.presencas[d]&&cloud.presencas[d][t]&&cloud.presencas[d][t].savedAt)||'';
-              if(_mantemLocalNoMerge(localSavedAt,cloudSavedAt,presResetTs,localTouchedAt)){
-                if(!mp[d])mp[d]={};
-                mp[d][t]=v;
-              }
-            });
-          });
-          const mpp=JSON.parse(JSON.stringify(cloud.producaoPessoas||{}));
-          Object.entries(state.producaoPessoas||{}).forEach(([d,ts])=>{
-            Object.entries(ts).forEach(([t,v])=>{
-              const localSavedAt=v&&v.savedAt||'';
-              const localTouchedAt=v&&v.touchedAt||'';
-              const cloudSavedAt=(cloud.producaoPessoas&&cloud.producaoPessoas[d]&&cloud.producaoPessoas[d][t]&&cloud.producaoPessoas[d][t].savedAt)||'';
-              if(_mantemLocalNoMerge(localSavedAt,cloudSavedAt,prodResetTs,localTouchedAt)){
-                if(!mpp[d])mpp[d]={};
-                mpp[d][t]=v;
-              }
-            });
-          });
-          // Merge colaboradores por nome: mantém edições/adições locais, mas
-          // preserva quem outro usuário cadastrou na nuvem entre o último sync e agora
-          const cloudColabs=cloud.colaboradores||[];
-          const localNomes=new Set(state.colaboradores.map(c=>c.nome));
-          const mergedColabs=[...state.colaboradores];
-          cloudColabs.forEach(cc=>{ if(!localNomes.has(cc.nome)) mergedColabs.push(cc); });
-          const cloudAudit=cloud.auditoria||[];
-          const localAuditTs=new Set((state.auditoria||[]).map(a=>a.ts));
-          const mergedAudit=[...(state.auditoria||[])];
-          cloudAudit.forEach(ca=>{ if(!localAuditTs.has(ca.ts)) mergedAudit.push(ca); });
-          const cloudAfast=cloud.afastamentos||[];
-          const localAfastIds=new Set((state.afastamentos||[]).map(a=>a.id));
-          const mergedAfast=[...(state.afastamentos||[])];
-          cloudAfast.forEach(ca=>{ if(!localAfastIds.has(ca.id)) mergedAfast.push(ca); });
-          const cloudAjusteTs=cloud.bufferAjusteTs||'';
-          const localAjusteTs=state.bufferAjusteTs||'';
-          const bufferAjuste=localAjusteTs>=cloudAjusteTs?(state.bufferAjuste||0):(cloud.bufferAjuste||0);
-          const bufferAjusteTs=localAjusteTs>=cloudAjusteTs?localAjusteTs:cloudAjusteTs;
-          const cloudConfigTs=cloud.configTs||'';
-          const localConfigTs=state.configTs||'';
-          const usaConfigLocal=localConfigTs>=cloudConfigTs;
-          const metaMensal=usaConfigLocal?state.metaMensal:cloud.metaMensal;
-          const metaIndividualFixa=usaConfigLocal?(state.metaIndividualFixa||120):(cloud.metaIndividualFixa||120);
-          const bufferSaldoInicial=usaConfigLocal?(state.bufferSaldoInicial||0):(cloud.bufferSaldoInicial||0);
-          const turnoExtra=usaConfigLocal?(state.turnoExtra||{ativo:false,horario:'',inicioMin:null}):(cloud.turnoExtra||{ativo:false,horario:'',inicioMin:null});
-          const configTs=usaConfigLocal?localConfigTs:cloudConfigTs;
-          merged={colaboradores:mergedColabs,movimentos:mm,presencas:mp,producaoPessoas:mpp,auditoria:mergedAudit,afastamentos:mergedAfast,bufferAjuste,bufferAjusteTs,metaMensal,metaIndividualFixa,bufferSaldoInicial,turnoExtra,configTs,presencasResetTs:presResetTs,producaoResetTs:prodResetTs,premiacao:mergePrem(state.premiacao,cloud.premiacao),premiacaoCfg:mergePremCfg(state.premiacaoCfg,cloud.premiacaoCfg)};
-        }
-      }
-    }catch(e){}
-    if(merged.auditoria&&merged.auditoria.length>600)merged.auditoria=merged.auditoria.slice(-400);
-    merged.hub=_fbHubResumo(merged);
-    const rp=await fbGravar(merged);
+    const cloud=await fbLerNuvem(true);   // se não conseguir ler a nuvem, NÃO grava (evita sobrescrever dado novo com antigo)
+    if(cloud)mergeState(cloud); else reconciliarProducao();
+    if(state.auditoria&&state.auditoria.length>600)state.auditoria=state.auditoria.slice(-400);
+    const doc=_docDoEstado();
+    doc.hub=_fbHubResumo(doc);
+    const rp=await fbGravar(doc);
     if(!rp.ok)throw new Error(rp.status);
-    state.colaboradores=merged.colaboradores;
-    state.movimentos=merged.movimentos;
-    state.presencas=merged.presencas;
-    state.producaoPessoas=merged.producaoPessoas||{};
-    state.auditoria=merged.auditoria;
-    state.afastamentos=merged.afastamentos||[];
-    state.presencasResetTs=merged.presencasResetTs||'';
-    state.producaoResetTs=merged.producaoResetTs||'';
-    state.premiacao=merged.premiacao||{};
-    state.premiacaoCfg=merged.premiacaoCfg||{};
-    state.bufferAjuste=merged.bufferAjuste||0;
-    state.bufferAjusteTs=merged.bufferAjusteTs||'';
-    state.metaMensal=merged.metaMensal;
-    state.metaIndividualFixa=merged.metaIndividualFixa||120;
-    state.bufferSaldoInicial=merged.bufferSaldoInicial||0;
-    state.turnoExtra=merged.turnoExtra||{ativo:false,horario:'',inicioMin:null};
-    state.configTs=merged.configTs||'';
     clearPending();
-    saveCache(); // salva cache e timestamp
+    saveCache();
     lastSync=new Date();
     setSyncDot('ok','Salvo '+lastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
-    renderAll();
+    if(!usuarioEstaEditando())renderAll();
+    return true;
   }catch(e){
     markPending();
     saveCache();
-    setSyncDot('err','Alterações pendentes — sem conexão');
+    const sem=/^(401|403)/.test(String(e&&e.message))?'Sem permissão no banco (Regras do Firebase)':'Alterações pendentes — sem conexão';
+    setSyncDot('err',sem);
     console.error('Push:',e);
+    return false;
   }
 }
 
@@ -1708,7 +1707,7 @@ function launchApp(){
 
 function boot(){
   unitName=localStorage.getItem(LS_UNIT)||'Aparecida';
-  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.premiacao)state.premiacao=p.premiacao;if(p.premiacaoCfg)state.premiacaoCfg=p.premiacaoCfg;}}catch(e){}
+  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.premiacao)state.premiacao=p.premiacao;if(p.premiacaoCfg)state.premiacaoCfg=p.premiacaoCfg;if(p.removidos)state.removidos=p.removidos;if(p.movimentosResetTs!==undefined)state.movimentosResetTs=p.movimentosResetTs;if(p.colaboradoresResetTs!==undefined)state.colaboradoresResetTs=p.colaboradoresResetTs;}}catch(e){}
   if(!state.colaboradores||!state.colaboradores.length)state.colaboradores=DEFAULT_COLABS;
   try{
     const raw=sessionStorage.getItem('femsa_session')||localStorage.getItem('femsa_session');
@@ -2179,12 +2178,14 @@ async function salvarPresenca(){
   const todayD=today();
   if(!state.presencas[todayD])state.presencas[todayD]={};
   if(!state.presencas[todayD][selTurnoAtivo])state.presencas[todayD][selTurnoAtivo]={presenca:{}};
-  state.presencas[todayD][selTurnoAtivo].savedAt=new Date().toISOString();
-  saveCache();await pushToCloud();verificarAusencia();showToast('Presença do '+turnoInfo(selTurnoAtivo).label+' salva!','ok');renderPresenca();
+  state.presencas[todayD][selTurnoAtivo].savedAt=state.presencas[todayD][selTurnoAtivo].touchedAt=new Date().toISOString();
+  saveCache();const okPr=await pushToCloud();verificarAusencia();
+  if(okPr)showToast('Presença do '+turnoInfo(selTurnoAtivo).label+' salva!','ok');else showToast('Presença guardada NESTE aparelho, mas ainda não chegou à nuvem. Confira a conexão: será reenviada sozinha.','err',8000);
+  renderPresenca();
 }
 function unlockPres(){
   const todayD=today();
-  if(state.presencas[todayD]&&state.presencas[todayD][selTurnoAtivo])delete state.presencas[todayD][selTurnoAtivo].savedAt;
+  if(state.presencas[todayD]&&state.presencas[todayD][selTurnoAtivo])delete state.presencas[todayD][selTurnoAtivo].savedAt;state.presencas[todayD][selTurnoAtivo].touchedAt=new Date().toISOString();
   renderPresenca();
 }
 
@@ -2210,6 +2211,7 @@ async function salvarEditPresenca(status){
   const date=_editDate,turno=_editTurno,nome=_editNome;
   if(!state.presencas[date])state.presencas[date]={};
   if(!state.presencas[date][turno])state.presencas[date][turno]={presenca:{}};
+  state.presencas[date][turno].touchedAt=new Date().toISOString();
   if(status===''){
     delete state.presencas[date][turno].presenca[nome];
     if(state.presencas[date][turno].feriasInfo)delete state.presencas[date][turno].feriasInfo[nome];
@@ -2271,6 +2273,7 @@ async function confirmarFerias(){
     if(!state.presencas[d])state.presencas[d]={};
     if(!state.presencas[d][turno])state.presencas[d][turno]={presenca:{}};
     state.presencas[d][turno].presenca[nome]='F';
+    state.presencas[d][turno].touchedAt=ts;
     if(!state.presencas[d][turno].savedAt)state.presencas[d][turno].savedAt=ts;
     if(!state.presencas[d][turno].feriasInfo)state.presencas[d][turno].feriasInfo={};
     state.presencas[d][turno].feriasInfo[nome]={inicio,fim,retorno,dias};
@@ -2311,6 +2314,7 @@ async function cancelarFerias(nome,inicio){
       if(pt.presenca[nome]==='F'&&info&&info.inicio===inicio){
         delete pt.presenca[nome];
         delete pt.feriasInfo[nome];
+        pt.touchedAt=new Date().toISOString();
       }
     });
   });
@@ -2457,12 +2461,15 @@ async function lancar(){
   state.movimentos[todayD].push(mov);
   cargas={rec:[],env:[]};
   ['mv-rec','mv-prod','mv-env','mv-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
-  saveCache();await pushToCloud();verificarAusencia();showLancamentoOK();renderOperacao();
+  saveCache();const okL=await pushToCloud();verificarAusencia();
+  if(okL)showLancamentoOK();else showToast('Lançamento guardado NESTE aparelho, mas ainda não chegou à nuvem. Confira a conexão: será reenviado sozinho.','err',8000);
+  renderOperacao();
 }
 
 // === PRODUÇÃO POR COLABORADOR (meta individual + motivo obrigatório) ===
 const MOTIVOS_NAO_META=['Baixa eficiência','Falta de material (Paletes)','Falta de material (Insumos)','Chegou atrasado','Faltou ao trabalho','Atestado médico','Inspeção de Qualidade','Separação de paletes','Separação de insumos','Outro'];
 let selTurnoProd=null;
+function _stampPessoa(dia,nome){ if(dia&&dia.pessoas&&dia.pessoas[nome])dia.pessoas[nome].t=dia.touchedAt; }
 function _prodBuf(date,turno){
   const d=date||today(),t=turno||selTurnoProd;
   if(!state.producaoPessoas[d])state.producaoPessoas[d]={};
@@ -2521,7 +2528,7 @@ function setProdPessoa(nome,val,rerender){
   const dia=_prodBuf();
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
   dia.pessoas[nome].prod=Math.max(0,parseInt(val)||0);
-  dia.touchedAt=new Date().toISOString();
+  dia.touchedAt=new Date().toISOString();_stampPessoa(dia,nome);
   upsertAutoProd(today(),selTurnoProd);saveCache();_pushSoon();
   if(rerender!==false)renderProdPessoas();else refreshProdLive();
 }
@@ -2529,7 +2536,7 @@ function adjProdPessoa(nome,d){
   const dia=_prodBuf();
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
   dia.pessoas[nome].prod=Math.max(0,(dia.pessoas[nome].prod||0)+d);
-  dia.touchedAt=new Date().toISOString();
+  dia.touchedAt=new Date().toISOString();_stampPessoa(dia,nome);
   upsertAutoProd(today(),selTurnoProd);saveCache();_pushSoon();
   renderProdPessoas();
 }
@@ -2537,7 +2544,7 @@ function setMotivoPessoa(nome,val){
   const dia=_prodBuf();
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:'',motivoDesc:''};
   dia.pessoas[nome].motivo=val;
-  dia.touchedAt=new Date().toISOString();
+  dia.touchedAt=new Date().toISOString();_stampPessoa(dia,nome);
 }
 async function salvarProducaoPessoas(){
   const dia=_prodBuf();
@@ -2552,13 +2559,16 @@ async function salvarProducaoPessoas(){
       return;
     }
   }
-  dia.savedAt=new Date().toISOString();
+  dia.savedAt=dia.touchedAt=new Date().toISOString();
   upsertAutoProd(today(),selTurnoProd);
-  saveCache();await pushToCloud();showToast('Produção salva e somada em Produzidos do dia!','ok');renderOperacao();
+  saveCache();const okP=await pushToCloud();
+  if(okP)showToast('Produção salva e somada em Produzidos do dia!','ok');
+  else showToast('Produção guardada NESTE aparelho, mas ainda não chegou à nuvem. Confira a conexão: será reenviada sozinha.','err',8000);
+  renderOperacao();
 }
 function unlockProdPessoas(){
   const dia=_prodBuf();
-  delete dia.savedAt;
+  delete dia.savedAt;dia.touchedAt=new Date().toISOString();
   renderProdPessoas();
 }
 
@@ -2614,7 +2624,7 @@ function setRetroProdPessoa(nome,val,rerender){
   const dia=_prodBuf(date,turno);
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
   dia.pessoas[nome].prod=Math.max(0,parseInt(val)||0);
-  dia.touchedAt=new Date().toISOString();
+  dia.touchedAt=new Date().toISOString();_stampPessoa(dia,nome);
   if(rerender!==false)renderRetroProdPessoas();
 }
 function adjRetroProdPessoa(nome,d){
@@ -2622,7 +2632,7 @@ function adjRetroProdPessoa(nome,d){
   const dia=_prodBuf(date,turno);
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
   dia.pessoas[nome].prod=Math.max(0,(dia.pessoas[nome].prod||0)+d);
-  dia.touchedAt=new Date().toISOString();
+  dia.touchedAt=new Date().toISOString();_stampPessoa(dia,nome);
   renderRetroProdPessoas();
 }
 function setRetroMotivoPessoa(nome,val){
@@ -2630,7 +2640,7 @@ function setRetroMotivoPessoa(nome,val){
   const dia=_prodBuf(date,turno);
   if(!dia.pessoas[nome])dia.pessoas[nome]={prod:0,motivo:''};
   dia.pessoas[nome].motivo=val;
-  dia.touchedAt=new Date().toISOString();
+  dia.touchedAt=new Date().toISOString();_stampPessoa(dia,nome);
 }
 async function lancarRetroativo(){
   const data=document.getElementById('retro-date').value;
@@ -2659,7 +2669,7 @@ async function lancarRetroativo(){
         return;
       }
     }
-    if(colabsTurno.length){diaProd.savedAt=new Date().toISOString();upsertAutoProd(data,turno);}
+    if(colabsTurno.length){diaProd.savedAt=diaProd.touchedAt=new Date().toISOString();upsertAutoProd(data,turno);}
   }
   if(inclGeral){
     const who=currentUser?currentUser.user:'Desconhecido';
@@ -2701,7 +2711,7 @@ async function lancarRetroativo(){
                                                                           async function excluirMov(){
                                                                             if(_editMovDate===null||_editMovIdx===null)return;
                                                                               if(state.movimentos[_editMovDate][_editMovIdx]&&state.movimentos[_editMovDate][_editMovIdx].auto==='pessoas'){showToast('Esse lançamento vem da produção dos colaboradores. Para alterar, edite a produção individual do turno.','warn');return;}
-                                                                                state.movimentos[_editMovDate].splice(_editMovIdx,1);
+                                                                                {const rm=state.movimentos[_editMovDate].splice(_editMovIdx,1)[0];if(rm&&rm.ts){if(!state.removidos)state.removidos={};state.removidos[_chaveRem('m',rm.ts)]=new Date().toISOString();}}
                                                                                 closeEditMovModal();
                                                                                   saveCache();await pushToCloud();
                                                                                     renderOperacao();
@@ -2893,7 +2903,7 @@ async function removerAfastamento(id){
   if(!podeEditarPresenca())return;
   if(!confirm('Remover este registro? Irreversível.'))return;
   const reg=(state.afastamentos||[]).find(a=>a.id===id);
-  state.afastamentos=(state.afastamentos||[]).filter(a=>a.id!==id);
+  state.afastamentos=(state.afastamentos||[]).filter(a=>a.id!==id);if(!state.removidos)state.removidos={};state.removidos[_chaveRem('a',id)]=new Date().toISOString();
   if(reg)logAuditoria('Removeu '+reg.tipo+' de '+reg.nome+' ('+dateBR(reg.dataInicio)+' a '+dateBR(reg.dataFim)+')');
   saveCache();await pushToCloud();
   showToast('Registro removido.','ok');
@@ -2911,35 +2921,40 @@ async function saveColabModal(){
   if(!nome){ document.getElementById('modal-nome').style.borderColor='var(--red)'; return; }
   document.getElementById('modal-nome').style.borderColor='';
   const dataAdmissao = document.getElementById('modal-admissao').value || '';
+  const agoraC = new Date().toISOString();
   if(_modalEditIdx >= 0){
     const c = state.colaboradores[_modalEditIdx];
     if(nome!==c.nome){
       if(state.colaboradores.some(x=>x!==c&&x.nome===nome&&!x.renomeadoPara)){ showToast('Já existe um colaborador com esse nome.','warn'); return; }
       // o registro antigo fica guardado (oculto) para o nome velho não ressurgir da nuvem; o histórico vai para o nome novo
       migrarNomeColab(c.nome,nome);
-      const antigo=Object.assign({},c,{ativo:false,renomeadoPara:nome,excluidoEm:new Date().toISOString()});
+      const antigo=Object.assign({},c,{ativo:false,renomeadoPara:nome,excluidoEm:agoraC,updTs:agoraC});
       state.colaboradores.push(antigo);
-      state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo,atividade,dataAdmissao});
+      state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo,atividade,dataAdmissao,updTs:agoraC});
     } else {
-      state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo,atividade,dataAdmissao});
+      state.colaboradores[_modalEditIdx] = Object.assign({},c,{nome,turno,cargo,atividade,dataAdmissao,updTs:agoraC});
     }
     showToast('Colaborador atualizado!','ok');
   } else {
-    const ex=state.colaboradores.find(x=>x.nome===nome&&!x.renomeadoPara);
+    const ex=state.colaboradores.find(x=>x.nome===nome);
     if(ex&&ex.ativo!==false){ showToast('Já existe um colaborador ativo com esse nome.','warn'); return; }
-    if(ex){
+    if(ex&&ex.renomeadoPara){   // nome antigo de quem foi renomeado: o histórico já foi para o nome novo, então o cadastro recomeça limpo
+      Object.assign(ex,{turno,cargo,atividade,ativo:true,dataAdmissao,updTs:agoraC});
+      delete ex.renomeadoPara; delete ex.excluidoEm; delete ex.excluidoPor; delete ex.dataDemissao;
+      showToast('Colaborador adicionado!','ok');
+    } else if(ex){
       // já foi excluído: reaproveita o cadastro (mantém todo o histórico dele) em vez de criar outro com o mesmo nome
       if(!confirm('"'+nome+'" já foi excluído antes. Reativar o cadastro dele (o histórico é mantido)?')) return;
-      Object.assign(ex,{turno,cargo,atividade,ativo:true,dataAdmissao:dataAdmissao||ex.dataAdmissao||''});
+      Object.assign(ex,{turno,cargo,atividade,ativo:true,dataAdmissao:dataAdmissao||ex.dataAdmissao||'',updTs:agoraC});
       delete ex.excluidoEm; delete ex.excluidoPor; delete ex.dataDemissao;
       showToast('Colaborador reativado!','ok');
     } else {
-      state.colaboradores.push({nome,turno,cargo,atividade,wpp:'',dataAdmissao});
+      state.colaboradores.push({nome,turno,cargo,atividade,wpp:'',dataAdmissao,updTs:agoraC});
       showToast('Colaborador adicionado!','ok');
     }
   }
   closeColabModal();
-  saveCache(); await pushToCloud(); renderEquipe();
+  saveCache(); const okC=await pushToCloud(); if(!okC)showToast('Alteração guardada NESTE aparelho, mas ainda não chegou à nuvem. Confira a conexão.','err',8000); renderEquipe();
 }
 async function deleteColabModal(){
   const c = state.colaboradores[_modalEditIdx];
@@ -2947,7 +2962,8 @@ async function deleteColabModal(){
   const dd=document.getElementById('modal-demissao').value||_ontemIso();
   c.dataDemissao=dd;
   c.ativo=false;
-  c.excluidoEm=new Date().toISOString();
+  c.updTs=new Date().toISOString();
+  c.excluidoEm=c.updTs;
   c.excluidoPor=currentUser?currentUser.user:'?';
   closeColabModal();
   showToast('Colaborador removido.','ok');
@@ -2958,6 +2974,7 @@ async function restaurarColab(idx){
   if(!c)return;
   if(!confirm('Restaurar '+c.nome+'?'))return;
   c.ativo=true;
+  c.updTs=new Date().toISOString();
   delete c.excluidoEm;
   delete c.excluidoPor;
   delete c.dataDemissao;
@@ -3131,7 +3148,7 @@ function unlockResetSection(){
 }
 async function resetPallets(){
   if(!confirm('Zerar TODOS os pallets? Irreversível.'))return;
-  state.movimentos={};state.bufferAjuste=0;state.bufferAjusteTs=new Date().toISOString();logAuditoria('Zerou todos os pallets');saveCache();
+  state.movimentos={};state.movimentosResetTs=new Date().toISOString();state.bufferAjuste=0;state.bufferAjusteTs=new Date().toISOString();logAuditoria('Zerou todos os pallets');saveCache();
   const ok=await pushForceToCloud();
   showToast(ok?'Pallets zerados!':'Nao foi possivel confirmar na nuvem. Verifique a conexao e tente de novo.',ok?'ok':'err');
   renderAll();
@@ -3159,7 +3176,7 @@ async function resetProducaoIndividual(){
 async function resetColaboradores(){
   if(!confirm('Zerar TODOS os colaboradores cadastrados? Isso remove a equipe inteira (nomes, turnos, cargos). Irreversível.'))return;
   if(!confirm('Tem certeza mesmo? Essa ação apaga o cadastro de TODOS os colaboradores e não pode ser desfeita.'))return;
-  state.colaboradores=[];logAuditoria('Zerou todos os colaboradores');saveCache();
+  state.colaboradores=[];state.colaboradoresResetTs=new Date().toISOString();logAuditoria('Zerou todos os colaboradores');saveCache();
   const ok=await pushForceToCloud();
   showToast(ok?'Colaboradores zerados!':'Nao foi possivel confirmar na nuvem. Verifique a conexao e tente de novo.',ok?'ok':'err');
   renderAll();
@@ -3168,7 +3185,7 @@ async function resetColaboradores(){
 }
 async function resetTudo(){
   if(!confirm('Zerar TUDO (pallets + presenças + produção individual)? Irreversível.'))return;
-  state.movimentos={};state.presencas={};state.producaoPessoas={};state.bufferAjuste=0;state.bufferAjusteTs=new Date().toISOString();state.presencasResetTs=new Date().toISOString();state.producaoResetTs=new Date().toISOString();logAuditoria('Zerou pallets + presencas + producao individual (reset total)');saveCache();
+  state.movimentos={};state.movimentosResetTs=new Date().toISOString();state.presencas={};state.producaoPessoas={};state.bufferAjuste=0;state.bufferAjusteTs=new Date().toISOString();state.presencasResetTs=new Date().toISOString();state.producaoResetTs=new Date().toISOString();logAuditoria('Zerou pallets + presencas + producao individual (reset total)');saveCache();
   const ok=await pushForceToCloud();
   showToast(ok?'Todos os dados zerados!':'Nao foi possivel confirmar na nuvem. Verifique a conexao e tente de novo.',ok?'ok':'err');
   renderAll();
@@ -3183,7 +3200,7 @@ async function pushForceToCloud(){
   // que a nuvem realmente zerou antes de reportar sucesso.
   resetLock=true;
   setSyncDot('syncing','Salvando...');
-  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{}};
+  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',movimentosResetTs:state.movimentosResetTs||'',colaboradoresResetTs:state.colaboradoresResetTs||'',removidos:state.removidos||{},premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{}};
   let ok=false;
   for(let tentativa=0;tentativa<3&&!ok;tentativa++){
     try{

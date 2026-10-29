@@ -921,7 +921,7 @@ function colabsProdDoDia(date,turno){
   return lista;
 }
 function _ontemIso(){const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function exTag(c){return (c&&(c.ativo===false||c._ex))?' <span style="font-size:10px;font-weight:600;color:var(--text3)">(ex-colaborador)</span>':'';}
+function exTag(c,date){return (c&&(c._ex||(c.ativo===false&&!(date&&colabNoDia(c,date)))))?' <span style="font-size:10px;font-weight:600;color:var(--text3)">(ex-colaborador)</span>':'';}
 // Renomear não pode perder o histórico: leva produção, presença e afastamentos para o nome novo.
 function migrarNomeColab(velho,novo){
   Object.values(state.producaoPessoas||{}).forEach(ts=>Object.values(ts||{}).forEach(t=>{
@@ -1701,7 +1701,7 @@ function buildProducaoIndividualHojeCard(){
     const reg=state.producaoPessoas[diaD]&&state.producaoPessoas[diaD][c.turno]&&state.producaoPessoas[diaD][c.turno].pessoas&&state.producaoPessoas[diaD][c.turno].pessoas[c.nome];
     const prod=reg?(reg.prod||0):0;
     if(!porTurno[c.turno])porTurno[c.turno]=[];
-    porTurno[c.turno].push({nome:c.nome+exTag(c),prod});
+    porTurno[c.turno].push({nome:c.nome+exTag(c,diaD),prod});
   });
   const turnosComGente=TURNOS.filter(t=>porTurno[t.key]&&porTurno[t.key].length);
   if(!turnosComGente.length)return'';
@@ -2350,10 +2350,10 @@ function renderProdPessoas(){
     const safeId=c.nome.replace(/[^a-zA-Z0-9]/g,'_');
     const nomeJs=c.nome.replace(/'/g,"\\'");
     const falta=info.metaPorPessoa-(reg.prod||0);
-    if(fora)return'<div class="prow fora st-'+st.k+'"><div class="prow-main"><div class="prow-nome"><div class="n">'+c.nome+exTag(c)+'</div><div class="prow-fora">Não entra na produção de hoje</div></div>'+stChip(st)+'</div></div>';
+    if(fora)return'<div class="prow fora st-'+st.k+'"><div class="prow-main"><div class="prow-nome"><div class="n">'+c.nome+exTag(c,todayD)+'</div><div class="prow-fora">Não entra na produção de hoje</div></div>'+stChip(st)+'</div></div>';
     return'<div class="prow'+(st.k?' st-'+st.k:'')+'">'+
       '<div class="prow-main">'+
-      '<div class="prow-nome"><div class="n">'+c.nome+exTag(c)+'</div><div class="m" style="color:'+(abaixo?'var(--text3)':'var(--green)')+'">'+stChip(st)+' '+(abaixo?'meta '+info.metaPorPessoa+' · faltam '+falta:'meta batida ✓')+'</div></div>'+
+      '<div class="prow-nome"><div class="n">'+c.nome+exTag(c,todayD)+'</div><div class="m" style="color:'+(abaixo?'var(--text3)':'var(--green)')+'">'+stChip(st)+' '+(abaixo?'meta '+info.metaPorPessoa+' · faltam '+falta:'meta batida ✓')+'</div></div>'+
       '<div class="num-wrap"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" inputmode="numeric" min="0" '+(saved?'disabled':'')+' value="'+(reg.prod||'')+'" placeholder="0" onfocus="this.select()" oninput="setProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderProdPessoas()"><button class="num-btn" '+(saved?'disabled':'')+' onclick="adjProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
       '</div>'+
       (abaixo&&!saved?'<select id="motivo-'+safeId+'" onchange="setMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
@@ -2451,12 +2451,12 @@ function renderRetroProdPessoas(){
     colabs.map(c=>{
       const reg=pessoas[c.nome]||{prod:0,motivo:''};
       const st=statusProdDia(c,date);
-      if(st.fora&&!(reg.prod>0))return'<div class="prow fora st-'+st.k+'"><div class="prow-main"><div class="prow-nome"><div class="n">'+c.nome+exTag(c)+'</div><div class="prow-fora">Não entra na produção</div></div>'+stChip(st)+'</div></div>';
+      if(st.fora&&!(reg.prod>0))return'<div class="prow fora st-'+st.k+'"><div class="prow-main"><div class="prow-nome"><div class="n">'+c.nome+exTag(c,date)+'</div><div class="prow-fora">Não entra na produção</div></div>'+stChip(st)+'</div></div>';
       const abaixo=reg.prod<info.metaPorPessoa&&!st.fora;
       const nomeJs=c.nome.replace(/'/g,"\\'");
       return'<div class="prow'+(st.k?' st-'+st.k:'')+'" style="padding:8px 0 8px 10px">'+
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'+
-        '<div style="font-size:13px;font-weight:600;color:var(--text);min-width:0">'+c.nome+exTag(c)+' '+stChip(st)+'</div>'+
+        '<div style="font-size:13px;font-weight:600;color:var(--text);min-width:0">'+c.nome+exTag(c,date)+' '+stChip(st)+'</div>'+
         '<div class="num-wrap" style="width:150px"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',-1)">−</button><input type="number" min="0" value="'+(reg.prod||'')+'" placeholder="0" oninput="setRetroProdPessoa(\''+nomeJs+'\',this.value,false)" onblur="renderRetroProdPessoas()"><button class="num-btn" onclick="adjRetroProdPessoa(\''+nomeJs+'\',1)">+</button></div>'+
         '</div>'+
         (abaixo?'<select style="width:100%;margin-top:6px;padding:7px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px" onchange="setRetroMotivoPessoa(\''+nomeJs+'\',this.value)"><option value="">Motivo por não bater a meta...</option>'+
@@ -2846,6 +2846,7 @@ function renderConfig(){
     html+='<div class="card"><div class="card-title"><i class="ti ti-wifi"></i>Sincronização</div>';
     html+='<div class="cfg-row"><div><div class="cfg-lbl">Status</div><div class="cfg-sub">'+syncTxt+'</div></div></div>';
     html+='<div class="cfg-row"><div><div class="cfg-lbl">Bin ID</div><div class="cfg-sub" style="font-family:monospace;font-size:11px;color:var(--green)">'+FB_URL+'</div></div></div>';
+    html+='<div class="cfg-row"><div><div class="cfg-lbl">Versão do painel</div><div class="cfg-sub" style="font-family:monospace;font-size:11px">2026-10-29 · sincronização por data</div></div></div>';
     html+='<div class="cfg-row"><div><div class="cfg-lbl">Última sincronização</div><div class="cfg-sub">'+ls+'</div></div></div>';
     html+='<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="manualSync()"><i class="ti ti-refresh"></i> Sincronizar agora</button>';
     html+='</div>';

@@ -704,8 +704,9 @@ img,canvas,svg{max-width:100%}
  <div id="retro-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeRetroModal()">
  <div class="modal-box">
  <div class="modal-title"><i class="ti ti-calendar-plus" style="color:var(--cyan)"></i>Lançamento retroativo</div>
- <div class="modal-field"><label>Data</label><input type="date" id="retro-date" onchange="renderRetroProdPessoas()"></div>
+ <div class="modal-field"><label>Data</label><input type="date" id="retro-date" onchange="retroDataMudou()"></div>
  <div class="modal-field"><label>Turno</label><select id="retro-turno"></select></div>
+ <div id="retro-existentes"></div>
  <div id="retro-prod-pessoas" style="display:none"></div>
  <input type="checkbox" id="retro-incl-geral" checked style="display:none"><input type="checkbox" id="retro-incl-individual" style="display:none">
  <div id="retro-geral-fields">
@@ -719,7 +720,7 @@ img,canvas,svg{max-width:100%}
  </div>
  <div class="modal-btns">
  <button class="modal-btn-ghost" onclick="closeRetroModal()">Cancelar</button>
- <button class="modal-btn-primary" onclick="lancarRetroativo()"><i class="ti ti-check" style="font-size:14px"></i> Lançar</button>
+ <button class="modal-btn-primary" id="retro-btn-lancar" onclick="lancarRetroativo()"><i class="ti ti-check" style="font-size:14px"></i> Lançar</button>
  </div>
  </div>
  </div>
@@ -2630,6 +2631,7 @@ function abrirLancamentoRetroativo(){
   document.getElementById('retro-incl-individual').checked=false;
   document.getElementById('retro-modal').style.display='flex';
   toggleRetroSecoes();
+  retroDataMudou();
 }
 function toggleRetroSecoes(){
   const geral=document.getElementById('retro-incl-geral').checked;
@@ -2693,6 +2695,74 @@ function setRetroMotivoPessoa(nome,val){
   dia.pessoas[nome].motivo=val;
   dia.touchedAt=new Date().toISOString();_stampPessoa(dia,nome);
 }
+// --- Lançamento retroativo: mostra o que já existe no dia e permite corrigir ---
+let _retroEditTs=null;
+function _retroTurnoLbl(t){const ti=t&&turnoInfo(t);return ti?ti.label:'Sem turno';}
+function retroDataMudou(){
+  _retroEditTs=null;
+  const date=document.getElementById('retro-date').value;
+  ['retro-pbr1','retro-pbr2','retro-prod','retro-env','retro-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
+  const rb=document.getElementById('retro-buf');
+  const bd=date&&state.bufferDia&&state.bufferDia[date];
+  if(rb)rb.value=bd?bd.v:'';
+  renderRetroExistentes();
+  if(typeof renderRetroProdPessoas==='function'){try{renderRetroProdPessoas();}catch(e){}}
+}
+function renderRetroExistentes(){
+  const box=document.getElementById('retro-existentes');if(!box)return;
+  const date=document.getElementById('retro-date').value;
+  const ms=date?(state.movimentos[date]||[]):[];
+  const btn=document.getElementById('retro-btn-lancar');
+  if(btn)btn.innerHTML='<i class="ti ti-check" style="font-size:14px"></i> '+(_retroEditTs?'Salvar alteração':'Lançar');
+  if(!ms.length){box.innerHTML=date?'<div style="font-size:11px;color:var(--text3);margin:0 0 10px">Nenhum lançamento neste dia ainda.</div>':'';return;}
+  const dl=date.split('-').reverse().join('/');
+  let h='<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;background:rgba(255,255,255,.02)">'+
+        '<div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Já lançado em '+dl+'</div>';
+  ms.forEach(m=>{
+    if(!m)return;
+    const hora=timeFmt(m.ts);
+    if(m.auto==='pessoas'){
+      h+='<div style="font-size:12px;color:var(--text2);padding:5px 0;border-top:1px solid rgba(255,255,255,.05)">'+_retroTurnoLbl(m.turno)+' · produção dos colaboradores: <b>'+(m.prod||0)+'</b> <span style="color:var(--text3)">(edite na produção individual)</span></div>';
+      return;
+    }
+    const ed=_retroEditTs===m.ts;
+    const val=(m.geral||m.pbr1!==undefined)?'PBR1 '+(m.pbr1||0)+' · PBR2 '+(m.pbr2||0):'Produzidos '+(m.prod||0);
+    h+='<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);padding:6px 0;border-top:1px solid rgba(255,255,255,.05)'+(ed?';background:var(--cyan-bg);border-radius:6px;padding-left:6px':'')+'">'+
+       '<div style="flex:1;min-width:0">'+_retroTurnoLbl(m.turno)+' · '+hora+' · '+(m.who||'')+'<br><span style="color:var(--text2)">'+val+' · Classif. '+(m.env||0)+' · Descarte '+(m.desc||0)+'</span></div>'+
+       '<button type="button" class="modal-btn-ghost" style="padding:5px 10px;font-size:11px" onclick="editarRetroMov(\''+m.ts+'\')">'+(ed?'Editando':'Editar')+'</button>'+
+       '<button type="button" class="modal-btn-ghost" style="padding:5px 8px;font-size:11px;color:var(--red)" title="Excluir este lançamento" onclick="excluirRetroMov(\''+m.ts+'\')"><i class="ti ti-trash"></i></button></div>';
+  });
+  if(_retroEditTs)h+='<button type="button" class="modal-btn-ghost" style="margin-top:8px;padding:6px 10px;font-size:11px" onclick="novoRetroMov()">+ Fazer um novo lançamento em vez de editar</button>';
+  box.innerHTML=h+'</div>';
+}
+function editarRetroMov(ts){
+  const date=document.getElementById('retro-date').value;
+  const m=(state.movimentos[date]||[]).find(x=>x.ts===ts);if(!m)return;
+  _retroEditTs=ts;
+  const geral=(m.geral||m.pbr1!==undefined);
+  document.getElementById('retro-pbr1').value=geral?(m.pbr1||0):(m.prod||0);
+  document.getElementById('retro-pbr2').value=geral?(m.pbr2||0):0;
+  document.getElementById('retro-env').value=m.env||0;
+  document.getElementById('retro-desc').value=m.desc||0;
+  const ts_=document.getElementById('retro-turno');if(ts_&&m.turno)ts_.value=m.turno;
+  renderRetroExistentes();
+}
+function novoRetroMov(){
+  _retroEditTs=null;
+  ['retro-pbr1','retro-pbr2','retro-env','retro-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
+  renderRetroExistentes();
+}
+async function excluirRetroMov(ts){
+  const date=document.getElementById('retro-date').value;
+  const arr=state.movimentos[date]||[];const i=arr.findIndex(x=>x.ts===ts);if(i<0)return;
+  if(!confirm('Excluir este lançamento de '+date.split('-').reverse().join('/')+'? Não dá para desfazer.'))return;
+  arr.splice(i,1);
+  if(!state.removidos)state.removidos={};state.removidos[_chaveRem('m',ts)]=new Date().toISOString();
+  if(_retroEditTs===ts)_retroEditTs=null;
+  saveCache();const okE=await pushToCloud();
+  renderRetroExistentes();renderOperacao();
+  showToast(okE?'Lançamento excluído.':'Excluído NESTE aparelho, mas ainda não chegou à nuvem. Confira a conexão.',okE?'ok':'err',okE?3000:8000);
+}
 async function lancarRetroativo(){
   const data=document.getElementById('retro-date').value;
   if(!data){showToast('Escolha uma data.','warn');return;}
@@ -2700,18 +2770,22 @@ async function lancarRetroativo(){
   const rec=0,pbr1=g('retro-pbr1'),pbr2=g('retro-pbr2'),env=g('retro-env'),desc=g('retro-desc');
   const prod=pbr1+pbr2;
   const bufTxt=String(document.getElementById('retro-buf').value).trim();
-  if(!rec&&!prod&&!env&&!desc&&bufTxt===''){showToast('Informe pelo menos um valor.','warn');return;}
+  if(!_retroEditTs&&!rec&&!prod&&!env&&!desc&&bufTxt===''){showToast('Informe pelo menos um valor.','warn');return;}
   const who=currentUser?currentUser.user:'Desconhecido';
   const agora=new Date().toISOString();
-  if(rec||prod||env||desc){
+  const emEdicao=_retroEditTs?(state.movimentos[data]||[]).find(x=>x.ts===_retroEditTs):null;
+  if(emEdicao){
+    Object.assign(emEdicao,{rec:0,prod,pbr1,pbr2,env,desc,geral:true,turno:document.getElementById('retro-turno').value||emEdicao.turno,updTs:agora,editadoManualmente:true,editadoPor:who,editadoEm:agora});
+  } else if(rec||prod||env||desc){
     if(!state.movimentos[data])state.movimentos[data]=[];
     state.movimentos[data].push({ts:agora,updTs:agora,who,rec,prod,pbr1,pbr2,env,desc,turno:document.getElementById('retro-turno').value||turnoPorHora(),geral:true,avulso:true,lancadoRetroativo:true});
   }
   if(bufTxt!=='')setBufferDia(data,parseInt(bufTxt)||0);
-  closeRetroModal();
-  saveCache();await pushToCloud();
+  closeRetroModal();_retroEditTs=null;
+  saveCache();const okR=await pushToCloud();
   renderOperacao();
-  showToast('Lançamento retroativo registrado em '+data.split('-').reverse().join('/')+'!','ok');
+  if(okR)showToast((emEdicao?'Lançamento corrigido em ':'Lançamento retroativo registrado em ')+data.split('-').reverse().join('/')+'!','ok');
+  else showToast('Guardado NESTE aparelho, mas ainda não chegou à nuvem. Confira a conexão: será reenviado sozinho.','err',8000);
 }
                                   
                                   let _editMovDate=null,_editMovIdx=null;

@@ -4079,9 +4079,9 @@ function fechDados(de,ate){
   const comProd=dias.filter(x=>x.t.prod>0);
   const melhor=comProd.length?comProd.reduce((a,b)=>b.t.prod>a.t.prod?b:a):null;
   const pior=comProd.length?comProd.reduce((a,b)=>b.t.prod<a.t.prod?b:a):null;
-  const bufFim=calcBufferGlobal(),metaRef=META_DIARIA*diasTrab;
+  const bufFim=calcBufferGlobal(),metaFixa=state.metaMensalManual>0,metaRef=metaFixa?getMetaMensal():META_DIARIA*diasTrab;
   const alertas=[];
-  if(diasTrab&&tot.prod<metaRef)alertas.push({k:'warn',t:'Produção do período abaixo da meta de referência ('+fNum(tot.prod)+' de '+fNum(metaRef)+')'});
+  if(diasTrab&&tot.prod<metaRef&&!metaFixa)alertas.push({k:'warn',t:'Produção do período abaixo da meta de referência ('+fNum(tot.prod)+' de '+fNum(metaRef)+')'});
   if(diasTrab&&bateu<diasTrab)alertas.push({k:'info',t:(diasTrab-bateu)+' de '+diasTrab+' dia(s) trabalhado(s) ficaram abaixo da meta diária'});
   if(bufFim<0)alertas.push({k:'red',t:'Buffer atual negativo ('+fNum(bufFim)+')'});
   if(semMov)alertas.push({k:'info',t:semMov+' dia(s) útil(eis) (seg–sáb) sem nenhuma movimentação lançada'});
@@ -4092,7 +4092,7 @@ function fechDados(de,ate){
   let restDias=0;{const ini=ate===today()?ate:fAddDias(ate,1);for(let c=ini,g=0;c<=ci.ate&&g++<400;c=fAddDias(c,1))if(fWd(c)!==0)restDias++;}
   const ritmo=restDias>0?Math.round(falta/restDias):0,nProd=(typeof calcMetaIndividual==='function'?calcMetaIndividual().qtd:0)||0;
   const mensal={ci,acum,metaM,falta,restDias,ritmo,ritmoPP:nProd>0?Math.round(ritmo/nProd):0,metaDia:Math.round(metaM/Math.max(1,fDiasUteis(ci.de,ci.ate))),pctAting:metaM>0?acum/metaM*100:0};
-  return{mensal,de,ate,turnos,tk,porT,sem,dias,tot,diasTrab,bateu,melhor,pior,bufFim,metaRef,media:diasTrab?Math.round(tot.prod/diasTrab):0,alertas};
+  return{mensal,de,ate,turnos,tk,porT,sem,dias,tot,diasTrab,bateu,melhor,pior,bufFim,metaRef,metaFixa,media:diasTrab?Math.round(tot.prod/diasTrab):0,alertas};
 }
 function fPeriodoTxt(D){return D.de===D.ate?dateFull(D.de):fBR(D.de)+' a '+fBR(D.ate);}
 function fEnv(s){return FECH_CFG.env+(s?'':'');}
@@ -4148,7 +4148,7 @@ function fechRender(){
       return'<div class="fe-tiles fe-t3">'+tile('Falta p/ meta mensal',fNum(M.falta),(100-Math.min(100,pa)).toFixed(1)+'% restante · '+fCurto(M.ci.de)+' a '+fCurto(M.ci.ate),M.falta>0?'var(--red)':'var(--green)')+
        tile('Ritmo diário necessário',M.restDias?fNum(M.ritmo):'—','vs. meta diária de '+fNum(M.metaDia)+(M.ritmoPP?' · '+fNum(M.ritmoPP)+'/pessoa/dia':'')+(M.restDias?' · '+M.restDias+' dia(s) úteis':''),M.restDias&&M.ritmo>M.metaDia?'var(--red)':'var(--green)')+
        tile('% meta mensal atingida',pa.toFixed(0)+'%','<div class="fe-prog" style="margin:6px 0 0"><div style="width:'+Math.min(100,pa)+'%;background:'+cm+'"></div></div>',cm)+'</div>';})()+
-    '<div class="fe-prog"><div style="width:'+Math.min(100,pct)+'%;background:'+cor+'"></div></div><div class="fe-progl"><span>Meta de referência '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta</span></div>'+
+    '<div class="fe-prog"><div style="width:'+Math.min(100,pct)+'%;background:'+cor+'"></div></div><div class="fe-progl"><span>'+(D.metaFixa?'Meta mensal '+fNum(D.metaRef):'Meta de referência '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))')+'</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta</span></div>'+
     '<div class="fe-sec">Produção diária <small style="font-weight:500;color:var(--text3)">· verde = meta batida</small></div><div class="fe-pulso">'+grafico+'</div>'+
     turnoTbl+
     '<div class="fe-sec">Dia a dia</div>'+diaTbl+
@@ -4164,7 +4164,7 @@ function fechRender(){
 function fechTexto(D){
   const C=FECH_CFG,pct=fPct(D.tot.prod,D.metaRef);
   const L=['*RELATÓRIO FEMSA '+unitName.toUpperCase()+'*','📅 '+fPeriodoTxt(D)+(D.dias.length>1?' ('+D.dias.length+' dias)':''),''];
-  L.push('📦 Produzidos: *'+fNum(D.tot.prod)+'*'+(D.diasTrab?' ('+pct+'% da meta de referência '+(pct>=100?'✅':'⚠️')+')':''));
+  L.push('📦 Produzidos: *'+fNum(D.tot.prod)+'*'+(D.diasTrab?' ('+pct+'% da meta '+(D.metaFixa?'mensal '+fNum(D.metaRef)+' ':'de referência ')+''+(pct>=100?'✅':'⚠️')+')':''));
   if(C.pbr)L.push('   PBR1 '+fNum(D.tot.pbr1)+' · PBR2 '+fNum(D.tot.pbr2));
   if(D.diasTrab)L.push('   Média: '+fNum(D.media)+'/dia · '+D.bateu+' de '+D.diasTrab+' dia(s) na meta');
   L.push('🚚 Recebidos: *'+fNum(D.tot.rec)+'*','📤 '+C.env+': *'+fNum(D.tot.env)+'*','🗑️ Descarte: *'+fNum(D.tot.desc)+'*','🧱 Buffer atual: *'+(D.bufFim>=0?'+':'')+fNum(D.bufFim)+'*','');
@@ -4192,7 +4192,7 @@ function fechExcel(){
   const r1=[[{h:'FEMSA '+unitName.toUpperCase()+' — RELATÓRIO OPERACIONAL'}],[{s:fPeriodoTxt(D)}],[],
    [{h:'Indicador'},{h:'Valor'}],[{s:'Produzidos'},{n:D.tot.prod}]];
   if(C.pbr)r1.push([{s:'PBR1'},{n:D.tot.pbr1}],[{s:'PBR2'},{n:D.tot.pbr2}]);
-  r1.push([{s:'Meta diária'},{n:META_DIARIA}],[{s:'Dias com produção'},{n:D.diasTrab}],[{s:'Meta de referência'},{n:D.metaRef}],[{s:'% da meta de referência'},{n:pct}],[{s:'Média por dia trabalhado'},{n:D.media}],[{s:'Dias que bateram a meta'},{n:D.bateu}],
+  r1.push([{s:'Meta diária'},{n:META_DIARIA}],[{s:'Dias com produção'},{n:D.diasTrab}],[{s:D.metaFixa?'Meta mensal':'Meta de referência'},{n:D.metaRef}],[{s:D.metaFixa?'% da meta mensal':'% da meta de referência'},{n:pct}],[{s:'Média por dia trabalhado'},{n:D.media}],[{s:'Dias que bateram a meta'},{n:D.bateu}],
    [{s:'Recebidos'},{n:D.tot.rec}],[{s:C.env},{n:D.tot.env}],[{s:'Descarte'},{n:D.tot.desc}],[{s:'Buffer atual'},{n:D.bufFim}],[{s:'Meta mensal ('+D.mensal.ci.de+' a '+D.mensal.ci.ate+')'},{n:D.mensal.metaM}],[{s:'Acumulado no ciclo'},{n:D.mensal.acum}],[{s:'Falta p/ meta mensal'},{n:D.mensal.falta}],[{s:'Ritmo diário necessário'},{n:D.mensal.ritmo}],[{s:'% meta mensal atingida'},{n:Math.round(D.mensal.pctAting)}],[]);
   if(C.porTurno){
     r1.push([{h:'Turno'},{h:'Horário'},{h:'Produzidos'},{h:'Recebidos'},{h:C.env},{h:'Descarte'},{h:'Presenças'},{h:'Faltas'},{h:'% absenteísmo'}]);
@@ -4278,7 +4278,7 @@ function fechPDF(){
      return'<div class="ks ks3">'+kp('Falta p/ meta mensal',fNum(M.falta),(100-Math.min(100,pa)).toFixed(1)+'% restante · '+fCurto(M.ci.de)+' a '+fCurto(M.ci.ate),M.falta>0?'#ff4d6a':'#00e5a0','#ff4d6a')+
       kp('Ritmo diário necessário',M.restDias?fNum(M.ritmo):'—','vs. meta diária de '+fNum(M.metaDia)+(M.ritmoPP?' · '+fNum(M.ritmoPP)+'/pessoa/dia':''),M.restDias&&M.ritmo>M.metaDia?'#ff4d6a':'#00e5a0','#f59e0b')+
       kp('% meta mensal atingida',pa.toFixed(0)+'%','<div style="height:6px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin-top:4px"><i style="display:block;height:100%;width:'+Math.min(100,pa)+'%;background:'+cm+'"></i></div>',cm,'#10b981')+'</div>';})()+
-   '<div class="prog"><i></i></div><div class="pl"><span>Meta de referência: '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta diária</span></div>'+
+   '<div class="prog"><i></i></div><div class="pl"><span>'+(D.metaFixa?'Meta mensal: '+fNum(D.metaRef):'Meta de referência: '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))')+'</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta diária</span></div>'+
    '<h2>Produção diária</h2><div class="leg">'+legenda+'<span><i style="background:#ff4d6a"></i>meta diária ('+fNum(META_DIARIA)+')</span></div>'+svg+
    '<div class="cols"><div>'+blocoTurno+'</div>'+
    '<div><h2>Destaques e alertas</h2>'+(D.melhor?'<div class="al ok">🏆 Melhor dia: <b>'+fCurto(D.melhor.d)+' ('+F_SEM[D.melhor.wd]+')</b> — '+fNum(D.melhor.t.prod)+'</div>':'')+(D.pior&&D.dias.length>1?'<div class="al nt">Menor dia com produção: <b>'+fCurto(D.pior.d)+'</b> — '+fNum(D.pior.t.prod)+'</div>':'')+(D.alertas.length?D.alertas.map(a=>'<div class="al">⚠ '+esc(a.t)+'</div>').join(''):'<div class="al ok">Tudo em ordem no período</div>')+'</div></div>'+

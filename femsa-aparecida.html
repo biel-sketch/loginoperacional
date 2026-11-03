@@ -995,7 +995,7 @@ const USERS=[
   {user:'Financeiro', senha:'L@gin982', role:'admin'},
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:'',_padrao:true},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:'',_padrao:true}];
-let state={premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:'',movimentosResetTs:'',colaboradoresResetTs:'',removidos:{}};
+let state={premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaMensalManual:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:'',movimentosResetTs:'',colaboradoresResetTs:'',removidos:{}};
 const ATIVIDADES=['Recuperação de Pallets','Produção de Insumos','Operação de Empilhadeira','Inspeção da Qualidade'];
 function produzPallets(c){return !c.atividade||c.atividade==='Recuperação de Pallets';}
 // Situação do colaborador no dia (presença do turno dele + afastamentos): define cor e se entra na produção
@@ -1114,7 +1114,8 @@ function diasUteisRestantesNoMes(){
   for(let dia=now.getDate();dia<=fim;dia++){const d=new Date(ano,mes,dia);if(d.getDay()!==0)count++;}
   return count;
 }
-function getMetaMensal(){const n=new Date();return META_DIARIA*diasUteisNoMes(n.getFullYear(),n.getMonth());} // meta diária fixa × dias úteis do mês
+function metaMensalAuto(){const n=new Date();return META_DIARIA*diasUteisNoMes(n.getFullYear(),n.getMonth());} // meta diária fixa × dias úteis do mês
+function getMetaMensal(){return (state.metaMensalManual>0)?state.metaMensalManual:metaMensalAuto();} // meta fixada à mão vale em todos os meses; sem ela, calcula
 function calcMetaIndividual(){
   const produtores=colaboradoresAtivos().filter(produzPallets);
   const diasUteisMes=diasUteisNoMes(new Date().getFullYear(),new Date().getMonth());
@@ -1153,16 +1154,19 @@ async function salvarConfigMeta(){
   const metaEl=document.getElementById('cfg-meta-mensal');
   const metaIndEl=document.getElementById('cfg-meta-individual');
   const saldoEl=document.getElementById('cfg-buffer-saldo');
-  const meta=metaEl?parseInt(metaEl.value,10):NaN;
+  const metaRaw=metaEl?String(metaEl.value).trim():'';
+  const meta=metaRaw===''?null:parseInt(metaRaw,10);
   const metaInd=metaIndEl?parseInt(metaIndEl.value,10):NaN;
   const saldo=saldoEl?parseInt(saldoEl.value,10):NaN;
-  if(isNaN(meta)||meta<0){showToast('Informe uma meta mensal válida.','warn');return;}
+  if(meta!==null&&(isNaN(meta)||meta<=0)){showToast('Informe uma meta mensal válida (ou deixe vazio para calcular automaticamente).','warn');return;}
   if(isNaN(metaInd)||metaInd<0){showToast('Informe uma meta individual válida.','warn');return;}
-  state.metaMensal=meta;
+  // vazio = automática; igual ao valor calculado e sem meta fixa antes = continua automática (não congela o cálculo)
+  state.metaMensalManual=(meta===null||(meta===metaMensalAuto()&&!(state.metaMensalManual>0)))?null:meta;
+  state.metaMensal=getMetaMensal();
   state.metaIndividualFixa=metaInd;
   state.bufferSaldoInicial=isNaN(saldo)?0:saldo;
   state.configTs=new Date().toISOString();
-  logAuditoria('Atualizou meta mensal ('+meta+'), meta individual ('+metaInd+') e saldo inicial do buffer ('+state.bufferSaldoInicial+')');
+  logAuditoria('Atualizou meta mensal ('+(state.metaMensalManual>0?state.metaMensalManual+' fixa':'automática '+state.metaMensal)+'), meta individual ('+metaInd+') e saldo inicial do buffer ('+state.bufferSaldoInicial+')');
   saveCache();await pushToCloud();
   showToast('Configuração de meta salva!','ok');
   renderAll();
@@ -1321,6 +1325,7 @@ function mergeState(cloud){
   }
   if(cloud.configTs!==undefined&&(cloud.configTs||'')>=(state.configTs||'')){
     state.metaMensal=cloud.metaMensal;
+    state.metaMensalManual=(cloud.metaMensalManual>0)?cloud.metaMensalManual:null;
     state.bufferSaldoInicial=cloud.bufferSaldoInicial||0;
     state.metaIndividualFixa=cloud.metaIndividualFixa!==undefined?cloud.metaIndividualFixa:120;
     state.turnoExtra=cloud.turnoExtra||{ativo:false,horario:'',inicioMin:null};
@@ -1329,7 +1334,7 @@ function mergeState(cloud){
   if(reconciliarProducao())setTimeout(()=>{try{saveCache();_pushSoon();}catch(e){}},0);
 }
 function _docDoEstado(){
-  const d={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',movimentosResetTs:state.movimentosResetTs||'',colaboradoresResetTs:state.colaboradoresResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{}};
+  const d={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaMensalManual:state.metaMensalManual||null,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',movimentosResetTs:state.movimentosResetTs||'',colaboradoresResetTs:state.colaboradoresResetTs||'',premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{}};
   if(state.removidos&&Object.keys(state.removidos).length)d.removidos=state.removidos;
   return d;
 }
@@ -1707,7 +1712,7 @@ function launchApp(){
 
 function boot(){
   unitName=localStorage.getItem(LS_UNIT)||'Aparecida';
-  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.premiacao)state.premiacao=p.premiacao;if(p.premiacaoCfg)state.premiacaoCfg=p.premiacaoCfg;if(p.removidos)state.removidos=p.removidos;if(p.movimentosResetTs!==undefined)state.movimentosResetTs=p.movimentosResetTs;if(p.colaboradoresResetTs!==undefined)state.colaboradoresResetTs=p.colaboradoresResetTs;}}catch(e){}
+  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaMensalManual!==undefined)state.metaMensalManual=p.metaMensalManual;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.turnoExtra)state.turnoExtra=p.turnoExtra;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.premiacao)state.premiacao=p.premiacao;if(p.premiacaoCfg)state.premiacaoCfg=p.premiacaoCfg;if(p.removidos)state.removidos=p.removidos;if(p.movimentosResetTs!==undefined)state.movimentosResetTs=p.movimentosResetTs;if(p.colaboradoresResetTs!==undefined)state.colaboradoresResetTs=p.colaboradoresResetTs;}}catch(e){}
   if(!state.colaboradores||!state.colaboradores.length)state.colaboradores=DEFAULT_COLABS;
   try{
     const raw=sessionStorage.getItem('femsa_session')||localStorage.getItem('femsa_session');
@@ -3051,7 +3056,7 @@ function renderConfig(){
       var infoMeta=calcMetaIndividual();
       html+='<div class="card" style="border-color:var(--cyan-bd)">';
       html+='<div class="card-title"><i class="ti ti-target-arrow" style="color:var(--cyan)"></i> Meta Mensal & Turno Extraordinário</div>';
-      html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta mensal (pallets)</div><div class="cfg-sub">Calculada automaticamente: meta diária ('+META_DIARIA+') × dias úteis do mês</div></div><input type="number" disabled id="cfg-meta-mensal" value="'+metaMensalAtual+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
+      html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta mensal (pallets)</div><div class="cfg-sub">'+(state.metaMensalManual>0?'Meta fixa definida por você — vale em todos os meses. Apague o campo e salve para voltar ao cálculo (meta diária '+META_DIARIA+' × dias úteis).':'Calculada automaticamente: meta diária ('+META_DIARIA+') × dias úteis do mês. Digite um valor para fixar outra meta.')+'</div></div><input type="number" min="1" id="cfg-meta-mensal" placeholder="'+metaMensalAuto()+'" value="'+metaMensalAtual+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
       html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta individual (pallets/pessoa/dia)</div><div class="cfg-sub">Valor fixo usado no lançamento de Produção por Colaborador</div></div><input type="number" id="cfg-meta-individual" value="'+(state.metaIndividualFixa||120)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
       html+='<div class="cfg-row"><div><div class="cfg-lbl">Saldo inicial do buffer</div><div class="cfg-sub">Somado ao cálculo produzidos − enviados</div></div><input type="number" id="cfg-buffer-saldo" value="'+(state.bufferSaldoInicial||0)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
       html+='<button class="btn btn-primary btn-sm" style="margin-top:6px;margin-bottom:14px" onclick="salvarConfigMeta()"><i class="ti ti-check"></i> Salvar</button>';
@@ -3201,7 +3206,7 @@ async function pushForceToCloud(){
   // que a nuvem realmente zerou antes de reportar sucesso.
   resetLock=true;
   setSyncDot('syncing','Salvando...');
-  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',movimentosResetTs:state.movimentosResetTs||'',colaboradoresResetTs:state.colaboradoresResetTs||'',removidos:state.removidos||{},premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{}};
+  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaMensalManual:state.metaMensalManual||null,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,turnoExtra:state.turnoExtra||{ativo:false,horario:'',inicioMin:null},configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',movimentosResetTs:state.movimentosResetTs||'',colaboradoresResetTs:state.colaboradoresResetTs||'',removidos:state.removidos||{},premiacao:state.premiacao||{},premiacaoCfg:state.premiacaoCfg||{}};
   let ok=false;
   for(let tentativa=0;tentativa<3&&!ok;tentativa++){
     try{

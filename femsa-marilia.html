@@ -4465,7 +4465,7 @@ function osViewResumo(rows){
   // divergência de contagem
   const dv=osConfLinhas(osDash.de,osDash.ate).filter(x=>x.dif);
   const aviso=dv.length?'<div class="os-alert"><i class="ti ti-alert-triangle"></i><div><strong>'+dv.length+' dia(s) com divergência</strong> entre a quantidade informada e as OS lançadas. <a onclick="osDashSet(\'view\',\'oper\')">Ver conferência</a></div></div>':'';
-  return '<div class="os-heroes">'+hero('link','Amarrações',qA,nA+' OS'+(qA!==nA?' · '+qA+' serviços':''),'g')+hero('link-off','Desamarrações',qD,nD+' OS'+(qD!==nD?' · '+qD+' serviços':''),'b')+hero('file-description','OS distintas',nOS,rows.length+' lançamento(s) · '+dias.length+' dia(s)','c')+hero('currency-real','Valor total',osBRL(total),semValor?semValor+' sem valor definido':'conforme tabela','p')+'</div>'+aviso+
+  return '<div class="os-heroes">'+hero('link','Amarrações',nA,'OS com amarração','g')+hero('link-off','Desamarrações',nD,'OS com desamarração','b')+hero('file-description','OS distintas',nOS,rows.length+' lançamento(s) · '+dias.length+' dia(s)','c')+hero('currency-real','Valor total',osBRL(total),semValor?semValor+' sem valor definido':'conforme tabela','p')+'</div>'+aviso+
    '<div class="card os-cd"><div class="card-title"><i class="ti ti-clock"></i> Por turno</div><div class="os-tts">'+tTiles+'</div></div>'+graf+
    '<div class="os-two">'+lista('Por serviço','list-details',agr(r=>OS_SERV[r.veic+'|'+r.op].c),x=>x+' · '+descServ[x])+lista('Por cliente','building',agr(r=>r.cliente||'—'),x=>x,6)+'</div>';
 }
@@ -4525,7 +4525,7 @@ function osViewSeq(rows){
 // ---- conferência de quantidade informada x OS ----
 function osContReal(d){
   const rs=osLista().filter(r=>r.data===d);
-  const q=(o)=>rs.filter(r=>r.op===o).reduce((t,r)=>t+(r.qtd||1),0);
+  const q=(o)=>rs.filter(r=>r.op===o).length;
   return{A:q('A'),D:q('D'),nA:rs.filter(r=>r.op==='A').length,nD:rs.filter(r=>r.op==='D').length};
 }
 function osContGet(d){const x=(state.osContagem||[]).find(y=>y.k===d);return(x&&!x.del)?x:null;}
@@ -4561,7 +4561,7 @@ function osRenderOper(){
   const bloco=(rot,cls,inf,real,nOS,id)=>{
     const dif=inf===null?null:inf-real;
     return '<div class="os-cbox '+cls+'"><div class="os-cl">'+rot+'</div><div class="os-cin"><label>Quantidade do dia</label><input type="number" min="0" inputmode="numeric" id="'+id+'" value="'+(inf===null?'':inf)+'" placeholder="0"'+(ro?' disabled':'')+'></div>'+
-     '<div class="os-cvs"><div><span>OS lançadas</span><strong>'+real+'</strong>'+(nOS!==real?'<em>'+nOS+' OS</em>':'')+'</div><div class="os-cdif '+(dif===null?'':(dif===0?'ok':'bad'))+'"><span>Diferença</span><strong>'+(dif===null?'—':(dif>0?'+':'')+dif)+'</strong></div></div></div>';
+     '<div class="os-cvs"><div><span>OS lançadas</span><strong>'+real+'</strong>'+''+'</div><div class="os-cdif '+(dif===null?'':(dif===0?'ok':'bad'))+'"><span>Diferença</span><strong>'+(dif===null?'—':(dif>0?'+':'')+dif)+'</strong></div></div></div>';
   };
   const hist=(state.osContagem||[]).filter(x=>!x.del).sort((a,b)=>b.k.localeCompare(a.k)).slice(0,15);
   const st=(c?(((c.a-r.A)||(c.d-r.D))?'<div class="os-alert"><i class="ti ti-alert-triangle"></i><div><strong>Divergência</strong> entre o informado e as OS lançadas neste dia.</div></div>':'<div class="os-ok"><i class="ti ti-circle-check"></i> Quantidades conferem com as OS lançadas.</div>'):'');

@@ -4396,7 +4396,7 @@ function osDashRender(){
   const el=document.getElementById('dv-os');if(!el)return;
   osDashIni();
   const rows=osDashRows(),V=osDash.view;
-  const subs=[['resumo','Resumo'],['seq','Sequência de OS'],['acomp','Acompanhamento'],['oper','Data × Operação'],['valor','Data × Valor'],['apont','Apontamento']];
+  const subs=[['resumo','Resumo'],['seq','Sequência de OS'],['acomp','Acompanhamento'],['oper','Data × Operação'],['valor','Data × Valor'],['apont','Apontamento'],['transp','Transportadoras']];
   const head='<div class="card os-dfil"><div class="os-filtros" style="grid-template-columns:repeat(2,1fr) auto">'+
    '<div class="modal-field"><label>De</label><input type="date" value="'+osDash.de+'" onchange="osDashSet(\'de\',this.value)"></div>'+
    '<div class="modal-field"><label>Até</label><input type="date" value="'+osDash.ate+'" onchange="osDashSet(\'ate\',this.value)"></div>'+
@@ -4409,6 +4409,7 @@ function osDashRender(){
   else if(V==='oper')corpo=osViewOper(rows);
   else if(V==='valor')corpo=osViewValor(rows);
   else if(V==='apont')corpo=osViewApont(rows);
+  else if(V==='transp')corpo=osViewTransp(rows);
   else corpo=osViewResumo(rows);
   el.innerHTML=head+corpo+(V==='resumo'?'<details class="os-det"><summary><i class="ti ti-users"></i> Presença da equipe de Amarração</summary>'+osPresCard()+'</details>':'');
 }
@@ -4611,6 +4612,15 @@ function osViewValor(rows){
   }).join('');
   return '<div class="card"><div class="card-title"><i class="ti ti-currency-real"></i> Data × Valor</div><div class="os-scroll"><table class="rel-tbl os-tbl os-piv"><thead><tr><th class="nm">Transportadoras</th>'+P.dates.map(d=>'<th class="n">'+osDm(d)+'</th>').join('')+'<th class="n">Total geral</th></tr></thead><tbody>'+linhas+
    '</tbody><tfoot><tr><td class="nm">Total geral</td>'+P.dates.map(d=>'<td class="n">'+fm(colT[d])+'</td>').join('')+'<td class="n tt">'+fm(tg)+'</td></tr></tfoot></table></div></div>';
+}
+function osViewTransp(rows){
+  const m={};
+  rows.forEach(r=>{const k=r.cliente||'—',x=m[k]||(m[k]={n:0,v:0,sv:0});x.n++;const v=osValorReg(r);if(v===null)x.sv++;else x.v+=v;});
+  const ks=Object.keys(m).sort((a,b)=>m[b].n-m[a].n||a.localeCompare(b));
+  const tn=ks.reduce((t,k)=>t+m[k].n,0),tv=ks.reduce((t,k)=>t+m[k].v,0);
+  return '<div class="card"><div class="card-title"><i class="ti ti-truck"></i> Transportadoras</div><div class="os-scroll"><table class="rel-tbl os-tbl"><thead><tr><th>Transportadora</th><th class="n">Operações</th><th class="n">Valor</th></tr></thead><tbody>'+
+   ks.map(k=>'<tr><td>'+osEsc(k)+'</td><td class="n">'+m[k].n+'</td><td class="n">'+(m[k].sv===m[k].n?'—':osBRL(m[k].v))+(m[k].sv&&m[k].sv!==m[k].n?' <span title="'+m[k].sv+' sem valor definido" style="color:var(--warn)">*</span>':'')+'</td></tr>').join('')+
+   '</tbody><tfoot><tr><td>Total geral</td><td class="n">'+tn+'</td><td class="n">'+osBRL(tv)+'</td></tr></tfoot></table></div></div>';
 }
 function osViewApont(rows){
   const dias=[...new Set(rows.map(r=>r.data))].sort();let tA=0,tD=0;

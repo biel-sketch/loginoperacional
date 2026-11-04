@@ -426,6 +426,7 @@ img,canvas,svg{max-width:100%}
 .os-cli summary{cursor:pointer;font-weight:700;font-size:14px;display:flex;gap:8px;align-items:center}.os-crow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border)}
 @media(max-width:900px){.os-kpis{grid-template-columns:repeat(2,1fr)}.os-filtros{grid-template-columns:repeat(2,1fr)}.os-grid{grid-template-columns:repeat(2,1fr)}.os-exp{margin-left:0;width:100%;justify-content:center}}
 
+.os-nfchips{display:flex;gap:6px;margin-top:6px}.os-nfchips button{padding:5px 12px;border-radius:99px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:11px;font-weight:700;cursor:pointer}.os-nfchips button.on{background:var(--cyan-bg);border-color:var(--cyan-bd);color:var(--cyan)}
 .os-nrmsg{display:none;font-size:11px;color:var(--red);margin-top:4px;font-weight:600}input.os-bad{border-color:var(--red)!important;background:var(--red-bg)!important}
 .os-heroes{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}
 .os-hero{display:flex;gap:12px;align-items:center;padding:16px;border-radius:14px;border:1px solid var(--border);background:var(--bg2)}
@@ -4123,6 +4124,11 @@ function mergeOSCli(a,b){
   [...(a||[]),...(b||[])].forEach(c=>{if(!c||!c.cnpj)return;const x=m[c.cnpj];if(!x||(c.ts||'')>(x.ts||''))m[c.cnpj]=c;});
   return Object.values(m);
 }
+function osNfEsp(v){v=String(v||'').trim().toUpperCase();return(v==='CROSS'||v==='ACERTO')?v:'';}
+function osNfChips(campo){
+  const v=osNfEsp(osForm[campo]);
+  return '<div class="os-nfchips">'+['CROSS','ACERTO'].map(x=>'<button type="button" class="'+(v===x?'on':'')+'" onclick="osSet(\''+campo+'\',\''+(v===x?'':x)+'\',true)">'+x+'</button>').join('')+'</div>';
+}
 function osNrConflito(o,n,idIgnora){
   n=osDigits(n);if(!n)return null;
   return osLista().find(r=>r.op===o&&r.id!==idIgnora&&osDigits(r.nr)===n)||null;
@@ -4198,8 +4204,8 @@ function osRenderForm(){
    '<div class="modal-field"><label>Cavalo (placa)</label><input id="os-cav" value="'+osEsc(f.cavalo)+'" oninput="osMaskPlaca(this);osSet(\'cavalo\',this.value)" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="8" placeholder="AAA-0A00" style="text-transform:uppercase;letter-spacing:.08em;font-weight:600"></div>'+
    (f.veic==='TRUCK'?'':'<div class="modal-field"><label>'+(f.veic==='RODOTREM'?'Carreta 1':'Carreta (placa)')+'</label><input id="os-car" value="'+osEsc(f.carreta)+'" oninput="osMaskPlaca(this);osSet(\'carreta\',this.value)" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="8" placeholder="AAA-0A00" style="text-transform:uppercase;letter-spacing:.08em;font-weight:600"></div>')+
    (f.veic==='RODOTREM'?'<div class="modal-field"><label>Carreta 2 (opcional)</label><input id="os-car2" value="'+osEsc(f.carreta2)+'" oninput="osMaskPlaca(this);osSet(\'carreta2\',this.value)" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="8" placeholder="AAA-0A00" style="text-transform:uppercase;letter-spacing:.08em;font-weight:600"></div>':'')+
-   '<div class="modal-field"><label>'+nrLbl+'</label><input id="os-nr" inputmode="numeric" value="'+osEsc(f.nr)+'" oninput="osSet(\'nr\',this.value);osNrLive()"><div class="os-nrmsg" id="os-nr-msg"></div></div>'+
-   (f.op==='AD'?'<div class="modal-field"><label>Nº da nota fiscal (desamarração)</label><input id="os-nr2" inputmode="numeric" value="'+osEsc(f.nr2)+'" oninput="osSet(\'nr2\',this.value);osNrLive()"><div class="os-nrmsg" id="os-nr2-msg"></div></div>':'')+
+   '<div class="modal-field"><label>'+nrLbl+'</label><input id="os-nr"'+(f.op==='D'?' style="text-transform:uppercase"':' inputmode="numeric"')+' value="'+osEsc(f.nr)+'" oninput="osSet(\'nr\',this.value);osNrLive()"><div class="os-nrmsg" id="os-nr-msg"></div>'+(f.op==='D'?osNfChips('nr'):'')+'</div>'+
+   (f.op==='AD'?'<div class="modal-field"><label>Nº da nota fiscal (desamarração)</label><input id="os-nr2" style="text-transform:uppercase" value="'+osEsc(f.nr2)+'" oninput="osSet(\'nr2\',this.value);osNrLive()"><div class="os-nrmsg" id="os-nr2-msg"></div>'+osNfChips('nr2')+'</div>':'')+
    '<div class="modal-field"><label>Quantidade</label><select id="os-qtd" onchange="osSet(\'qtd\',this.value,true)"><option value="1"'+(f.qtd!==2?' selected':'')+'>1</option><option value="2"'+(f.qtd===2?' selected':'')+'>2 (valor em dobro)</option></select></div>'+
    '</div>'+
    '<div class="os-serv" id="os-serv"></div>'+
@@ -4225,7 +4231,7 @@ function osSalvar(seguir){
   const f=osForm;
   const doc=osDigits(f.doc),cli=osClientesList().find(c=>c.cnpj===f.cnpj);
   const ops=f.op==='AD'?['A','D']:[f.op];
-  const nrDe=(o)=>osDigits(f.op==='AD'?(o==='A'?f.nr:f.nr2):f.nr);
+  const nrDe=(o)=>{const raw=f.op==='AD'?(o==='A'?f.nr:f.nr2):f.nr;return(o==='D'&&osNfEsp(raw))?osNfEsp(raw):osDigits(raw);};
   if(!doc){showToast('Informe o número da OS.','warn');return;}
   if(!f.data){showToast('Informe a data.','warn');return;}
   if(!cli){showToast('Selecione o cliente.','warn');return;}
@@ -4234,7 +4240,7 @@ function osSalvar(seguir){
   let car='';
   if(f.veic==='CARRETA'){car=osPlaca(f.carreta);if(!car){showToast('Informe a placa da carreta.','warn');return;}}
   if(f.veic==='RODOTREM'){const a=osPlaca(f.carreta),b=osPlaca(f.carreta2);if(!a){showToast('Rodotrem: informe a carreta 1.','warn');return;}car=b?a+'/'+b:a;}
-  for(const o of ops){if(!nrDe(o)){showToast('Informe o '+(o==='A'?'nº do transporte':'nº da nota fiscal')+'.','warn');return;}}
+  for(const o of ops){if(!nrDe(o)){showToast('Informe o '+(o==='A'?'nº do transporte':'nº da nota fiscal (ou CROSS / ACERTO)')+'.','warn');return;}}
   const outra=osLista().find(r=>r.doc===doc&&r.id!==f.id&&r.cnpj!==cli.cnpj);
   if(outra){showToast('A OS '+doc+' já pertence a '+outra.cliente+'. O número da OS não pode se repetir entre clientes.','warn',5000);return;}
   for(const o of ops){
@@ -4243,7 +4249,7 @@ function osSalvar(seguir){
   }
   for(const o of ops){
     const t=osNrMsgTxt(o,nrDe(o),f.id);
-    if(t){showToast((o==='A'?'Nº do transporte ':'Nº da nota fiscal ')+osDigits(nrDe(o))+' repetido. '+t+'.','warn',5500);return;}
+    if(t){showToast((o==='A'?'Nº do transporte ':'Nº da nota fiscal ')+nrDe(o)+' repetido. '+t+'.','warn',5500);return;}
   }
   const agora=new Date().toISOString(),who=currentUser?currentUser.user:'Desconhecido';
   if(!state.osAmarracao)state.osAmarracao=[];
@@ -4504,7 +4510,7 @@ function osViewSeq(rows){
   const falt=I.gaps.filter(g=>!g.grande).reduce((t,g)=>t+g.q,0);
   const sem=I.gaps.filter(g=>!g.grande).reduce((t,g)=>{for(let n=g.ini;n<=g.fim&&n-g.ini<300;n++)if(osJustGet(n))t++;return t;},0);
   const tile=(l,v,sub,c)=>'<div class="os-hero '+c+'" style="padding:12px 14px"><div><div class="os-hl">'+l+'</div><div class="os-hv" style="font-size:22px">'+v+'</div><div class="os-hs">'+sub+'</div></div></div>';
-  const kp='<div class="os-heroes">'+tile('Primeira OS',L[0].n,dateBR(L[0].data),'c')+tile('Última OS',L[L.length-1].n,dateBR(L[L.length-1].data),'c')+tile('Lançadas',L.length,'no período','g')+tile('Faltando',falt,sem?sem+' justificada(s)':'sem justificativa',falt?'r':'g')+tile('Fora de ordem',I.fora.length,'lançadas após número maior',I.fora.length?'w':'g')+'</div>';
+  const kp='<div class="os-heroes">'+tile('Primeira OS',L[0].n,dateBR(L[0].data),'c')+tile('Última OS',L[L.length-1].n,dateBR(L[L.length-1].data),'c')+tile('Lançadas',L.length,'no período','g')+tile('Faltando',falt,sem?sem+' justificada(s)':'sem justificativa',falt?'r':'g')+'</div>';
   const span=L[L.length-1].n-L[0].n+1;
   let mapa='';
   if(span<=1500){
@@ -4519,8 +4525,7 @@ function osViewSeq(rows){
       '<div class="os-gm">'+ctx(g.ant,'antes')+ctx(g.dep,'depois')+'</div>'+
       (g.grande?'':'<div class="os-gj">'+(j?'<span class="os-mt"><i class="ti ti-message-2"></i> '+osEsc(j.m)+'</span>':'<span style="color:var(--red)">sem justificativa</span>')+(osPodeLancar()?' <button class="ds-btn" onclick="osJustificar('+g.ini+','+g.fim+')">'+(j?'Editar motivo':'Justificar')+'</button>':'')+'</div>')+'</div>';
   }).join(''):'<div class="os-ok"><i class="ti ti-circle-check"></i> Sequência completa, sem números faltando.</div>';
-  const fl=I.fora.length?'<div class="card os-cd"><div class="card-title"><i class="ti ti-arrows-sort"></i> Lançadas fora de ordem <span class="os-resumo" style="margin:0 0 0 8px">número menor lançado depois de um maior</span></div>'+I.fora.slice(0,60).map(x=>'<div class="os-fo"><strong>OS '+x.n+'</strong><span>'+dateBR(x.data)+' · '+osEsc((x.cliente||'').slice(0,30))+'</span><span class="os-mt">lançada depois da OS '+x.apos+(x.ts?' · '+x.ts.slice(8,10)+'/'+x.ts.slice(5,7)+' '+x.ts.slice(11,16):'')+(x.who?' · '+osEsc(x.who):'')+'</span></div>').join('')+(I.fora.length>60?'<div class="os-resumo">Mostrando 60 de '+I.fora.length+'.</div>':'')+'</div>':'';
-  return kp+mapa+'<div class="card os-cd"><div class="card-title"><i class="ti ti-list-numbers"></i> Lacunas na sequência</div>'+gl+'</div>'+fl;
+  return kp+mapa+'<div class="card os-cd"><div class="card-title"><i class="ti ti-list-numbers"></i> Lacunas na sequência</div>'+gl+'</div>';
 }
 // ---- conferência de quantidade informada x OS ----
 function osContReal(d){

@@ -4102,7 +4102,18 @@ function osClientesList(){
 }
 function mergeOS(a,b){
   const m={};
-  [...(a||[]),...(b||[])].forEach(r=>{if(!r||!r.id)return;const x=m[r.id];if(!x||(r.ts||'')>(x.ts||''))m[r.id]=r;});
+  const ex={};
+  [...(a||[]),...(b||[])].forEach(r=>{
+    if(!r||!r.id)return;
+    if(r.exp&&(!ex[r.id]||r.exp>ex[r.id].exp))ex[r.id]=r;   // marca de "exportada" é guardada à parte
+    const x=m[r.id];if(!x||(r.ts||'')>(x.ts||''))m[r.id]=r;
+  });
+  // A marca de exportada NUNCA se perde por causa de uma cópia mais nova porém desatualizada (outro aparelho
+  // que ainda não sabia da exportação). Só some se alguém desfez a exportação de propósito (expDel posterior).
+  Object.keys(ex).forEach(id=>{
+    const w=m[id],e=ex[id];
+    if(w&&!w.exp&&!(w.expDel&&w.expDel>=e.exp)){m[id]=Object.assign({},w,{exp:e.exp,lote:e.lote});delete m[id].expDel;}
+  });
   return Object.values(m);
 }
 function mergeOSVal(a,b){
@@ -4257,7 +4268,7 @@ function osSalvar(seguir){
   ops.forEach((o,k)=>{
     const dados={doc,data:f.data,turno:f.turno,op:o,veic:f.veic,cliente:cli.nome,cnpj:cli.cnpj,cavalo:cav,carreta:car,nr:nrDe(o),qtd};
     let r=f.id?state.osAmarracao.find(x=>x.id===f.id):null;
-    if(r){Object.assign(r,dados,{ts:agora,who});delete r.exp;delete r.lote;}
+    if(r){Object.assign(r,dados,{ts:agora,who});if(r.exp)r.alt=agora;}   // editar não desfaz a exportação: só avisa que mudou depois
     else{r=Object.assign({id:'os_'+Date.now().toString(36)+k+Math.random().toString(36).slice(2,6),ts:agora,who},dados);state.osAmarracao.push(r);}
     logAuditoria((f.id?'OS editada: ':'OS lançada: ')+doc+' · '+OS_SERV[f.veic+'|'+o].c+' · '+cli.nome);
   });
@@ -4311,7 +4322,7 @@ function osRenderLista(){
   const item=(r)=>{
     const s=OS_SERV[r.veic+'|'+r.op];
     return '<div class="os-row'+(r.op==='D'?' d':'')+'"><div class="os-main">'+
-      '<div class="os-l1"><strong>OS '+osEsc(r.doc)+'</strong><span class="os-chip '+(r.op==='A'?'a':'d')+'">'+s.c+'</span><span class="os-chip t">T'+r.turno+'</span>'+(r.exp?'<span class="os-chip x" title="Exportada em '+osEsc((r.exp||'').slice(0,10))+'">exportada</span>':'')+'</div>'+
+      '<div class="os-l1"><strong>OS '+osEsc(r.doc)+'</strong><span class="os-chip '+(r.op==='A'?'a':'d')+'">'+s.c+'</span><span class="os-chip t">T'+r.turno+'</span>'+(r.exp?'<span class="os-chip x" title="Exportada em '+osEsc((r.exp||'').slice(0,10))+'">exportada</span>'+(r.alt?'<span class="os-chip x" style="background:var(--warn-bg);color:var(--warn)" title="Alterada em '+osEsc((r.alt||'').slice(0,10))+', depois de exportada">alterada após exportar</span>':''):'')+'</div>'+
       '<div class="os-l2">'+osEsc(r.cliente)+'</div>'+
       '<div class="os-l3">'+dateBR(r.data)+' · '+osEsc(r.cavalo)+(r.carreta?' · '+osEsc(r.carreta):'')+' · '+(r.op==='A'?'Transp. ':'NF ')+osEsc(r.nr)+(r.qtd>1?' · qtd '+r.qtd:'')+'</div>'+(osValorReg(r)!==null?'<div class="os-l3" style="color:var(--cyan);font-weight:600">'+osBRL(osValorReg(r))+'</div>':'')+'</div>'+
       (canEdit?'<div class="os-act">'+(r.op==='A'&&!jaTemD(r)?'<button class="ds-btn" onclick="osDesamarrar(\''+r.id+'\')" title="Lançar desamarração desta OS"><i class="ti ti-arrows-exchange"></i> Desamarrar</button>':'')+'<button class="ds-btn" onclick="osEditar(\''+r.id+'\')" title="Editar OS"><i class="ti ti-edit"></i> Editar</button><button class="ds-btn" onclick="osExcluir(\''+r.id+'\')" title="Excluir OS" style="color:var(--red,#e5484d)"><i class="ti ti-trash"></i> Excluir</button></div>':'')+'</div>';
@@ -4809,7 +4820,7 @@ function osExpRender(){
   const opt=(v,l,cur)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+l+'</option>';
   const item=(r)=>{const s=OS_SERV[r.veic+'|'+r.op],v=osValorReg(r);
     return '<label class="os-row os-selrow'+(r.op==='D'?' d':'')+'"><input type="checkbox" '+(osSel.has(r.id)?'checked':'')+' onchange="osExpToggle(\''+r.id+'\',this.checked)"><div class="os-main">'+
-     '<div class="os-l1"><strong>OS '+osEsc(r.doc)+'</strong><span class="os-chip '+(r.op==='A'?'a':'d')+'">'+s.c+'</span><span class="os-chip t">T'+r.turno+'</span>'+(r.exp?'<span class="os-chip x" title="Exportada em '+osEsc((r.exp||'').slice(0,10))+(r.lote?' · lote '+osEsc(r.lote):'')+'">exportada</span>':'')+'</div>'+
+     '<div class="os-l1"><strong>OS '+osEsc(r.doc)+'</strong><span class="os-chip '+(r.op==='A'?'a':'d')+'">'+s.c+'</span><span class="os-chip t">T'+r.turno+'</span>'+(r.exp?'<span class="os-chip x" title="Exportada em '+osEsc((r.exp||'').slice(0,10))+(r.lote?' · lote '+osEsc(r.lote):'')+'">exportada</span>'+(r.alt?'<span class="os-chip x" style="background:var(--warn-bg);color:var(--warn)" title="Alterada em '+osEsc((r.alt||'').slice(0,10))+', depois de exportada">alterada após exportar</span>':''):'')+'</div>'+
      '<div class="os-l2">'+osEsc(r.cliente)+'</div>'+
      '<div class="os-l3">'+dateBR(r.data)+' · '+osEsc(r.cavalo)+(r.carreta?' · '+osEsc(r.carreta):'')+' · '+(r.op==='A'?'Transp. ':'NF ')+osEsc(r.nr)+(r.qtd>1?' · qtd '+r.qtd:'')+(v!==null?' · '+osBRL(v):'')+'</div></div></label>';};
   el.innerHTML='<div class="card"><div class="card-title"><i class="ti ti-file-export"></i> Exportação para o faturamento</div>'+
@@ -4830,6 +4841,7 @@ function osExpRender(){
    (rows.length?rows.slice(0,400).map(item).join('')+(rows.length>400?'<div class="os-resumo">Mostrando 400 de '+rows.length+'. Refine o filtro.</div>':''):'<div class="empty" style="padding:22px 0"><i class="ti ti-file-off"></i><h3>Nada no filtro</h3></div>')+
    '<label class="os-chk" style="margin:12px 0 8px"><input type="checkbox" '+(osExpMarcar?'checked':'')+' onchange="osExpMarcar=this.checked"> marcar como exportadas ao baixar</label>'+
    '<div class="os-btns"><button class="btn btn-primary" id="os-exp-csv" onclick="osBaixar(\'csv\')"><i class="ti ti-file-type-csv" style="font-size:16px"></i> Baixar CSV</button><button class="btn btn-ghost" id="os-exp-xlsx" onclick="osBaixar(\'xlsx\')"><i class="ti ti-file-spreadsheet" style="font-size:16px"></i> Baixar Excel (.xlsx)</button></div>'+
+   (osPodeLancar()&&osExp.status!=='exp'?'<button class="btn btn-ghost btn-sm" style="margin-top:10px;margin-right:8px" onclick="osExpMarcarSel()"><i class="ti ti-check" style="font-size:14px"></i> Marcar selecionadas como já exportadas</button>':'')+
    (osPodeLancar()&&osExp.status!=='pend'?'<button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="osExpDesmarcar()"><i class="ti ti-arrow-back-up" style="font-size:14px"></i> Voltar selecionadas para pendentes</button>':'')+
    '</div>';
   osExpResumo();
@@ -4852,17 +4864,26 @@ function osBaixar(tipo){
   document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
   if(osExpMarcar&&osPodeLancar()){
     const agora=new Date().toISOString(),lote=agora.slice(0,16).replace(/[-:T]/g,'');
-    rows.forEach(r=>{if(!r.exp){r.exp=agora;r.lote=lote;r.ts=agora;}});
+    rows.forEach(r=>{if(!r.exp){r.exp=agora;r.lote=lote;r.ts=agora;delete r.expDel;delete r.alt;}});
     logAuditoria('Exportação de OS ('+ext.toUpperCase()+'): '+rows.length+' linha(s) · lote '+lote);
     saveCache();pushToCloud();osSel=new Set(osExpFiltrados().map(r=>r.id));osExpRender();
   }
   showToast(rows.length+' linha(s) exportada(s) em '+ext.toUpperCase()+'.','ok');
 }
+function osExpMarcarSel(){
+  if(!osPodeLancar())return;
+  const rows=osExpFiltrados().filter(r=>osSel.has(r.id)&&!r.exp);
+  if(!rows.length){showToast('Nenhuma pendente selecionada.','warn');return;}
+  if(!confirm('Marcar '+rows.length+' OS como já exportadas (sem baixar arquivo)?'))return;
+  const agora=new Date().toISOString();rows.forEach(r=>{r.exp=agora;r.lote='manual';r.ts=agora;delete r.expDel;});
+  logAuditoria('OS marcadas como exportadas manualmente: '+rows.length);saveCache();pushToCloud();osSel=new Set(osExpFiltrados().map(r=>r.id));osExpRender();showToast(rows.length+' marcadas como exportadas.','ok');
+}
 function osExpDesmarcar(){
   if(!osPodeLancar())return;
   const rows=osExpFiltrados().filter(r=>osSel.has(r.id)&&r.exp);
   if(!rows.length){showToast('Nenhuma exportada selecionada.','warn');return;}
-  const agora=new Date().toISOString();rows.forEach(r=>{delete r.exp;delete r.lote;r.ts=agora;});
+  const agora=new Date().toISOString();if(!confirm('Voltar '+rows.length+' OS para pendentes? Elas poderão ser exportadas de novo.'))return;
+  rows.forEach(r=>{delete r.exp;delete r.lote;delete r.alt;r.expDel=agora;r.ts=agora;});
   logAuditoria('OS voltaram para pendentes: '+rows.length);saveCache();pushToCloud();osExpRender();showToast(rows.length+' voltaram para pendentes.','ok');
 }
 

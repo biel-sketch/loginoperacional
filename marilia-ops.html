@@ -472,6 +472,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
             <button class="vtog" id="svtog-rotas" style="font-size:12px;padding:8px 4px" onclick="setSupervisoresView('rotas')">Rotas</button>
             <button class="vtog" id="svtog-checkin" style="font-size:12px;padding:8px 4px" onclick="setSupervisoresView('checkin')">Checklist</button>
             <button class="vtog" id="svtog-metricas" style="font-size:12px;padding:8px 4px" onclick="setSupervisoresView('metricas')">Métricas</button>
+            <button class="vtog" id="svtog-relatorio" style="font-size:12px;padding:8px 4px" onclick="setSupervisoresView('relatorio')">Relatório</button>
           </div>
           <div id="sv-cronograma"><div id="supervisores-crono-content"></div></div>
           <div id="sv-rotas" style="display:none"><div id="supervisores-content"></div></div>
@@ -486,6 +487,7 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
             <div id="supervisores-checkin-content"></div>
           </div>
           <div id="sv-metricas" style="display:none"><div id="supervisores-metricas-content"></div></div>
+          <div id="sv-relatorio" style="display:none"><div id="supervisores-relatorio-content"></div></div>
         </div>
 
         <!-- CONFIG -->
@@ -823,6 +825,18 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
 </div>
 
 <!-- Modal Atestado / Afastamento -->
+<div id="just-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharJustVisita()">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-message-2" style="color:var(--warn)"></i>Justificar visita não realizada</div>
+    <div id="just-info" style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5"></div>
+    <div class="field"><label>Motivo</label><select id="just-motivo" onchange="_justMotivoChange()"></select></div>
+    <div class="field"><label id="just-det-lbl">Detalhes</label><textarea id="just-det" rows="3" maxlength="400" placeholder="Explique o que aconteceu" style="width:100%;resize:vertical"></textarea></div>
+    <div class="modal-btns">
+      <button class="modal-btn-ghost" onclick="fecharJustVisita()">Cancelar</button>
+      <button class="modal-btn-primary" onclick="salvarJustVisita()"><i class="ti ti-check" style="font-size:14px"></i> Salvar justificativa</button>
+    </div>
+  </div>
+</div>
 <div id="afast-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeAfastModal()">
   <div class="modal-box">
     <div class="modal-title"><i class="ti ti-file-certificate" style="color:var(--cyan)"></i>Novo Atestado / Afastamento</div>
@@ -3004,7 +3018,9 @@ function rotaEnderecoTxt(r){
   const f=findPosto(r.postoId);
   return f&&f.posto.endereco?enderecoResumo(f.posto.endereco):'';
 }
-function checkinsDoDia(date,supId){ return ((state.checkins||{})[date]||{})[supId]||[]; }
+function checkinsDoDia(date,supId){ return (((state.checkins||{})[date]||{})[supId]||[]).filter(c=>!c.nao); }
+// Justificativas de visita não realizada ficam junto dos check-ins (mesma sincronização/exclusão), marcadas com nao:true
+function justifsDoDia(date,supId){ return (((state.checkins||{})[date]||{})[supId]||[]).filter(c=>c.nao); }
 function fmtYMD(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function weekStart(dateStr){
   const d=new Date(dateStr+'T12:00');
@@ -3025,7 +3041,7 @@ function setSupervisoresView(v){
   if(currentRole==='supervisor'&&v==='rotas')v='cronograma';
   supervisoresView=v;
   const tr=document.getElementById('svtog-rotas'); if(tr)tr.style.display=(currentRole==='supervisor')?'none':'';
-  ['cronograma','rotas','checkin','metricas'].forEach(k=>{
+  ['cronograma','rotas','checkin','metricas','relatorio'].forEach(k=>{
     const tog=document.getElementById('svtog-'+k); if(tog)tog.className='vtog'+(v===k?' active':'');
     const pane=document.getElementById('sv-'+k); if(pane)pane.style.display=(v===k?'block':'none');
   });
@@ -3033,6 +3049,7 @@ function setSupervisoresView(v){
   if(v==='rotas')renderSupervisores();
   if(v==='checkin')renderSupervisoresCheckin();
   if(v==='metricas')renderSupervisoresMetricas();
+  if(v==='relatorio')renderSupervisoresRelatorio();
 }
 function renderSupervisoresScreen(){
   // Não repinta enquanto alguém está digitando/escolhendo num campo desta tela: a
@@ -4631,8 +4648,10 @@ function renderSupervisoresCheckin(){
   const semFixo=rota.filter(r=>!rotaProgramada(sup,r));
   const outras=rota.filter(r=>rotaProgramada(sup,r)&&!agItem(r));
   const feitoDe=r=>lista.find(c=>rotaMatchCheckin(r,c));
+  const listaJ=justifsDoDia(date,sup.id);
+  const justDe=r=>listaJ.find(c=>rotaMatchCheckin(r,c));
   const linha=r=>{
-    const f=feitoDe(r);
+    const f=feitoDe(r),j=f?null:justDe(r);
     const end=rotaEnderecoTxt(r);
     let h='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--border)">';
     h+='<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+supEsc(rotaLabel(r))+(r.avulso?' <span class="badge b-warn" style="margin-left:4px">não cadastrado</span>':'')+'</div>';
@@ -4643,8 +4662,12 @@ function renderSupervisoresCheckin(){
       h+='<div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><span class="badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)"><i class="ti ti-check" style="font-size:11px"></i> '+(f.hora?supEsc(f.hora):'visitado')+'</span>';
       if(pode)h+='<i class="ti ti-x" title="Desfazer" style="color:var(--red);cursor:pointer;font-size:15px" onclick="excluirCheckin(\''+date+'\',\''+sup.id+'\',\''+f.id+'\')"></i>';
       h+='</div>';
+    }else if(j){
+      h+='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;max-width:52%"><span class="badge b-warn"><i class="ti ti-message-2" style="font-size:11px"></i> Justificada</span><span style="font-size:11px;color:var(--text2);text-align:right;line-height:1.35">'+supEsc(j.motivo||'')+(j.det?' — '+supEsc(j.det):'')+'</span>';
+      if(pode)h+='<span style="font-size:11px"><a style="color:var(--cyan);cursor:pointer" onclick="abrirJustVisita(\''+sup.id+'\',\''+r.id+'\')">editar</a> · <a style="color:var(--red);cursor:pointer" onclick="removerJustVisita(\''+date+'\',\''+sup.id+'\',\''+j.id+'\')">remover</a> · <a style="color:var(--green);cursor:pointer" onclick="registrarCheckin(\''+sup.id+'\',\''+r.id+'\')">registrar visita</a></span>';
+      h+='</div>';
     }else if(pode){
-      h+='<button class="btn btn-purple btn-sm" style="flex-shrink:0" onclick="registrarCheckin(\''+sup.id+'\',\''+r.id+'\')"><i class="ti ti-map-pin-check"></i> Registrar visita</button>';
+      h+='<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0"><button class="btn btn-purple btn-sm" onclick="registrarCheckin(\''+sup.id+'\',\''+r.id+'\')"><i class="ti ti-map-pin-check"></i> Registrar visita</button><button class="btn btn-sm" style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bd)" onclick="abrirJustVisita(\''+sup.id+'\',\''+r.id+'\')"><i class="ti ti-message-2"></i> Não fui · justificar</button></div>';
     }else{
       h+='<span style="font-size:11px;color:var(--text3);flex-shrink:0">Pendente</span>';
     }
@@ -4675,6 +4698,53 @@ function renderSupervisoresCheckin(){
   }
   cont.innerHTML=html;
 }
+const JUST_MOTIVOS=['Cliente cancelou / reagendou','Cliente fechado ou sem atendimento','Atestado / folga / férias','Reunião ou treinamento','Demanda urgente em outro cliente','Cobertura de posto / falta de colaborador','Problema de deslocamento / veículo','Visita já realizada em outro dia','Outro (descrever)'];
+let _justCtx=null;
+function _justMotivoChange(){
+  const o=document.getElementById('just-motivo').value.startsWith('Outro');
+  document.getElementById('just-det-lbl').textContent=o?'Descreva o motivo (obrigatório)':'Detalhes (opcional)';
+}
+function abrirJustVisita(supervisorId,rotaId){
+  if(!podePreencherCheckin(supervisorId)){showToast('Somente o próprio supervisor ou um administrador pode justificar.','err');return;}
+  const sup=findSupervisor(supervisorId),r=sup&&(sup.rota||[]).find(x=>x.id===rotaId);if(!r)return;
+  const hoje=today(),date=(ehAdminSup()&&checkinDate&&checkinDate<=hoje)?checkinDate:hoje;
+  const ex=justifsDoDia(date,supervisorId).find(c=>rotaMatchCheckin(r,c));
+  _justCtx={supervisorId,rotaId,date,velho:ex?ex.id:null};
+  document.getElementById('just-info').innerHTML='<b style="color:var(--text)">'+supEsc(rotaLabel(r))+'</b><br>'+supEsc(dateFull(date))+' · '+supEsc(sup.nome);
+  const sel=document.getElementById('just-motivo');
+  sel.innerHTML=JUST_MOTIVOS.map(m=>'<option>'+supEsc(m)+'</option>').join('');
+  sel.value=ex&&JUST_MOTIVOS.includes(ex.motivo)?ex.motivo:JUST_MOTIVOS[0];
+  document.getElementById('just-det').value=ex?(ex.det||''):'';
+  _justMotivoChange();
+  document.getElementById('just-modal').style.display='flex';
+}
+function fecharJustVisita(){document.getElementById('just-modal').style.display='none';_justCtx=null;}
+async function salvarJustVisita(){
+  const c=_justCtx;if(!c)return;
+  if(!podePreencherCheckin(c.supervisorId)){showToast('Sem permissão.','err');return;}
+  const sup=findSupervisor(c.supervisorId),r=sup&&(sup.rota||[]).find(x=>x.id===c.rotaId);if(!r)return;
+  const motivo=document.getElementById('just-motivo').value,det=document.getElementById('just-det').value.trim();
+  if(motivo.startsWith('Outro')&&det.length<3){showToast('Descreva o motivo.','warn');return;}
+  if(!state.checkins)state.checkins={};
+  if(!state.checkins[c.date])state.checkins[c.date]={};
+  if(!state.checkins[c.date][c.supervisorId])state.checkins[c.date][c.supervisorId]=[];
+  const L=state.checkins[c.date][c.supervisorId];
+  if(L.some(x=>!x.nao&&rotaMatchCheckin(r,x))){showToast('Esta visita já foi registrada como realizada.','warn');fecharJustVisita();return;}
+  L.filter(x=>x.nao&&rotaMatchCheckin(r,x)).forEach(x=>addPendingCheckinDelete(c.date,c.supervisorId,x.id));
+  state.checkins[c.date][c.supervisorId]=L.filter(x=>!(x.nao&&rotaMatchCheckin(r,x)));
+  state.checkins[c.date][c.supervisorId].push({id:uid(),nao:true,rotaId:r.id,postoId:r.avulso?'':r.postoId,motivo,det,por:currentUser?currentUser.user:'?',ts:new Date().toISOString()});
+  fecharJustVisita();showToast('Justificativa salva.','ok');
+  saveCache();renderSupervisoresCheckin();await pushToCloud();
+}
+async function removerJustVisita(date,supervisorId,id){
+  if(!podePreencherCheckin(supervisorId)){showToast('Sem permissão.','err');return;}
+  if(!confirm('Remover esta justificativa?'))return;
+  if(state.checkins&&state.checkins[date]&&state.checkins[date][supervisorId]){
+    state.checkins[date][supervisorId]=state.checkins[date][supervisorId].filter(c=>c.id!==id);
+    addPendingCheckinDelete(date,supervisorId,id);
+  }
+  saveCache();renderSupervisoresCheckin();await pushToCloud();
+}
 async function registrarCheckin(supervisorId,rotaId){
   if(!podePreencherCheckin(supervisorId)){showToast('Somente o próprio supervisor ou um administrador pode preencher o checklist.','err');return;}
   const sup=findSupervisor(supervisorId);
@@ -4686,7 +4756,9 @@ async function registrarCheckin(supervisorId,rotaId){
   if(!state.checkins)state.checkins={};
   if(!state.checkins[date])state.checkins[date]={};
   if(!state.checkins[date][supervisorId])state.checkins[date][supervisorId]=[];
-  if(state.checkins[date][supervisorId].some(c=>rotaMatchCheckin(r,c))){showToast('Visita já registrada neste dia.','warn');return;}
+  if(state.checkins[date][supervisorId].some(c=>!c.nao&&rotaMatchCheckin(r,c))){showToast('Visita já registrada neste dia.','warn');return;}
+  state.checkins[date][supervisorId].filter(c=>c.nao&&rotaMatchCheckin(r,c)).forEach(c=>addPendingCheckinDelete(date,supervisorId,c.id));
+  state.checkins[date][supervisorId]=state.checkins[date][supervisorId].filter(c=>!(c.nao&&rotaMatchCheckin(r,c)));
   // Para datas anteriores (lançamento feito por administrador) o horário real é desconhecido: fica em branco.
   const hora=date===hoje?new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
   state.checkins[date][supervisorId].push({id:uid(),rotaId:r.id,postoId:r.avulso?'':r.postoId,hora,por:currentUser?currentUser.user:'?'});
@@ -4761,6 +4833,77 @@ function renderSupervisoresMetricas(){
   });
 
   cont.innerHTML=html;
+}
+
+// --- Relatório mensal de visitas (percentuais, métricas e justificativas) ---
+let relMes=null;
+function navRelMes(delta){
+  if(!relMes)relMes=today().slice(0,7);
+  const [y,m]=relMes.split('-').map(Number),d=new Date(y,m-1+delta,1);
+  const novo=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  if(novo>today().slice(0,7))return;
+  relMes=novo;renderSupervisoresRelatorio();
+}
+function relMesLabel(m){const [y,mm]=m.split('-').map(Number);const t=new Date(y,mm-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});return t.charAt(0).toUpperCase()+t.slice(1);}
+function relDados(mes){
+  const [y,m]=mes.split('-').map(Number),hoje=today(),n=new Date(y,m,0).getDate();
+  const dates=[];for(let d=1;d<=n;d++){const ds=mes+'-'+String(d).padStart(2,'0');if(ds<=hoje)dates.push(ds);}
+  const uteis=dates.filter(d=>{const w=new Date(d+'T12:00').getDay();return w>=1&&w<=5;}).length;
+  const sups=supervisoresVisiveis().map(sup=>{
+    const linhas=(sup.rota||[]).map(r=>{
+      const prog=rotaProgramada(sup,r);
+      const prev=prog?dates.filter(d=>!!agendaItem(sup,r,d)).length:Math.round((Number(r.frequenciaSemanal)||0)*uteis/5);
+      let real=0;const just=[];
+      dates.forEach(d=>{real+=checkinsDoDia(d,sup.id).filter(c=>rotaMatchCheckin(r,c)).length;justifsDoDia(d,sup.id).filter(c=>rotaMatchCheckin(r,c)).forEach(c=>just.push({d,c}));});
+      const faltou=Math.max(0,prev-real),jc=Math.min(just.length,faltou);
+      return{r,label:rotaLabel(r),prev,real,realC:Math.min(real,prev),just,jc,sem:faltou-jc,pct:prev?Math.round(Math.min(real,prev)/prev*100):null};
+    }).filter(l=>l.prev||l.real||l.just.length);
+    const T=linhas.reduce((t,l)=>({prev:t.prev+l.prev,real:t.real+l.realC,jc:t.jc+l.jc,sem:t.sem+l.sem}),{prev:0,real:0,jc:0,sem:0});
+    const lista=[];linhas.forEach(l=>l.just.forEach(j=>lista.push({d:j.d,label:l.label,motivo:j.c.motivo||'',det:j.c.det||'',por:j.c.por||''})));
+    lista.sort((a,b)=>a.d.localeCompare(b.d));
+    return{sup,linhas,T,pct:T.prev?Math.round(T.real/T.prev*100):null,lista};
+  });
+  const G=sups.reduce((t,x)=>({prev:t.prev+x.T.prev,real:t.real+x.T.real,jc:t.jc+x.T.jc,sem:t.sem+x.T.sem}),{prev:0,real:0,jc:0,sem:0});
+  return{mes,sups,G,pct:G.prev?Math.round(G.real/G.prev*100):null};
+}
+function relCor(p){return p===null?'var(--text2)':(p>=90?'var(--green)':p>=60?'var(--warn)':'var(--red)');}
+function renderSupervisoresRelatorio(){
+  const cont=document.getElementById('supervisores-relatorio-content');if(!cont)return;
+  if(!relMes)relMes=today().slice(0,7);
+  const D=relDados(relMes),atual=relMes===today().slice(0,7);
+  const tile=(l,v,c,sub)=>'<div class="card" style="margin:0;padding:12px 14px"><div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">'+l+'</div><div style="font-size:24px;font-weight:800;color:'+(c||'var(--text)')+'">'+v+'</div>'+(sub?'<div style="font-size:11px;color:var(--text2)">'+sub+'</div>':'')+'</div>';
+  let html='<div class="hist-mes-header"><div class="hist-mes-nav"><button onclick="navRelMes(-1)"><i class="ti ti-chevron-left" style="font-size:13px"></i></button><div class="hist-mes-label">'+relMesLabel(relMes)+(atual?' (até hoje)':'')+'</div><button onclick="navRelMes(1)"'+(atual?' disabled style="opacity:.4"':'')+'><i class="ti ti-chevron-right" style="font-size:13px"></i></button></div>'+
+   '<button class="btn btn-sm" style="margin-left:auto" onclick="imprimirRelatorioVisitas()"><i class="ti ti-printer"></i> Imprimir / PDF</button></div>';
+  if(!D.sups.length){cont.innerHTML=html+'<div class="empty"><i class="ti ti-route" style="font-size:24px"></i><h3>Nenhum supervisor cadastrado</h3></div>';return;}
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px">'+
+   tile('Cumprimento',D.pct===null?'—':D.pct+'%',relCor(D.pct),'das visitas previstas')+tile('Previstas',D.G.prev)+tile('Realizadas',D.G.real,'var(--green)')+tile('Justificadas',D.G.jc,'var(--warn)')+tile('Sem justificativa',D.G.sem,D.G.sem?'var(--red)':'var(--green)')+'</div>';
+  D.sups.forEach(x=>{
+    const pc=x.pct;
+    html+='<div class="card crono-sup" style="--sup-cor:'+supCor(x.sup)+'"><div class="card-title"><i class="ti ti-user-check" style="color:'+supCor(x.sup)+'"></i>'+supEsc(x.sup.nome)+'<span style="margin-left:auto;font-size:15px;font-weight:800;color:'+relCor(pc)+'">'+(pc===null?'—':pc+'%')+'</span></div>'+
+     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;text-align:center;font-size:11px;color:var(--text2)"><div><b style="display:block;font-size:16px;color:var(--text)">'+x.T.prev+'</b>previstas</div><div><b style="display:block;font-size:16px;color:var(--green)">'+x.T.real+'</b>realizadas</div><div><b style="display:block;font-size:16px;color:var(--warn)">'+x.T.jc+'</b>justificadas</div><div><b style="display:block;font-size:16px;color:'+(x.T.sem?'var(--red)':'var(--green)')+'">'+x.T.sem+'</b>sem justif.</div></div>'+
+     '<div style="background:var(--bg3);border-radius:6px;height:6px;overflow:hidden;margin-bottom:10px"><div style="background:'+relCor(pc)+';width:'+(pc||0)+'%;height:100%"></div></div>';
+    if(x.linhas.length){
+      html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--text2);text-align:right"><th style="text-align:left;padding:4px 6px 6px 0">Cliente</th><th style="padding:4px 6px">Prev.</th><th style="padding:4px 6px">Real.</th><th style="padding:4px 6px">Just.</th><th style="padding:4px 6px">Sem</th><th style="padding:4px 0 4px 6px">%</th></tr></thead><tbody>'+
+       x.linhas.map(l=>'<tr style="border-top:1px solid var(--border);text-align:right"><td style="text-align:left;padding:6px 6px 6px 0">'+supEsc(l.label)+'</td><td style="padding:6px">'+l.prev+'</td><td style="padding:6px;color:var(--green)">'+l.real+'</td><td style="padding:6px;color:var(--warn)">'+l.jc+'</td><td style="padding:6px;color:'+(l.sem?'var(--red)':'var(--text2)')+'">'+l.sem+'</td><td style="padding:6px 0 6px 6px;font-weight:700;color:'+relCor(l.pct)+'">'+(l.pct===null?'—':l.pct+'%')+'</td></tr>').join('')+'</tbody></table></div>';
+    }else html+='<div style="font-size:13px;color:var(--text2)">Sem visitas previstas no período.</div>';
+    html+='<div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);margin:14px 0 4px">Justificativas ('+x.lista.length+')</div>'+
+     (x.lista.length?x.lista.map(j=>'<div style="padding:8px 0;border-top:1px solid var(--border);font-size:12px"><b>'+j.d.slice(8)+'/'+j.d.slice(5,7)+'</b> · '+supEsc(j.label)+'<div style="color:var(--warn);margin-top:2px">'+supEsc(j.motivo)+(j.det?' <span style="color:var(--text2)">— '+supEsc(j.det)+'</span>':'')+'</div></div>').join(''):'<div style="font-size:12px;color:var(--text2)">Nenhuma justificativa no período.</div>')+'</div>';
+  });
+  cont.innerHTML=html;
+}
+function imprimirRelatorioVisitas(){
+  const D=relDados(relMes||today().slice(0,7));
+  const cor=p=>p===null?'#555':(p>=90?'#0a7a4f':p>=60?'#b26a00':'#c0243e');
+  let h='<h1>Relatório de visitas dos supervisores — '+supEsc(relMesLabel(D.mes))+'</h1><p class="r">Cumprimento geral: <b style="color:'+cor(D.pct)+'">'+(D.pct===null?'—':D.pct+'%')+'</b> · Previstas '+D.G.prev+' · Realizadas '+D.G.real+' · Justificadas '+D.G.jc+' · Sem justificativa '+D.G.sem+'</p>';
+  D.sups.forEach(x=>{
+    h+='<h2>'+supEsc(x.sup.nome)+' <span style="color:'+cor(x.pct)+'">'+(x.pct===null?'—':x.pct+'%')+'</span></h2><p class="r">Previstas '+x.T.prev+' · Realizadas '+x.T.real+' · Justificadas '+x.T.jc+' · Sem justificativa '+x.T.sem+'</p>';
+    h+='<table><tr><th>Cliente</th><th>Prev.</th><th>Real.</th><th>Just.</th><th>Sem</th><th>%</th></tr>'+x.linhas.map(l=>'<tr><td>'+supEsc(l.label)+'</td><td>'+l.prev+'</td><td>'+l.real+'</td><td>'+l.jc+'</td><td>'+l.sem+'</td><td style="color:'+cor(l.pct)+'"><b>'+(l.pct===null?'—':l.pct+'%')+'</b></td></tr>').join('')+'</table>';
+    h+='<h3>Justificativas ('+x.lista.length+')</h3>'+(x.lista.length?'<table><tr><th>Data</th><th>Cliente</th><th>Motivo</th></tr>'+x.lista.map(j=>'<tr><td>'+j.d.slice(8)+'/'+j.d.slice(5,7)+'</td><td>'+supEsc(j.label)+'</td><td>'+supEsc(j.motivo)+(j.det?' — '+supEsc(j.det):'')+'</td></tr>').join('')+'</table>':'<p class="r">Nenhuma justificativa no período.</p>');
+  });
+  const w=window.open('','_blank');
+  if(!w){showToast('Libere pop-ups para imprimir o relatório.','warn');return;}
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Relatório de visitas '+supEsc(D.mes)+'</title><style>body{font-family:Arial,sans-serif;color:#111;margin:24px}h1{font-size:18px}h2{font-size:15px;margin:22px 0 2px;border-bottom:2px solid #ddd;padding-bottom:4px}h3{font-size:12px;text-transform:uppercase;color:#555;margin:12px 0 4px}.r{font-size:12px;color:#444;margin:2px 0 8px}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #ccc;padding:5px 8px;text-align:left}th{background:#f1f1f1}td:not(:first-child){}@media print{h2{page-break-after:avoid}table{page-break-inside:auto}tr{page-break-inside:avoid}}</style></head><body>'+h+'<script>setTimeout(function(){window.print()},300)<\/script></body></html>');
+  w.document.close();
 }
 </script>
 

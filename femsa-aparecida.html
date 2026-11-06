@@ -993,6 +993,8 @@ const USERS=[
   {user:'Mariana',   senha:'Login@982',  role:'superadmin'},
   {user:'lançamentos', senha:'login@aparecida', role:'lancamentos'},
   {user:'Financeiro', senha:'L@gin982', role:'admin'},
+  {user:'Rafael',    senha:'L@gin982', role:'supervisor'},
+  {user:'Anderson',  senha:'L@gin982', role:'supervisor'},
 ];
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'A',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:'',_padrao:true},{nome:'Colaborador 2',turno:'B',cargo:'Operador',atividade:'Recuperação de Pallets',wpp:'',_padrao:true}];
 let state={premiacao:{},premiacaoCfg:{},colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaMensalManual:null,metaIndividualFixa:120,bufferSaldoInicial:0,turnoExtra:{ativo:false,horario:'',inicioMin:null},producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:'',movimentosResetTs:'',colaboradoresResetTs:'',removidos:{}};
@@ -1078,7 +1080,7 @@ function dateFmt(d){if(!d)return'';const p=d.split('-');return'dom,seg,ter,qua,q
 function dateFull(d){if(!d)return'';return new Date(d+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});}
 function addDaysStr(dateStr,n){const p=dateStr.split('-').map(Number);const d=new Date(p[0],p[1]-1,p[2]);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function dateBR(d){if(!d)return'';return d.split('-').reverse().join('/');}
-function podeEditarPresenca(){return currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor';}
+function podeEditarPresenca(){return currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor'||currentRole==='supervisor';}
 function allDates(){const s=new Set([...Object.keys(state.movimentos),...Object.keys(state.presencas)]);return Array.from(s).sort();}
 function calcBufferBruto(){
   // Estoque acumulado: saldo inicial + soma de produzidos - soma de enviados de TODOS os dias (sem correção manual)
@@ -1654,7 +1656,7 @@ function updateUserDisplay(){
   }
   if(!currentUser)return;
   const u=currentUser.user,av=u.slice(0,2).toUpperCase();
-  const lbl=(role==='admin'||role==='superadmin')?'Administrador':role==='gestor'?'Gestor':role==='lancamentos'?'Lançamentos':role==='financeiro'?'Financeiro (visualização)':'Operador';
+  const lbl=(role==='admin'||role==='superadmin')?'Administrador':role==='gestor'?'Gestor':role==='supervisor'?'Supervisor':role==='lancamentos'?'Lançamentos':role==='financeiro'?'Financeiro (visualização)':'Operador';
   const block=document.getElementById('sidebar-user-block');
   if(block)block.innerHTML='<div style="width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2px solid rgba(255,255,255,.15)">'+av+'</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+u+'</div><div style="font-size:10px;color:var(--text2);margin-top:1px">'+lbl+'</div></div>';
   const ma=document.getElementById('mob-avatar');if(ma)ma.textContent=av;
@@ -1662,6 +1664,7 @@ function updateUserDisplay(){
 
 function telasPermitidas(){
   if(currentRole==='lancamentos')return['presenca','operacao'];
+  if(currentRole==='supervisor')return['dashboard','presenca','operacao','absenteismo','premiacao','equipe'];
   return['dashboard','presenca','operacao','absenteismo','premiacao','equipe','config'];
 }
 function buildNav(){
@@ -2818,8 +2821,8 @@ function renderAbsenteismo(){
 function renderEquipe(){
   var cont=document.getElementById('equipe-content');if(!cont)return;
   try{
-  var isAdmin=currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor';
-  var canDelete=currentRole==='superadmin';
+  var isAdmin=currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor'||currentRole==='supervisor';
+  var canDelete=currentRole==='superadmin'||currentRole==='supervisor';
   var colabs=colaboradoresAtivos();
   var html='<div class="card"><div class="card-title"><i class="ti ti-id-badge"></i>Colaboradores ('+colabs.length+')'+(isAdmin?'<button onclick="addColab()" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-plus" style="font-size:13px"></i> Adicionar</button>':'')+'</div>';
   if(!colabs.length){html+='<div class="empty" style="padding:24px 0"><i class="ti ti-users"></i><h3>Nenhum colaborador</h3></div>';}
@@ -2859,7 +2862,7 @@ function openColabModal(idx){
   document.getElementById('modal-admissao').value = isEdit ? (c.dataAdmissao||'') : '';
   document.getElementById('modal-demissao').value = isEdit ? (c.dataDemissao||_ontemIso()) : _ontemIso();
   document.getElementById('modal-demissao-box').style.display = isEdit ? 'block' : 'none';
-  document.getElementById('modal-delete-btn').style.display = (isEdit&&currentRole==='superadmin') ? 'block' : 'none';
+  document.getElementById('modal-delete-btn').style.display = (isEdit&&(currentRole==='superadmin'||currentRole==='supervisor')) ? 'block' : 'none';
   document.getElementById('modal-save-btn').className = 'modal-btn-primary';
   document.getElementById('colab-modal').style.display = 'flex';
   setTimeout(()=>document.getElementById('modal-nome').focus(), 50);

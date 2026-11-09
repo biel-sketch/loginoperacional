@@ -686,7 +686,7 @@ const LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1
 
 
 <script>
-const META_DIARIA=2000,SYNC_INTERVAL=180000;
+const META_DIARIA_PADRAO=2000,SYNC_INTERVAL=180000;
 const FB_URL='https://login-operacional-default-rtdb.firebaseio.com/mogi.json';
 
 // ===== Transporte Firebase econômico =====
@@ -888,7 +888,7 @@ const TURNO_GRUPOS={
 function turnosEfetivos(sel){return TURNO_GRUPOS[sel]?TURNO_GRUPOS[sel].turnos:[sel];}
 function nomeSelecao(sel){return TURNO_GRUPOS[sel]?TURNO_GRUPOS[sel].nome:turnoNomeCompleto(sel);}
 const DEFAULT_COLABS=[{nome:'Colaborador 1',turno:'OPM',cargo:'Operador de Empilhadeira',wpp:'',_padrao:true},{nome:'Colaborador 2',turno:'AXM',cargo:'Auxiliar de Expedição',wpp:'',_padrao:true}];
-let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaIndividualFixa:120,bufferSaldoInicial:0,producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:'',movimentosResetTs:'',colaboradoresResetTs:'',removidos:{}};
+let state={colaboradores:[],movimentos:{},presencas:{},auditoria:[],bufferAjuste:0,bufferAjusteTs:'',metaMensal:null,metaMensalTs:'',metaIndividualFixa:120,bufferSaldoInicial:0,producaoPessoas:{},configTs:'',afastamentos:[],presencasResetTs:'',producaoResetTs:'',movimentosResetTs:'',colaboradoresResetTs:'',removidos:{}};
 let currentUser=null,currentRole=null,unitName='Mogi';
 // Firebase - no api key or bin id vars needed
 let isSyncing=false,lastSync=null,syncTimer=null,resetLock=false;
@@ -997,7 +997,14 @@ function diasUteisRestantesNoMes(){
   for(let dia=now.getDate();dia<=fim;dia++){const d=new Date(ano,mes,dia);if(d.getDay()!==0)count++;}
   return count;
 }
-function getMetaMensal(){return state.metaMensal||(META_DIARIA*26);}
+function getMetaMensal(){return state.metaMensal||(META_DIARIA_PADRAO*26);}
+// Meta do mês FIXA (só muda se alguém alterar de propósito). Meta do dia = meta do mês ÷ dias de trabalho (seg–sáb) do mês da data.
+function metaFixaValor(){return state.metaMensal>0?state.metaMensal:0;}
+function metaDiaDe(date){
+  const f=metaFixaValor(),d=date||today(),du=diasUteisNoMes(+d.slice(0,4),+d.slice(5,7)-1);
+  return(f>0&&du>0)?Math.round(f/du):META_DIARIA_PADRAO;
+}
+function metaDia(){return metaDiaDe(today());}
 function calcMetaIndividual(){
   const produtores=colaboradoresAtivos().filter(produzPallets);
   const diasUteisMes=diasUteisNoMes(new Date().getFullYear(),new Date().getMonth());
@@ -1039,9 +1046,12 @@ async function salvarConfigMeta(){
   const meta=metaEl?parseInt(metaEl.value,10):NaN;
   const metaInd=metaIndEl?parseInt(metaIndEl.value,10):NaN;
   const saldo=saldoEl?parseInt(saldoEl.value,10):NaN;
-  if(isNaN(meta)||meta<0){showToast('Informe uma meta mensal válida.','warn');return;}
+  if(isNaN(meta)||meta<=0){showToast('Informe uma meta mensal válida.','warn');return;}
   if(isNaN(metaInd)||metaInd<0){showToast('Informe uma meta individual válida.','warn');return;}
-  state.metaMensal=meta;
+  if(meta!==getMetaMensal()||!(state.metaMensal>0)){
+    if(state.metaMensal>0&&!confirm('A meta do mês está FIXA em '+state.metaMensal.toLocaleString('pt-BR')+'. Alterar para '+meta.toLocaleString('pt-BR')+'?\nA meta do dia será recalculada.'))return;
+    if(meta!==state.metaMensal){state.metaMensal=meta;state.metaMensalTs=new Date().toISOString();}
+  }
   state.metaIndividualFixa=metaInd;
   state.bufferSaldoInicial=isNaN(saldo)?0:saldo;
   state.configTs=new Date().toISOString();
@@ -1188,15 +1198,16 @@ function mergeState(cloud){
     state.bufferAjuste=cloud.bufferAjuste; state.bufferAjusteTs=cloud.bufferAjusteTs||'';
   }
   if(cloud.configTs!==undefined&&(cloud.configTs||'')>=(state.configTs||'')){
-    state.metaMensal=cloud.metaMensal;
     state.bufferSaldoInicial=cloud.bufferSaldoInicial||0;
     state.metaIndividualFixa=cloud.metaIndividualFixa!==undefined?cloud.metaIndividualFixa:120;
     state.configTs=cloud.configTs;
   }
+  // Meta do mês: vale a alteração mais recente (carimbo próprio) e nunca é apagada por cópia antiga / outra config
+  if(cloud.metaMensal>0&&((cloud.metaMensalTs||'')>(state.metaMensalTs||'')||!(state.metaMensal>0))){state.metaMensal=cloud.metaMensal;state.metaMensalTs=cloud.metaMensalTs||state.metaMensalTs||'';}
   if(reconciliarProducao())setTimeout(()=>{try{saveCache();_pushSoon();}catch(e){}},0);
 }
 function _docDoEstado(){
-  const d={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',movimentosResetTs:state.movimentosResetTs||'',colaboradoresResetTs:state.colaboradoresResetTs||''};
+  const d={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaMensalTs:state.metaMensalTs||'',metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',movimentosResetTs:state.movimentosResetTs||'',colaboradoresResetTs:state.colaboradoresResetTs||''};
   if(state.removidos&&Object.keys(state.removidos).length)d.removidos=state.removidos;
   return d;
 }
@@ -1310,14 +1321,14 @@ async function enviarResumoProducao(hora){
   let totP=0, totE=0;
   Object.values(state.movimentos).forEach(ms=>{ms.forEach(m=>{totP+=(m.prod||0);totE+=(m.env||0);});});
   const buffer = totP-totE;
-  const pct = Math.min(100, Math.round(tP/META_DIARIA*100));
-  const statusMeta = tP>=META_DIARIA?'Meta atingida!':pct>=80?'Quase la!':'Em andamento';
+  const pct = Math.min(100, Math.round(tP/metaDia()*100));
+  const statusMeta = tP>=metaDia()?'Meta atingida!':pct>=80?'Quase la!':'Em andamento';
   await enviarWhatsApp([
     'FEMSA Mogi - Producao '+hora+'h',
     'Produzidos: '+tP+' | Enviados: '+tE,
     'Recebidos: '+tR+(tD?' | Descarte: '+tD:''),
     'Buffer (estoque): '+(buffer>=0?'+':'')+buffer,
-    'Meta: '+META_DIARIA+' | Progresso: '+pct+'% - '+statusMeta,
+    'Meta: '+metaDia()+' | Progresso: '+pct+'% - '+statusMeta,
     todayD.split('-').reverse().join('/')+' as '+hora+'h'
   ]);
 }
@@ -1564,7 +1575,7 @@ function launchApp(){
 
 function boot(){
   unitName=localStorage.getItem(LS_UNIT)||'Mogi';
-  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.removidos)state.removidos=p.removidos;if(p.movimentosResetTs!==undefined)state.movimentosResetTs=p.movimentosResetTs;if(p.colaboradoresResetTs!==undefined)state.colaboradoresResetTs=p.colaboradoresResetTs;}}catch(e){}
+  try{const c=localStorage.getItem(LS_CACHE);if(c){const p=JSON.parse(c);if(p.colaboradores&&p.colaboradores.length)state.colaboradores=p.colaboradores;if(p.movimentos)state.movimentos=p.movimentos;if(p.presencas)state.presencas=p.presencas;if(p.producaoPessoas)state.producaoPessoas=p.producaoPessoas;if(p.afastamentos)state.afastamentos=p.afastamentos;if(p.bufferAjuste!==undefined)state.bufferAjuste=p.bufferAjuste;if(p.bufferAjusteTs!==undefined)state.bufferAjusteTs=p.bufferAjusteTs;if(p.metaMensal!==undefined)state.metaMensal=p.metaMensal;if(p.metaMensalTs)state.metaMensalTs=p.metaMensalTs;if(p.metaIndividualFixa!==undefined)state.metaIndividualFixa=p.metaIndividualFixa;if(p.bufferSaldoInicial!==undefined)state.bufferSaldoInicial=p.bufferSaldoInicial;if(p.configTs!==undefined)state.configTs=p.configTs;if(p.presencasResetTs!==undefined)state.presencasResetTs=p.presencasResetTs;if(p.producaoResetTs!==undefined)state.producaoResetTs=p.producaoResetTs;if(p.removidos)state.removidos=p.removidos;if(p.movimentosResetTs!==undefined)state.movimentosResetTs=p.movimentosResetTs;if(p.colaboradoresResetTs!==undefined)state.colaboradoresResetTs=p.colaboradoresResetTs;}}catch(e){}
   if(!state.colaboradores||!state.colaboradores.length)state.colaboradores=DEFAULT_COLABS;
   try{
     const raw=sessionStorage.getItem('femsa_session')||localStorage.getItem('femsa_session');
@@ -1743,7 +1754,7 @@ function renderDia(){
   const tBufDia=tP-tE; // buffer só do dia selecionado
   const bufGlobal=calcBufferGlobal(); // estoque acumulado histórico
   const tBuf=bufGlobal; const bPos=tBuf>=0;
-  const pct=Math.min(100,Math.round(tP/META_DIARIA*100));
+  const pct=Math.min(100,Math.round(tP/metaDia()*100));
   const lastTag=movs.length?'<span style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px"><i class="ti ti-clock" style="font-size:11px"></i>'+timeFmt(movs[movs.length-1].ts)+' · '+movs[movs.length-1].who+'</span>':'';
   let presP=0,presA=0;
   TURNOS.map(x=>x.key).forEach(t=>{const p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(v=>{if(v==='P')presP++;else presA++;});});
@@ -1783,8 +1794,8 @@ function renderDia(){
     '</div>'+
     '<div class="card" style="padding:14px 18px;margin-bottom:12px">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px"><div class="sec" style="margin:0">Meta diária de produção</div>'+
-    '<div style="font-size:12px;color:var(--text2)">'+tP+' <span style="color:var(--text3)">/ '+META_DIARIA+'</span> <span style="font-weight:700;color:'+(tP>=META_DIARIA?'var(--green)':pct>=80?'var(--warn)':'var(--red)')+'">'+pct+'%</span></div></div>'+
-    '<div style="height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden"><div style="height:100%;border-radius:4px;transition:width .6s ease;width:'+pct+'%;background:'+(tP>=META_DIARIA?'var(--green)':pct>=80?'var(--warn)':'#2a7fd4')+'"></div></div>'+
+    '<div style="font-size:12px;color:var(--text2)">'+tP+' <span style="color:var(--text3)">/ '+metaDia()+'</span> <span style="font-weight:700;color:'+(tP>=metaDia()?'var(--green)':pct>=80?'var(--warn)':'var(--red)')+'">'+pct+'%</span></div></div>'+
+    '<div style="height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden"><div style="height:100%;border-radius:4px;transition:width .6s ease;width:'+pct+'%;background:'+(tP>=metaDia()?'var(--green)':pct>=80?'var(--warn)':'#2a7fd4')+'"></div></div>'+
     (!bPos?'<div style="margin-top:10px;padding:9px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--red)"><i class="ti ti-alert-triangle" style="font-size:15px"></i> Estoque negativo — enviados superam produção total</div>':'')+
     '</div>'+
     '<div class="sec">Presença do time</div>'+
@@ -2891,7 +2902,7 @@ function renderConfig(){
       var infoMeta=calcMetaIndividual();
       html+='<div class="card" style="border-color:var(--cyan-bd)">';
       html+='<div class="card-title"><i class="ti ti-target-arrow" style="color:var(--cyan)"></i> Meta Mensal & Meta Individual</div>';
-      html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta mensal (pallets)</div><div class="cfg-sub">Usada só nos indicadores gerais (meta do dia, % da meta mensal, projeção)</div></div><input type="number" id="cfg-meta-mensal" value="'+metaMensalAtual+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
+      html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta mensal (pallets)</div><div class="cfg-sub">Fixa: não muda sozinha. A meta do dia = meta do mês ÷ dias de trabalho (seg–sáb) do mês: hoje '+metaDia().toLocaleString('pt-BR')+' por dia</div></div><input type="number" id="cfg-meta-mensal" value="'+metaMensalAtual+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
       html+='<div class="cfg-row"><div><div class="cfg-lbl">Meta individual (pallets/pessoa/dia)</div><div class="cfg-sub">Valor fixo usado no lançamento de Produção por Colaborador</div></div><input type="number" id="cfg-meta-individual" value="'+(state.metaIndividualFixa||120)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
       html+='<div class="cfg-row"><div><div class="cfg-lbl">Saldo inicial do buffer</div><div class="cfg-sub">Somado ao cálculo produzidos − enviados</div></div><input type="number" id="cfg-buffer-saldo" value="'+(state.bufferSaldoInicial||0)+'" style="width:110px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;text-align:right"></div>';
       html+='<button class="btn btn-primary btn-sm" style="margin-top:6px;margin-bottom:14px" onclick="salvarConfigMeta()"><i class="ti ti-check"></i> Salvar</button>';
@@ -3048,7 +3059,7 @@ async function pushForceToCloud(){
   // que a nuvem realmente zerou antes de reportar sucesso.
   resetLock=true;
   setSyncDot('syncing','Salvando...');
-  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',movimentosResetTs:state.movimentosResetTs||'',colaboradoresResetTs:state.colaboradoresResetTs||'',removidos:state.removidos||{}};
+  const payload={colaboradores:state.colaboradores,movimentos:state.movimentos,presencas:state.presencas,producaoPessoas:state.producaoPessoas||{},auditoria:state.auditoria||[],afastamentos:state.afastamentos||[],bufferAjuste:state.bufferAjuste||0,bufferAjusteTs:state.bufferAjusteTs||'',metaMensal:state.metaMensal,metaMensalTs:state.metaMensalTs||'',metaIndividualFixa:state.metaIndividualFixa||120,bufferSaldoInicial:state.bufferSaldoInicial||0,configTs:state.configTs||'',presencasResetTs:state.presencasResetTs||'',producaoResetTs:state.producaoResetTs||'',movimentosResetTs:state.movimentosResetTs||'',colaboradoresResetTs:state.colaboradoresResetTs||'',removidos:state.removidos||{}};
   let ok=false;
   for(let tentativa=0;tentativa<3&&!ok;tentativa++){
     try{
@@ -3142,7 +3153,7 @@ function exportarJSON(){
 }
 function exportarCSV(){
   var dates=Object.keys(state.movimentos).sort();
-  var csv='Data;Produzidos;Recebidos;Enviados;Descarte;Buffer;Meta('+META_DIARIA+');Atingiu Meta\n';
+  var csv='Data;Produzidos;Recebidos;Enviados;Descarte;Buffer;Meta('+metaDia()+');Atingiu Meta\n';
   dates.forEach(function(d){
     var ms=state.movimentos[d]||[];
     var p=ms.reduce(function(s,m){return s+(m.prod||0);},0);
@@ -3150,7 +3161,7 @@ function exportarCSV(){
     var e=ms.reduce(function(s,m){return s+(m.env||0);},0);
     var dd=ms.reduce(function(s,m){return s+(m.desc||0);},0);
     var b=p-e;
-    csv+=d+';'+p+';'+r+';'+e+';'+dd+';'+b+';'+META_DIARIA+';'+(p>=META_DIARIA?'SIM':'NÃO')+'\n';
+    csv+=d+';'+p+';'+r+';'+e+';'+dd+';'+b+';'+metaDiaDe(d)+';'+(p>=metaDiaDe(d)?'SIM':'NÃO')+'\n';
   });
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='femsa_operacao_'+today()+'.csv';a.click();URL.revokeObjectURL(a.href);
@@ -3274,9 +3285,9 @@ function exportarPDF(){
     var e=ms.reduce(function(s,m){return s+(m.env||0);},0);
     var dd=ms.reduce(function(s,m){return s+(m.desc||0);},0);
     var b=p-e;totP+=p;totR+=r;totE+=e;totD+=dd;
-    return'<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:8px 10px">'+d+'</td><td style="padding:8px 10px;text-align:right;color:'+(p>=META_DIARIA?'#059669':'#dc2626')+';font-weight:600">'+p+'</td><td style="padding:8px 10px;text-align:right">'+r+'</td><td style="padding:8px 10px;text-align:right">'+e+'</td><td style="padding:8px 10px;text-align:right;color:#dc2626">'+dd+'</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:'+(b>=0?'#1d4ed8':'#dc2626')+'">'+(b>=0?'+':'')+b+'</td><td style="padding:8px 10px;text-align:center">'+(p>=META_DIARIA?'✓':'✗')+'</td></tr>';
+    return'<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:8px 10px">'+d+'</td><td style="padding:8px 10px;text-align:right;color:'+(p>=metaDiaDe(d)?'#059669':'#dc2626')+';font-weight:600">'+p+'</td><td style="padding:8px 10px;text-align:right">'+r+'</td><td style="padding:8px 10px;text-align:right">'+e+'</td><td style="padding:8px 10px;text-align:right;color:#dc2626">'+dd+'</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:'+(b>=0?'#1d4ed8':'#dc2626')+'">'+(b>=0?'+':'')+b+'</td><td style="padding:8px 10px;text-align:center">'+(p>=metaDia()?'✓':'✗')+'</td></tr>';
   }).join('');
-  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FEMSA</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111}h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#6b7280;font-size:13px;margin-bottom:24px}.kpi-row{display:flex;gap:16px;margin-bottom:24px}.kpi{flex:1;background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb}.kpi-l{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}.kpi-v{font-size:24px;font-weight:700}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:8px 10px;background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#374151}@media print{body{padding:16px}}</style></head><body><h1>FEMSA Mogi — Relatório Operacional</h1><div class="sub">Gerado em '+new Date().toLocaleString('pt-BR')+' · Meta: '+META_DIARIA+' pallets/dia</div><div class="kpi-row"><div class="kpi"><div class="kpi-l">Produzido</div><div class="kpi-v">'+totP+'</div></div><div class="kpi"><div class="kpi-l">Recebido</div><div class="kpi-v">'+totR+'</div></div><div class="kpi"><div class="kpi-l">Enviado</div><div class="kpi-v">'+totE+'</div></div><div class="kpi"><div class="kpi-l">Descarte</div><div class="kpi-v" style="color:#dc2626">'+totD+'</div></div><div class="kpi"><div class="kpi-l">Buffer</div><div class="kpi-v" style="color:'+(totP-totE>=0?'#1d4ed8':'#dc2626')+'">'+(totP-totE>=0?'+':'')+(totP-totE)+'</div></div></div><table><thead><tr><th>Data</th><th style="text-align:right">Produzidos</th><th style="text-align:right">Recebidos</th><th style="text-align:right">Enviados</th><th style="text-align:right">Descarte</th><th style="text-align:right">Buffer</th><th style="text-align:center">Meta</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
+  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FEMSA</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111}h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#6b7280;font-size:13px;margin-bottom:24px}.kpi-row{display:flex;gap:16px;margin-bottom:24px}.kpi{flex:1;background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb}.kpi-l{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}.kpi-v{font-size:24px;font-weight:700}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:8px 10px;background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#374151}@media print{body{padding:16px}}</style></head><body><h1>FEMSA Mogi — Relatório Operacional</h1><div class="sub">Gerado em '+new Date().toLocaleString('pt-BR')+' · Meta: '+metaDia()+' pallets/dia</div><div class="kpi-row"><div class="kpi"><div class="kpi-l">Produzido</div><div class="kpi-v">'+totP+'</div></div><div class="kpi"><div class="kpi-l">Recebido</div><div class="kpi-v">'+totR+'</div></div><div class="kpi"><div class="kpi-l">Enviado</div><div class="kpi-v">'+totE+'</div></div><div class="kpi"><div class="kpi-l">Descarte</div><div class="kpi-v" style="color:#dc2626">'+totD+'</div></div><div class="kpi"><div class="kpi-l">Buffer</div><div class="kpi-v" style="color:'+(totP-totE>=0?'#1d4ed8':'#dc2626')+'">'+(totP-totE>=0?'+':'')+(totP-totE)+'</div></div></div><table><thead><tr><th>Data</th><th style="text-align:right">Produzidos</th><th style="text-align:right">Recebidos</th><th style="text-align:right">Enviados</th><th style="text-align:right">Descarte</th><th style="text-align:right">Buffer</th><th style="text-align:center">Meta</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
   var w=window.open('','_blank');w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);
 }
 
@@ -3298,17 +3309,17 @@ function renderTV(){
   var tR=movs.reduce(function(s,m){return s+(m.rec||0);},0);
   var tE=movs.reduce(function(s,m){return s+(m.env||0);},0);
   var tD=movs.reduce(function(s,m){return s+(m.desc||0);},0);
-  var tBufDiaTV=tP-tE,tBuf=calcBufferGlobal(),pct=Math.min(100,Math.round(tP/META_DIARIA*100));
+  var tBufDiaTV=tP-tE,tBuf=calcBufferGlobal(),pct=Math.min(100,Math.round(tP/metaDia()*100));
   var presP=0,presA=0,presQ=0;
   TURNOS.map(x=>x.key).forEach(function(t){var p=presDay[t];if(!p)return;Object.values(p.presenca||{}).forEach(function(s){presQ++;if(s==='P')presP++;else presA++;});});
   var dt=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   var hr=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   var bufColor=tBuf>=0?'var(--cyan)':'var(--red)';
-  var barBg=tP>=META_DIARIA?'var(--green)':pct>=80?'var(--warn)':'#2a7fd4';
+  var barBg=tP>=metaDia()?'var(--green)':pct>=80?'var(--warn)':'#2a7fd4';
   document.getElementById('tv-content').innerHTML=
     '<div class="tv-header"><img src="'+LOGO_B64+'" alt="Logo"><div><h1>FEMSA Mogi — Dashboard Operacional</h1><div class="tv-date">'+dt+' &nbsp;·&nbsp; '+hr+'</div></div></div>'+
     '<div class="tv-kpi-row">'+
-    '<div class="tv-kpi"><div class="tv-kpi-lbl">Produzidos</div><div class="tv-kpi-val" style="color:'+(tP>=META_DIARIA?'var(--green)':'var(--text)')+'">'+tP+'</div><div class="tv-kpi-sub">Meta: '+META_DIARIA+' · '+pct+'%</div><div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barBg+';border-radius:3px"></div></div></div>'+
+    '<div class="tv-kpi"><div class="tv-kpi-lbl">Produzidos</div><div class="tv-kpi-val" style="color:'+(tP>=metaDia()?'var(--green)':'var(--text)')+'">'+tP+'</div><div class="tv-kpi-sub">Meta: '+metaDia()+' · '+pct+'%</div><div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barBg+';border-radius:3px"></div></div></div>'+
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Recebidos</div><div class="tv-kpi-val">'+tR+'</div></div>'+
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Enviados</div><div class="tv-kpi-val">'+tE+'</div></div>'+
     '<div class="tv-kpi"><div class="tv-kpi-lbl">Descarte</div><div class="tv-kpi-val" style="color:'+(tD>0?'var(--red)':'var(--text)')+'">'+tD+'</div></div>'+
@@ -3595,15 +3606,15 @@ function fechDados(de,ate){
       const pr=state.presencas[cur]&&state.presencas[cur][k]&&state.presencas[cur][k].presenca;
       if(pr&&Object.keys(pr).length){porT[k].dias++;Object.values(pr).forEach(st=>{if(st==='P')porT[k].p++;else if(st==='A')porT[k].a++;});}});
     add(sem,d.sem);add(tot,d.t);
-    d.pct=fPct(d.t.prod,META_DIARIA);
-    if(d.t.prod>0){diasTrab++;if(d.t.prod>=META_DIARIA)bateu++;}
+    d.metaDia=metaDiaDe(cur);d.pct=fPct(d.t.prod,d.metaDia);
+    if(d.t.prod>0){diasTrab++;if(d.t.prod>=d.metaDia)bateu++;}
     if(!d.n&&d.wd!==0&&cur<=today())semMov++;
     dias.push(d);cur=fAddDias(cur,1);
   }
   const comProd=dias.filter(x=>x.t.prod>0);
   const melhor=comProd.length?comProd.reduce((a,b)=>b.t.prod>a.t.prod?b:a):null;
   const pior=comProd.length?comProd.reduce((a,b)=>b.t.prod<a.t.prod?b:a):null;
-  const bufFim=calcBufferGlobal(),metaRef=META_DIARIA*diasTrab;
+  const bufFim=calcBufferGlobal(),metaRef=metaDia()*diasTrab;
   const alertas=[];
   if(diasTrab&&tot.prod<metaRef)alertas.push({k:'warn',t:'Produção do período abaixo da meta de referência ('+fNum(tot.prod)+' de '+fNum(metaRef)+')'});
   if(diasTrab&&bateu<diasTrab)alertas.push({k:'info',t:(diasTrab-bateu)+' de '+diasTrab+' dia(s) trabalhado(s) ficaram abaixo da meta diária'});
@@ -3645,12 +3656,12 @@ function fechRender(){
   const D=fechDados(fechDe,fechAte),hoje=today(),C=FECH_CFG;
   const pct=fPct(D.tot.prod,D.metaRef);
   const cor=!D.diasTrab?'var(--text2)':pct>=100?'var(--green)':pct>=80?'var(--warn)':'var(--red)';
-  const maxBar=Math.max(1,META_DIARIA,...D.dias.map(x=>x.t.prod));
+  const maxBar=Math.max(1,metaDia(),...D.dias.map(x=>x.t.prod));
   const tile=(l,v,sub,c)=>'<div class="fe-tile"><div class="fe-l">'+l+'</div><div class="fe-v"'+(c?' style="color:'+c+'"':'')+'>'+v+'</div>'+(sub?'<div class="fe-s">'+sub+'</div>':'')+'</div>';
   const chip=(id,l)=>'<button class="ds-btn" onclick="fechPreset(\''+id+'\')">'+l+'</button>';
   const cols=fCols(D);
-  const diasRows=D.dias.map(x=>'<tr class="'+(x.wd===0?'fe-dom':'')+'"><td class="nm"><b>'+fCurto(x.d)+'</b> <small style="display:inline">'+F_SEM[x.wd]+'</small></td>'+cols.map(c=>{const v=c.v(x);return'<td class="n'+(c.bold?' g':'')+(c.red&&v?' r':'')+'">'+(v?(c.bold?'<b>'+fNum(v)+'</b>':fNum(v)):(c.dash?'<span style="color:var(--text3)">–</span>':'0'))+'</td>';}).join('')+'<td class="n" style="color:'+(x.t.prod?(x.pct>=100?'var(--green)':x.pct>=80?'var(--warn)':'var(--red)'):'var(--text3)')+'">'+(x.t.prod?x.pct+'%':'–')+'</td></tr>').join('');
-  const diaTbl='<div class="rel-wrap"><table class="rel-tbl fe-tbl fe-dia"><thead><tr><th>Dia</th>'+cols.map(c=>'<th class="n">'+c.h+'</th>').join('')+'<th class="n">% meta</th></tr></thead><tbody>'+diasRows+'</tbody><tfoot><tr><td class="nm">Total</td>'+cols.map(c=>'<td class="n'+(c.bold?' g':'')+'">'+fNum(c.tot)+'</td>').join('')+'<td></td></tr></tfoot></table></div>';
+  const diasRows=D.dias.map(x=>'<tr class="'+(x.wd===0?'fe-dom':'')+'"><td class="nm"><b>'+fCurto(x.d)+'</b> <small style="display:inline">'+F_SEM[x.wd]+'</small></td>'+cols.map(c=>{const v=c.v(x);return'<td class="n'+(c.bold?' g':'')+(c.red&&v?' r':'')+'">'+(v?(c.bold?'<b>'+fNum(v)+'</b>':fNum(v)):(c.dash?'<span style="color:var(--text3)">–</span>':'0'))+'</td>';}).join('')+'<td class="n">'+(x.t.prod?fNum(x.metaDia):'–')+'</td><td class="n" style="color:'+(x.t.prod?(x.pct>=100?'var(--green)':x.pct>=80?'var(--warn)':'var(--red)'):'var(--text3)')+'">'+(x.t.prod?x.pct+'%':'–')+'</td></tr>').join('');
+  const diaTbl='<div class="rel-wrap"><table class="rel-tbl fe-tbl fe-dia"><thead><tr><th>Dia</th>'+cols.map(c=>'<th class="n">'+c.h+'</th>').join('')+'<th class="n">Meta do dia</th><th class="n">% meta</th></tr></thead><tbody>'+diasRows+'</tbody><tfoot><tr><td class="nm">Total</td>'+cols.map(c=>'<td class="n'+(c.bold?' g':'')+'">'+fNum(c.tot)+'</td>').join('')+'<td></td><td></td></tr></tfoot></table></div>';
   let turnoTbl;
   if(C.porTurno){
     const linhas=D.turnos.map(t=>{const y=D.porT[t.key],tp=y.p+y.a;return'<tr><td class="nm"><b>'+t.label+'</b><small>'+t.horario+'</small></td><td class="n g">'+fNum(y.prod)+'</td><td class="n">'+fNum(y.rec)+'</td><td class="n">'+fNum(y.env)+'</td><td class="n'+(y.desc?' r':'')+'">'+fNum(y.desc)+'</td><td class="n">'+(tp?'<b>'+y.p+'</b> pres. · <span style="color:'+(y.a?'var(--red)':'var(--text3)')+'">'+y.a+' falta(s)</span>':'<span style="color:var(--text3)">—</span>')+'</td></tr>';}).join('')+
@@ -3660,7 +3671,7 @@ function fechRender(){
     const linhas=D.turnos.map(t=>{const y=D.porT[t.key],tp=y.p+y.a;return'<tr><td class="nm"><b>'+t.label+'</b><small>'+t.horario+'</small></td><td class="n">'+(tp?'<b>'+y.p+'</b>':'—')+'</td><td class="n'+(y.a?' r':'')+'">'+(tp?y.a:'—')+'</td><td class="n">'+(tp?fPct(y.a,tp)+'%':'—')+'</td></tr>';}).join('');
     turnoTbl='<div class="fe-sec">Presença por turno (período)</div><div class="rel-wrap"><table class="rel-tbl fe-tbl"><thead><tr><th>Turno</th><th class="n">Presenças</th><th class="n">Faltas</th><th class="n">% falta</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
   }
-  const grafico=D.dias.map(x=>'<div class="fe-bar" title="'+fCurto(x.d)+': '+fNum(x.t.prod)+'"><i style="height:'+Math.max(x.t.prod?4:1,Math.round(x.t.prod/maxBar*100))+'%;background:'+(x.t.prod>=META_DIARIA?'var(--green)':x.t.prod>0?'var(--cyan)':'rgba(255,255,255,.12)')+'"></i>'+(D.dias.length<=31?'<span>'+(+x.d.slice(8,10))+'</span>':'')+'</div>').join('');
+  const grafico=D.dias.map(x=>'<div class="fe-bar" title="'+fCurto(x.d)+': '+fNum(x.t.prod)+'"><i style="height:'+Math.max(x.t.prod?4:1,Math.round(x.t.prod/maxBar*100))+'%;background:'+(x.t.prod>=metaDia()?'var(--green)':x.t.prod>0?'var(--cyan)':'rgba(255,255,255,.12)')+'"></i>'+(D.dias.length<=31?'<span>'+(+x.d.slice(8,10))+'</span>':'')+'</div>').join('');
   const alertasHtml=D.alertas.length?D.alertas.map(a=>'<div class="fe-al fe-'+a.k+'"><i class="ti ti-'+(a.k==='info'?'info-circle':'alert-triangle')+'"></i>'+a.t+'</div>').join(''):'<div class="fe-al fe-ok"><i class="ti ti-circle-check"></i>Tudo em ordem no período</div>';
   cont.innerHTML=
    '<div class="fe-nav"><label>De<input type="date" value="'+fechDe+'" max="'+hoje+'" onchange="fechSet(\'de\',this.value)"></label><label>Até<input type="date" value="'+fechAte+'" max="'+hoje+'" onchange="fechSet(\'ate\',this.value)"></label></div>'+
@@ -3672,7 +3683,7 @@ function fechRender(){
       return'<div class="fe-tiles fe-t3">'+tile('Falta p/ meta mensal',fNum(M.falta),(100-Math.min(100,pa)).toFixed(1)+'% restante · '+fCurto(M.ci.de)+' a '+fCurto(M.ci.ate),M.falta>0?'var(--red)':'var(--green)')+
        tile('Ritmo diário necessário',M.restDias?fNum(M.ritmo):'—','vs. meta diária de '+fNum(M.metaDia)+(M.ritmoPP?' · '+fNum(M.ritmoPP)+'/pessoa/dia':'')+(M.restDias?' · '+M.restDias+' dia(s) úteis':''),M.restDias&&M.ritmo>M.metaDia?'var(--red)':'var(--green)')+
        tile('% meta mensal atingida',pa.toFixed(0)+'%','<div class="fe-prog" style="margin:6px 0 0"><div style="width:'+Math.min(100,pa)+'%;background:'+cm+'"></div></div>',cm)+'</div>';})()+
-    '<div class="fe-prog"><div style="width:'+Math.min(100,pct)+'%;background:'+cor+'"></div></div><div class="fe-progl"><span>Meta de referência '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta</span></div>'+
+    '<div class="fe-prog"><div style="width:'+Math.min(100,pct)+'%;background:'+cor+'"></div></div><div class="fe-progl"><span>Meta de referência '+fNum(D.metaRef)+' ('+fNum(metaDia())+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta</span></div>'+
     '<div class="fe-sec">Produção diária <small style="font-weight:500;color:var(--text3)">· verde = meta batida</small></div><div class="fe-pulso">'+grafico+'</div>'+
     turnoTbl+
     '<div class="fe-sec">Dia a dia</div>'+diaTbl+
@@ -3716,7 +3727,7 @@ function fechExcel(){
   const r1=[[{h:'FEMSA '+unitName.toUpperCase()+' — RELATÓRIO OPERACIONAL'}],[{s:fPeriodoTxt(D)}],[],
    [{h:'Indicador'},{h:'Valor'}],[{s:'Produzidos'},{n:D.tot.prod}]];
   if(C.pbr)r1.push([{s:'PBR1'},{n:D.tot.pbr1}],[{s:'PBR2'},{n:D.tot.pbr2}]);
-  r1.push([{s:'Meta diária'},{n:META_DIARIA}],[{s:'Dias com produção'},{n:D.diasTrab}],[{s:'Meta de referência'},{n:D.metaRef}],[{s:'% da meta de referência'},{n:pct}],[{s:'Média por dia trabalhado'},{n:D.media}],[{s:'Dias que bateram a meta'},{n:D.bateu}],
+  r1.push([{s:'Meta diária'},{n:metaDia()}],[{s:'Dias com produção'},{n:D.diasTrab}],[{s:'Meta de referência'},{n:D.metaRef}],[{s:'% da meta de referência'},{n:pct}],[{s:'Média por dia trabalhado'},{n:D.media}],[{s:'Dias que bateram a meta'},{n:D.bateu}],
    [{s:'Recebidos'},{n:D.tot.rec}],[{s:C.env},{n:D.tot.env}],[{s:'Descarte'},{n:D.tot.desc}],[{s:'Buffer atual'},{n:D.bufFim}],[{s:'Meta mensal ('+D.mensal.ci.de+' a '+D.mensal.ci.ate+')'},{n:D.mensal.metaM}],[{s:'Acumulado no ciclo'},{n:D.mensal.acum}],[{s:'Falta p/ meta mensal'},{n:D.mensal.falta}],[{s:'Ritmo diário necessário'},{n:D.mensal.ritmo}],[{s:'% meta mensal atingida'},{n:Math.round(D.mensal.pctAting)}],[]);
   if(C.porTurno){
     r1.push([{h:'Turno'},{h:'Horário'},{h:'Produzidos'},{h:'Recebidos'},{h:C.env},{h:'Descarte'},{h:'Presenças'},{h:'Faltas'},{h:'% absenteísmo'}]);
@@ -3734,17 +3745,17 @@ function fechExcel(){
   if(C.porTurno){
     const h1=[{h:''},{h:''}],h2=[{h:'DATA'},{h:'DIA'}];
     D.turnos.forEach(t=>{h1.push({h:t.label.toUpperCase()},null,null,null);h2.push({h:'PRODUZIDOS'},{h:'RECEBIDOS'},{h:C.env.toUpperCase()},{h:'DESCARTE'});});
-    h1.push({h:'TOTAL DO DIA'},null,null,null,null);h2.push({h:'PRODUZIDOS'},{h:'RECEBIDOS'},{h:C.env.toUpperCase()},{h:'DESCARTE'},{h:'% META'});
+    h1.push({h:'TOTAL DO DIA'},null,null,null,null,null);h2.push({h:'PRODUZIDOS'},{h:'RECEBIDOS'},{h:C.env.toUpperCase()},{h:'DESCARTE'},{h:'META DO DIA'},{h:'% META'});
     r2=[h1,h2];
-    D.dias.forEach(x=>{const r=[{d:fxSerial(x.d)},{s:NOMES[x.wd]}];D.tk.forEach(k=>{const y=x.pt[k];r.push({n:y.prod},{n:y.rec},{n:y.env},{n:y.desc});});r.push({n:x.t.prod},{n:x.t.rec},{n:x.t.env},{n:x.t.desc},x.t.prod?{n:x.pct}:null);r2.push(r);});
-    const tr=[{h:'TOTAL'},null];D.tk.forEach(k=>{const y=D.porT[k];tr.push({t:y.prod},{t:y.rec},{t:y.env},{t:y.desc});});tr.push({t:D.tot.prod},{t:D.tot.rec},{t:D.tot.env},{t:D.tot.desc},null);r2.push(tr);
-    w2=[12,18].concat(D.tk.flatMap(()=>[13,13,13,13])).concat([14,13,13,13,10]);fz=[2,2];
+    D.dias.forEach(x=>{const r=[{d:fxSerial(x.d)},{s:NOMES[x.wd]}];D.tk.forEach(k=>{const y=x.pt[k];r.push({n:y.prod},{n:y.rec},{n:y.env},{n:y.desc});});r.push({n:x.t.prod},{n:x.t.rec},{n:x.t.env},{n:x.t.desc},x.t.prod?{n:x.metaDia}:null,x.t.prod?{n:x.pct}:null);r2.push(r);});
+    const tr=[{h:'TOTAL'},null];D.tk.forEach(k=>{const y=D.porT[k];tr.push({t:y.prod},{t:y.rec},{t:y.env},{t:y.desc});});tr.push({t:D.tot.prod},{t:D.tot.rec},{t:D.tot.env},{t:D.tot.desc},null,null);r2.push(tr);
+    w2=[12,18].concat(D.tk.flatMap(()=>[13,13,13,13])).concat([14,13,13,13,12,10]);fz=[2,2];
   }else{
     const cols=fCols(D);
-    r2=[[{h:'DATA'},{h:'DIA'}].concat(cols.map(c=>({h:(c.h==='Total'?'TOTAL PRODUZIDO':c.h.toUpperCase())}))).concat([{h:'% META'}])];
-    D.dias.forEach(x=>{r2.push([{d:fxSerial(x.d)},{s:NOMES[x.wd]}].concat(cols.map(c=>({n:c.v(x)}))).concat([x.t.prod?{n:x.pct}:null]));});
-    r2.push([{h:'TOTAL'},null].concat(cols.map(c=>({t:c.tot}))).concat([null]));
-    w2=[12,18].concat(cols.map(()=>14)).concat([10]);fz=[2,1];
+    r2=[[{h:'DATA'},{h:'DIA'}].concat(cols.map(c=>({h:(c.h==='Total'?'TOTAL PRODUZIDO':c.h.toUpperCase())}))).concat([{h:'META DO DIA'},{h:'% META'}])];
+    D.dias.forEach(x=>{r2.push([{d:fxSerial(x.d)},{s:NOMES[x.wd]}].concat(cols.map(c=>({n:c.v(x)}))).concat([x.t.prod?{n:x.metaDia}:null,x.t.prod?{n:x.pct}:null]));});
+    r2.push([{h:'TOTAL'},null].concat(cols.map(c=>({t:c.tot}))).concat([null,null]));
+    w2=[12,18].concat(cols.map(()=>14)).concat([12,10]);fz=[2,1];
   }
   const s2={name:'Dia a dia',freeze:fz,widths:w2,rows:r2};
   fechBaixar(fxXlsxMulti([s1,s2]),'relatorio_'+unitName.toLowerCase()+'_'+D.de+(D.de!==D.ate?'_a_'+D.ate:'')+'.xlsx');
@@ -3757,7 +3768,7 @@ function fechPDF(){
   const cor=!D.diasTrab?'#7a92a8':pct>=100?'#00e5a0':pct>=80?'#f59e0b':'#ff4d6a';
   const kp=(l,v,s,c,acc)=>'<div class="k" style="border-top-color:'+acc+'"><div class="kl">'+l+'</div><div class="kv"'+(c?' style="color:'+c+'"':'')+'>'+v+'</div><div class="ks">'+(s||'&nbsp;')+'</div></div>';
   const W=1000,H=215,pl=44,pr=10,pt=20,pb=26,n=D.dias.length;
-  const maxV=Math.max(META_DIARIA*1.1,...D.dias.map(x=>x.t.prod));
+  const maxV=Math.max(metaDia()*1.1,...D.dias.map(x=>x.t.prod));
   const bw=(W-pl-pr)/n,gap=Math.min(6,bw*0.25);
   const yv=v=>pt+(H-pt-pb)*(1-v/maxV);
   const palTurno=['#003B8E','#1d4ed8','#60a5fa','#bfdbfe','#93c5fd','#2563eb'];
@@ -3771,7 +3782,7 @@ function fechPDF(){
     if(n<=31)svg+='<text x="'+(bx+w/2)+'" y="'+(H-pb+13)+'" font-size="9" fill="'+(x.wd===0?'#ff4d6a':'#7a92a8')+'" text-anchor="middle">'+(+x.d.slice(8,10))+'</text>';
     if(n<=31&&x.t.prod)svg+='<text x="'+(bx+w/2)+'" y="'+(yv(x.t.prod)-4)+'" font-size="'+(n<=16?9:7.5)+'" font-weight="700" fill="#fff" text-anchor="middle">'+fNum(x.t.prod)+'</text>';
   });
-  svg+='<line x1="'+pl+'" y1="'+yv(META_DIARIA)+'" x2="'+(W-pr)+'" y2="'+yv(META_DIARIA)+'" stroke="#ff4d6a" stroke-width="1.5" stroke-dasharray="6 4"/></svg>';
+  svg+='<line x1="'+pl+'" y1="'+yv(metaDia())+'" x2="'+(W-pr)+'" y2="'+yv(metaDia())+'" stroke="#ff4d6a" stroke-width="1.5" stroke-dasharray="6 4"/></svg>';
   const legItens=C.porTurno?D.turnos.map((t,i)=>({n:t.label,c:palTurno[i%6]})):(C.pbr?[{n:'PBR1',c:'#003B8E'},{n:'PBR2',c:'#60a5fa'}]:[{n:'Produzidos',c:'#1d4ed8'}]);
   const legenda=legItens.map(l=>'<span><i style="background:'+l.c+'"></i>'+esc(l.n)+'</span>').join('');
   let blocoTurno;
@@ -3784,7 +3795,7 @@ function fechPDF(){
     blocoTurno='<h2>Presença por turno</h2><table><thead><tr><th>Turno</th><th class="n">Presenças</th><th class="n">Faltas</th><th class="n">% falta</th></tr></thead><tbody>'+trT+'</tbody></table>';
   }
   const cols=fCols(D);
-  const trD=D.dias.map(x=>'<tr'+(x.wd===0?' class="dom"':'')+'><td><b>'+fCurto(x.d)+'</b> <small>'+F_SEM[x.wd]+'</small></td>'+cols.map(c=>{const v=c.v(x);return'<td class="n">'+(c.bold?'<b>'+fNum(v)+'</b>':(v?fNum(v):(c.dash?'–':'0')))+'</td>';}).join('')+'<td class="n" style="color:'+(x.t.prod?(x.pct>=100?'#00e5a0':x.pct>=80?'#f59e0b':'#ff4d6a'):'#4a6070')+';font-weight:700">'+(x.t.prod?x.pct+'%':'–')+'</td></tr>').join('');
+  const trD=D.dias.map(x=>'<tr'+(x.wd===0?' class="dom"':'')+'><td><b>'+fCurto(x.d)+'</b> <small>'+F_SEM[x.wd]+'</small></td>'+cols.map(c=>{const v=c.v(x);return'<td class="n">'+(c.bold?'<b>'+fNum(v)+'</b>':(v?fNum(v):(c.dash?'–':'0')))+'</td>';}).join('')+'<td class="n">'+(x.t.prod?fNum(x.metaDia):'–')+'</td><td class="n" style="color:'+(x.t.prod?(x.pct>=100?'#00e5a0':x.pct>=80?'#f59e0b':'#ff4d6a'):'#4a6070')+';font-weight:700">'+(x.t.prod?x.pct+'%':'–')+'</td></tr>').join('');
   const css='@page{size:A4 landscape;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{background:#090e13}body{font-family:"Segoe UI",Arial,sans-serif;color:#fff;margin:0;padding:10mm;font-size:12px;background-image:radial-gradient(ellipse 60% 50% at 0% 40%,rgba(0,40,80,.55) 0%,transparent 70%)}'+
    '.hero{background:linear-gradient(120deg,#002a66,#003B8E 55%,#0d6efd);color:#fff;border-radius:14px;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border:1px solid rgba(255,255,255,.12)}.hero .u{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.8;font-weight:700}.hero h1{font-size:25px;margin:4px 0 2px}.hero .p{font-size:14px;opacity:.9}'+
    '.ring{text-align:center;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.55);border-radius:14px;padding:10px 20px}.ring b{font-size:30px;display:block;line-height:1}.ring span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.85}'+
@@ -3796,18 +3807,18 @@ function fechPDF(){
    '.ft{margin-top:14px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1);font-size:9px;color:#4a6070;display:flex;justify-content:space-between}';
   const sub1=(C.pbr?'PBR1 '+fNum(D.tot.pbr1)+' · PBR2 '+fNum(D.tot.pbr2)+' · ':'')+'média '+fNum(D.media)+'/dia';
   const html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório '+esc(unitName)+' '+D.de+(D.de!==D.ate?' a '+D.ate:'')+'</title><style>'+css+'</style></head><body>'+
-   '<div class="hero"><div><div class="u">FEMSA '+esc(unitName)+' · Relatório operacional</div><h1>'+esc(fPeriodoTxt(D))+'</h1><div class="p">'+D.dias.length+' dia(s) no período · '+D.diasTrab+' com produção</div></div>'+(D.diasTrab?'<div class="ring"><b>'+pct+'%</b><span>da meta ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span></div>':'')+'</div>'+
+   '<div class="hero"><div><div class="u">FEMSA '+esc(unitName)+' · Relatório operacional</div><h1>'+esc(fPeriodoTxt(D))+'</h1><div class="p">'+D.dias.length+' dia(s) no período · '+D.diasTrab+' com produção</div></div>'+(D.diasTrab?'<div class="ring"><b>'+pct+'%</b><span>da meta ('+fNum(metaDia())+' × '+D.diasTrab+' dia(s))</span></div>':'')+'</div>'+
    '<div class="ks">'+kp('Produzidos',fNum(D.tot.prod),sub1,cor,'#1d4ed8')+kp('Recebidos',fNum(D.tot.rec),'','','#6366f1')+kp(C.env,fNum(D.tot.env),'','','#10b981')+kp('Descarte',fNum(D.tot.desc),'',D.tot.desc?'#ff4d6a':'','#ff4d6a')+kp('Buffer atual',(D.bufFim>=0?'+':'')+fNum(D.bufFim),'estoque neste momento',D.bufFim>=0?'#60a5fa':'#ff4d6a','#f59e0b')+'</div>'+
    (function(){const M=D.mensal,pa=M.pctAting,cm=pa>=100?'#00e5a0':pa>=80?'#f59e0b':'#ff4d6a';
      return'<div class="ks ks3">'+kp('Falta p/ meta mensal',fNum(M.falta),(100-Math.min(100,pa)).toFixed(1)+'% restante · '+fCurto(M.ci.de)+' a '+fCurto(M.ci.ate),M.falta>0?'#ff4d6a':'#00e5a0','#ff4d6a')+
       kp('Ritmo diário necessário',M.restDias?fNum(M.ritmo):'—','vs. meta diária de '+fNum(M.metaDia)+(M.ritmoPP?' · '+fNum(M.ritmoPP)+'/pessoa/dia':''),M.restDias&&M.ritmo>M.metaDia?'#ff4d6a':'#00e5a0','#f59e0b')+
       kp('% meta mensal atingida',pa.toFixed(0)+'%','<div style="height:6px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin-top:4px"><i style="display:block;height:100%;width:'+Math.min(100,pa)+'%;background:'+cm+'"></i></div>',cm,'#10b981')+'</div>';})()+
-   '<div class="prog"><i></i></div><div class="pl"><span>Meta de referência: '+fNum(D.metaRef)+' ('+fNum(META_DIARIA)+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta diária</span></div>'+
-   '<h2>Produção diária</h2><div class="leg">'+legenda+'<span><i style="background:#ff4d6a"></i>meta diária ('+fNum(META_DIARIA)+')</span></div>'+svg+
+   '<div class="prog"><i></i></div><div class="pl"><span>Meta de referência: '+fNum(D.metaRef)+' ('+fNum(metaDia())+' × '+D.diasTrab+' dia(s))</span><span>'+D.bateu+' de '+D.diasTrab+' dia(s) bateram a meta diária</span></div>'+
+   '<h2>Produção diária</h2><div class="leg">'+legenda+'<span><i style="background:#ff4d6a"></i>meta diária ('+fNum(metaDia())+')</span></div>'+svg+
    '<div class="cols"><div>'+blocoTurno+'</div>'+
    '<div><h2>Destaques e alertas</h2>'+(D.melhor?'<div class="al ok">🏆 Melhor dia: <b>'+fCurto(D.melhor.d)+' ('+F_SEM[D.melhor.wd]+')</b> — '+fNum(D.melhor.t.prod)+'</div>':'')+(D.pior&&D.dias.length>1?'<div class="al nt">Menor dia com produção: <b>'+fCurto(D.pior.d)+'</b> — '+fNum(D.pior.t.prod)+'</div>':'')+(D.alertas.length?D.alertas.map(a=>'<div class="al">⚠ '+esc(a.t)+'</div>').join(''):'<div class="al ok">Tudo em ordem no período</div>')+'</div></div>'+
-   '<h2 style="page-break-before:'+(D.dias.length>6?'always':'auto')+'">Dia a dia</h2><table><thead><tr><th>Dia</th>'+cols.map(c=>'<th class="n">'+esc(c.h)+'</th>').join('')+'<th class="n">% meta</th></tr></thead><tbody>'+trD+'</tbody><tfoot><tr><td>Total</td>'+cols.map(c=>'<td class="n">'+fNum(c.tot)+'</td>').join('')+'<td></td></tr></tfoot></table>'+
-   '<div class="ft"><span>Meta diária de referência: '+fNum(META_DIARIA)+' paletes</span><span>Gerado em '+new Date().toLocaleString('pt-BR')+' por '+esc(currentUser?currentUser.user:'')+'</span></div></body></html>';
+   '<h2 style="page-break-before:'+(D.dias.length>6?'always':'auto')+'">Dia a dia</h2><table><thead><tr><th>Dia</th>'+cols.map(c=>'<th class="n">'+esc(c.h)+'</th>').join('')+'<th class="n">Meta do dia</th><th class="n">% meta</th></tr></thead><tbody>'+trD+'</tbody><tfoot><tr><td>Total</td>'+cols.map(c=>'<td class="n">'+fNum(c.tot)+'</td>').join('')+'<td></td><td></td></tr></tfoot></table>'+
+   '<div class="ft"><span>Meta diária de referência: '+fNum(metaDia())+' paletes</span><span>Gerado em '+new Date().toLocaleString('pt-BR')+' por '+esc(currentUser?currentUser.user:'')+'</span></div></body></html>';
   const w=window.open('','_blank');if(!w){showToast('Libere pop-ups para gerar o PDF.','warn');return;}
   w.document.write(html);w.document.close();setTimeout(()=>{try{w.print();}catch(e){}},600);
 }

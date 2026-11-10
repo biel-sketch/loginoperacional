@@ -4073,8 +4073,7 @@ function cronoChip(it){
   const r=it.r;
   const sub=[];
   if(it.ag&&!it.ag.legacy){const v=visitaCurto(it.ag);if(v)sub.push(v);}
-  if(SO_CRONOGRAMA){}
-  else if(it.st==='feito')sub.push(it.hora?'visitado '+it.hora:'visitado');
+  if(it.st==='feito')sub.push(it.hora?'visitado '+it.hora:'visitado');
   else if(it.st==='hoje')sub.push('pendente hoje');
   else if(it.st==='perdida')sub.push('não visitado');
   else if(it.st==='extra')sub.push(it.hora?'fora do dia · '+it.hora:'fora do dia previsto');
@@ -4082,8 +4081,8 @@ function cronoChip(it){
   if(r.diaInteiro)sub.push('dia inteiro');
   { const gp=grupoParceiros(r); if(gp.length)sub.push('junto com '+gp.join(', ')); }
   const end=rotaEnderecoTxt(r);
-  const stx=SO_CRONOGRAMA?'':it.st;
-  return '<div class="crono-chip '+stx+'" title="'+supEsc(rotaLabel(r)+(end?' — '+end:''))+'"><i class="ti '+(SO_CRONOGRAMA?'ti-map-pin':CRONO_ICONE[it.st])+'"></i><div><div>'+(it.ag&&!it.ag.legacy?it.ag.ordem+'. ':'')+supEsc(rotaLabel(r))+'</div>'+(sub.length?'<small>'+supEsc(sub.join(' · '))+'</small>':'')+'</div></div>';
+  const stx=it.st;
+  return '<div class="crono-chip '+stx+'" title="'+supEsc(rotaLabel(r)+(end?' — '+end:''))+'"><i class="ti '+CRONO_ICONE[it.st]+'"></i><div><div>'+(it.ag&&!it.ag.legacy?it.ag.ordem+'. ':'')+supEsc(rotaLabel(r))+'</div>'+(sub.length?'<small>'+supEsc(sub.join(' · '))+'</small>':'')+'</div></div>';
 }
 function renderSupervisoresCrono(){
   const cont=document.getElementById('supervisores-crono-content');if(!cont)return;
@@ -4117,14 +4116,14 @@ function renderSupervisoresCrono(){
   let tPrev=0,tReal=0,tHoje=0,tAtraso=0;
   sups.forEach(s=>{ const c=cronoCalc(s,dates,hoje); calc[s.id]=c; tPrev+=c.previstas;tReal+=c.cumpridas;tHoje+=c.hojePend;tAtraso+=c.perdidas; });
 
-  if(!SO_CRONOGRAMA)html+='<div class="crono-kpis">'+
+  html+='<div class="crono-kpis">'+
     '<div class="kpi"><div class="kpi-lbl">Visitas previstas</div><div class="kpi-val purple">'+tPrev+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Realizadas</div><div class="kpi-val green">'+tReal+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Pendentes hoje</div><div class="kpi-val" style="color:var(--cyan)">'+(isSemanaAtual?tHoje:'—')+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Em atraso</div><div class="kpi-val red">'+tAtraso+'</div></div>'+
     '</div>';
 
-  if(!SO_CRONOGRAMA)html+='<div class="crono-legenda">'+
+  html+='<div class="crono-legenda">'+
     '<span><b style="background:var(--green)"></b>Visitado</span>'+
     '<span><b style="background:var(--cyan)"></b>Pendente hoje</span>'+
     '<span><b style="background:var(--red)"></b>Não visitado no dia</span>'+
@@ -4139,7 +4138,7 @@ function renderSupervisoresCrono(){
     const pctCor=pct===null?'var(--text2)':(pct>=100?'var(--green)':pct>=60?'var(--warn)':'var(--red)');
     html+='<div class="card crono-sup" style="--sup-cor:'+cor+'">';
     html+='<div class="card-title" style="flex-wrap:wrap;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:'+cor+';display:inline-block"></span>'+supEsc(sup.nome);
-    html+=''+(cronAtivo(sup)?'<span class="badge b-warn" style="margin-left:6px;background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-bd)">'+(cronSemanaIdx(sup,dates[0])<0?'rodízio começa em '+dateFmt(sup.cronograma.inicio):'semana '+(cronSemanaIdx(sup,dates[0])+1)+'/'+sup.cronograma.semanas+' do rodízio')+'</span>':'')+(SO_CRONOGRAMA?'<span style="margin-left:auto;font-size:12px;color:var(--text2)">'+c.previstas+' visita(s) na semana</span>':'<span style="margin-left:auto;font-size:12px;font-weight:700;color:'+pctCor+'">'+c.cumpridas+' / '+c.previstas+' visitas'+(pct===null?'':' · '+pct+'%')+'</span>')+'</div>';
+    html+=''+(cronAtivo(sup)?'<span class="badge b-warn" style="margin-left:6px;background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-bd)">'+(cronSemanaIdx(sup,dates[0])<0?'rodízio começa em '+dateFmt(sup.cronograma.inicio):'semana '+(cronSemanaIdx(sup,dates[0])+1)+'/'+sup.cronograma.semanas+' do rodízio')+'</span>':'')+'<span style="margin-left:auto;font-size:12px;font-weight:700;color:'+pctCor+'">'+c.cumpridas+' / '+c.previstas+' visitas'+(pct===null?'':' · '+pct+'%')+'</span></div>';
     if(!(sup.rota||[]).length){
       html+='<div style="font-size:13px;color:var(--text2)">Nenhum cliente na rota deste supervisor.</div></div>';
       return;

@@ -691,7 +691,7 @@ img,canvas,svg{max-width:100%}
 <!-- MODAL EDITAR LANCAMENTO (pallets) -->
  <div id="os-cli-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)osFecharCliente()">
  <div class="modal-box">
- <div class="modal-title"><i class="ti ti-building" style="color:var(--cyan)"></i>Novo cliente</div>
+ <div class="modal-title"><i class="ti ti-building" style="color:var(--cyan)"></i><span id="os-cli-title">Novo cliente</span></div>
  <div class="modal-field"><label>Razão social</label><input id="os-cli-nome" autocapitalize="characters"></div>
  <div class="modal-field"><label>CNPJ / CPF (só números)</label><input id="os-cli-cnpj" inputmode="numeric"></div>
  <div class="modal-btns"><button class="modal-btn-ghost" onclick="osFecharCliente()">Cancelar</button></div>
@@ -718,7 +718,7 @@ img,canvas,svg{max-width:100%}
  <!-- MODAL PRESENCA RETROATIVA -->
  <div id="pres-retro-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closePresRetro()">
  <div class="modal-box" style="max-height:92vh;overflow-y:auto">
- <div class="modal-title"><i class="ti ti-calendar-plus" style="color:var(--cyan)"></i>Lançar presença retroativa</div>
+ <div class="modal-title"><i class="ti ti-calendar-plus" style="color:var(--cyan)"></i><span id="pr-title">Lançar presença retroativa</span></div>
  <div class="modal-field"><label>Data</label><input type="date" id="pr-date" onchange="renderPresRetro()"></div>
  <div class="modal-field"><label>Turno</label><select id="pr-turno" onchange="renderPresRetro()"></select></div>
  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:2px 0 4px;flex-wrap:wrap"><div id="pr-info" style="font-size:11px;color:var(--text3)"></div><button class="btn btn-ghost btn-sm" type="button" onclick="setPresRetroTodos('P')"><i class="ti ti-checks" style="font-size:13px"></i> Todos presentes</button></div>
@@ -2189,7 +2189,7 @@ function renderPresenca(){
       return'<button class="'+cls+'" id="tbtn-'+t.key+'" onclick="selTurno(\''+t.key+'\')"'+(t.extra?' style="border-style:dashed"':'')+'><div class="turno-lbl">'+t.label+'</div><div style="font-size:10px;color:var(--text2);margin-top:2px">'+t.horario+'</div></button>';
     }).join('');
   }
-  const _pb=document.getElementById('pres-retro-bar');if(_pb)_pb.style.display=(podeEditarPresenca()&&presGrupo==='pal')?'block':'none';
+  const _pb=document.getElementById('pres-retro-bar');if(_pb)_pb.style.display=podeEditarPresenca()?'block':'none';
   renderPresGrid();
 }
 function selTurno(t){selTurnoAtivo=t;renderPresenca();}
@@ -4010,7 +4010,8 @@ let _prBuf={};
 function abrirPresRetro(){
   if(!podeEditarPresenca()){showToast('Apenas administradores/gestores podem lançar presença retroativa.','err');return;}
   const dt=document.getElementById('pr-date');dt.max=today();dt.value=addDaysStr(today(),-1);
-  document.getElementById('pr-turno').innerHTML=turnosAtivos().map(t=>'<option value="'+t.key+'"'+(t.key===selTurnoAtivo?' selected':'')+'>'+t.label+' — '+t.horario+'</option>').join('');
+  document.getElementById('pr-turno').innerHTML=turnosPres().map(t=>'<option value="'+t.key+'"'+(t.key===selTurnoAtivo?' selected':'')+'>'+t.label+' — '+t.horario+'</option>').join('');
+  document.getElementById('pr-title').textContent='Presença retroativa — '+(presGrupo==='am'?'Amarração':'Paletes');
   document.getElementById('pres-retro-modal').style.display='flex';
   renderPresRetro();
 }
@@ -4020,12 +4021,13 @@ function renderPresRetro(){
   const{date,turno}=_prSel();const list=document.getElementById('pr-list'),info=document.getElementById('pr-info');
   if(!date||!turno){list.innerHTML='';return;}
   if(date>today()){list.innerHTML='<div class="empty" style="padding:14px 0"><h3>Escolha uma data até hoje</h3></div>';return;}
-  const pt=state.presencas[date]&&state.presencas[date][turno];
+  const PK=presKey(turno),am=presGrupo==='am';
+  const pt=state.presencas[date]&&state.presencas[date][PK];
   const atual=(pt&&pt.presenca)||{};
   _prBuf={};
-  const colabs=colaboradoresAtivos().filter(c=>c.turno===turno);
-  if(!colabs.length){list.innerHTML='<div class="empty" style="padding:14px 0"><h3>Nenhum colaborador nesse turno</h3></div>';info.textContent='';return;}
-  info.textContent=(pt&&pt.savedAt?'Já existe apontamento nessa data — o que você marcar substitui. ':'Sem apontamento nessa data. ')+dateFull(date);
+  const colabs=colabsPres(turno);
+  if(!colabs.length){list.innerHTML='<div class="empty" style="padding:14px 0"><h3>Nenhum colaborador de '+(am?'Amarração':'Paletes')+' nesse turno</h3></div>';info.textContent='';return;}
+  info.textContent=(am?'AMARRAÇÃO · ':'PALETES · ')+(pt&&pt.savedAt?'Já existe apontamento nessa data — o que você marcar substitui. ':'Sem apontamento nessa data. ')+dateFull(date);
   list.innerHTML=colabs.map((c,i)=>{
     const af=afastamentoAtivoParaData(c.nome,date);
     const nomeCurto=c.nome.split(' ').slice(0,2).join(' ');
@@ -4057,9 +4059,10 @@ async function salvarPresRetro(){
   const nomes=Object.keys(_prBuf);
   if(!nomes.length){showToast('Nenhum colaborador para lançar.','warn');return;}
   if(!nomes.some(n=>_prBuf[n])){showToast('Marque a situação de pelo menos um colaborador.','warn');return;}
+  const PK=presKey(turno);
   if(!state.presencas[date])state.presencas[date]={};
-  if(!state.presencas[date][turno])state.presencas[date][turno]={presenca:{}};
-  const pt=state.presencas[date][turno];
+  if(!state.presencas[date][PK])state.presencas[date][PK]={presenca:{}};
+  const pt=state.presencas[date][PK];
   if(!pt.presenca)pt.presenca={};
   nomes.forEach(n=>{
     if(_prBuf[n]){pt.presenca[n]=_prBuf[n];}
@@ -4068,7 +4071,7 @@ async function salvarPresRetro(){
   });
   const agora=new Date().toISOString();
   pt.savedAt=agora;pt.touchedAt=agora;
-  logAuditoria('Presença retroativa lançada: '+dateBR(date)+' · '+turnoInfo(turno).label);
+  logAuditoria('Presença retroativa lançada'+(presGrupo==='am'?' (Amarração)':'')+': '+dateBR(date)+' · '+turnoInfo(turno).label);
   closePresRetro();
   saveCache();
   renderPresenca();
@@ -4691,13 +4694,17 @@ function osRenderClientes(){
   const el=document.getElementById('os-clientes');if(!el)return;
   const cli=osClientesList(),canEdit=osPodeLancar()&&podeEditarPresenca();
   el.innerHTML='<details class="card os-cli"><summary><i class="ti ti-building"></i> Clientes ('+cli.length+')</summary><div style="margin-top:10px">'+
-   cli.map(c=>'<div class="os-crow"><div style="min-width:0"><div style="font-size:13px;font-weight:600">'+osEsc(c.nome)+'</div><div style="font-size:11px;color:var(--text2)">CNPJ '+osEsc(c.cnpj)+'</div></div>'+(canEdit?'<button class="ds-btn" onclick="osRemoverCliente(\''+c.cnpj+'\')" title="Remover"><i class="ti ti-trash"></i></button>':'')+'</div>').join('')+
+   cli.map(c=>'<div class="os-crow"><div style="min-width:0"><div style="font-size:13px;font-weight:600">'+osEsc(c.nome)+'</div><div style="font-size:11px;color:var(--text2)">CNPJ '+osEsc(c.cnpj)+'</div></div>'+(canEdit?'<div style="display:flex;gap:6px"><button class="ds-btn" onclick="osAbrirCliente(\''+c.cnpj+'\')" title="Editar"><i class="ti ti-pencil"></i></button><button class="ds-btn" onclick="osRemoverCliente(\''+c.cnpj+'\')" title="Remover"><i class="ti ti-trash"></i></button></div>':'')+'</div>').join('')+
    (osPodeLancar()?'<button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="osAbrirCliente()"><i class="ti ti-plus"></i> Novo cliente</button>':'')+
    '</div></details>';
 }
-function osAbrirCliente(){
+let osCliEdit=null;
+function osAbrirCliente(cnpjEdit){
   if(!osPodeLancar())return;
-  document.getElementById('os-cli-nome').value='';document.getElementById('os-cli-cnpj').value='';
+  const c=cnpjEdit?osClientesList().find(x=>x.cnpj===cnpjEdit):null;
+  osCliEdit=c?c.cnpj:null;
+  document.getElementById('os-cli-title').textContent=c?'Editar cliente':'Novo cliente';
+  document.getElementById('os-cli-nome').value=c?c.nome:'';document.getElementById('os-cli-cnpj').value=c?c.cnpj:'';
   document.getElementById('os-cli-modal').style.display='flex';
 }
 function osFecharCliente(){document.getElementById('os-cli-modal').style.display='none';}
@@ -4708,8 +4715,25 @@ function osSalvarCliente(){
   if(cnpj.length!==14&&cnpj.length!==11){showToast('CNPJ deve ter 14 dígitos (CPF, 11).','warn');return;}
   if(!state.osClientes)state.osClientes=[];
   const cnpjN=cnpj.length===11?cnpj:cnpj.padStart(14,'0');
+  const agora=new Date().toISOString();
+  if(osCliEdit){
+    const velho=osClientesList().find(c=>c.cnpj===osCliEdit);
+    if(!velho){showToast('Cliente não encontrado.','err');osFecharCliente();return;}
+    if(cnpjN!==osCliEdit&&osClientesList().some(c=>c.cnpj===cnpjN)){showToast('Já existe outro cliente com esse CNPJ/CPF.','warn');return;}
+    const afet=(state.osAmarracao||[]).filter(r=>r&&!r.del&&r.cnpj===osCliEdit);
+    if((nome!==velho.nome||cnpjN!==osCliEdit)&&afet.length&&!confirm(afet.length+' lançamento(s) de OS deste cliente serão atualizados para o novo nome/CNPJ. Continuar?'))return;
+    afet.forEach(r=>{r.cliente=nome;r.cnpj=cnpjN;r.ts=agora;if(r.exp)r.alt=agora;});
+    state.osClientes=state.osClientes.filter(c=>c.cnpj!==osCliEdit&&c.cnpj!==cnpjN);
+    if(cnpjN!==osCliEdit)state.osClientes.push({nome:velho.nome,cnpj:osCliEdit,ts:agora,del:true});
+    state.osClientes.push({nome,cnpj:cnpjN,ts:agora});
+    if(osForm&&osForm.cnpj===osCliEdit)osForm.cnpj=cnpjN;
+    logAuditoria('Cliente de OS editado: '+velho.nome+' → '+nome+(cnpjN!==osCliEdit?' (CNPJ '+osCliEdit+' → '+cnpjN+')':'')+' · '+afet.length+' OS atualizada(s)');
+    osCliEdit=null;
+    saveCache();pushToCloud();osFecharCliente();renderAmarracao();showToast('Cliente atualizado!','ok');
+    return;
+  }
   state.osClientes=state.osClientes.filter(c=>c.cnpj!==cnpjN);
-  state.osClientes.push({nome,cnpj:cnpjN,ts:new Date().toISOString()});
+  state.osClientes.push({nome,cnpj:cnpjN,ts:agora});
   osForm=osForm||osNovoForm();osForm.cnpj=cnpjN;
   logAuditoria('Cliente de OS cadastrado: '+nome);
   saveCache();pushToCloud();osFecharCliente();renderAmarracao();showToast('Cliente cadastrado!','ok');

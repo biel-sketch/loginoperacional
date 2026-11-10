@@ -2830,14 +2830,18 @@ function renderAbsenteismo(){
 }
 
 // EQUIPE
+var equipeFiltroTurno='';
+function setEquipeFiltroTurno(t){equipeFiltroTurno=t;renderEquipe();}
 function renderEquipe(){
   var cont=document.getElementById('equipe-content');if(!cont)return;
   try{
   var isAdmin=currentRole==='admin'||currentRole==='superadmin'||currentRole==='gestor'||currentRole==='supervisor';
   var canDelete=currentRole==='superadmin'||currentRole==='supervisor';
-  var colabs=colaboradoresAtivos();
-  var html='<div class="card"><div class="card-title"><i class="ti ti-id-badge"></i>Colaboradores ('+colabs.length+')'+(isAdmin?'<button onclick="addColab()" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-plus" style="font-size:13px"></i> Adicionar</button>':'')+'</div>';
-  if(!colabs.length){html+='<div class="empty" style="padding:24px 0"><i class="ti ti-users"></i><h3>Nenhum colaborador</h3></div>';}
+  var todos=colaboradoresAtivos();
+  var colabs=equipeFiltroTurno?todos.filter(function(c){return c.turno===equipeFiltroTurno;}):todos;
+  var html='<div class="card"><div class="card-title"><i class="ti ti-id-badge"></i>Colaboradores ('+(equipeFiltroTurno?colabs.length+' de '+todos.length:todos.length)+')'+(isAdmin?'<button onclick="addColab()" style="margin-left:auto;background:var(--cyan-bg);border:1px solid var(--cyan-bd);border-radius:7px;padding:6px 12px;color:var(--cyan);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-plus" style="font-size:13px"></i> Adicionar</button>':'')+'</div>';
+  html+='<div class="vtoggle" style="margin-bottom:12px">'+[['','Todos',todos.length],['A','1º turno · Turno A',todos.filter(function(c){return c.turno==='A';}).length],['B','2º turno · Turno B',todos.filter(function(c){return c.turno==='B';}).length]].map(function(f){return '<button class="vtog'+(equipeFiltroTurno===f[0]?' active':'')+'" onclick="setEquipeFiltroTurno(\''+f[0]+'\')">'+f[1]+' ('+f[2]+')</button>';}).join('')+'</div>';
+  if(!colabs.length){html+='<div class="empty" style="padding:24px 0"><i class="ti ti-users"></i><h3>Nenhum colaborador'+(equipeFiltroTurno?' neste turno':'')+'</h3></div>';}
   else{colabs.forEach(function(c){var i=state.colaboradores.indexOf(c);html+='<div class="colab-item"><div class="colab-av">'+c.nome.slice(0,2).toUpperCase()+'</div><div style="flex:1;min-width:0"><div class="colab-name">'+c.nome+'</div><div class="colab-role">'+turnoInfo(c.turno).label+(c.cargo?' · '+c.cargo:'')+(c.atividade&&c.atividade!=='Recuperação de Pallets'?' · '+c.atividade:'')+'</div></div>'+(isAdmin?'<button onclick="editColab('+i+')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text2);font-size:11px;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')+'</div>';});}
   html+='</div>';
   if(canDelete){

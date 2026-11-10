@@ -1775,7 +1775,7 @@ function launchApp(){
 // Modo "só cronograma": desativa o registro de presença (Dashboard, Presença, Histórico, Absenteísmo)
 // e o checklist/métricas/relatório de visitas. Para reativar tudo, troque para false.
 const SO_CRONOGRAMA=true;
-const TELAS_OFF=['dashboard','presenca','historico','absenteismo'];
+const TELAS_OFF=['dashboard','presenca','historico','absenteismo','equipe'];
 const SV_OFF=['checkin','metricas','relatorio'];
 function aplicarPermissoesNav(){
   document.querySelectorAll('.snav-item,.bn').forEach(b=>{ b.style.display=''; });

@@ -257,6 +257,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
   .crono-grid{grid-template-columns:1fr}
   .crono-day{min-height:0;flex-direction:row;align-items:flex-start}
   .crono-day-h{width:78px;flex-shrink:0;flex-direction:column;gap:1px}
+  .crono-day.vazio{padding:5px 8px;align-items:center;opacity:.7}
+  .crono-day.vazio .crono-day-h{flex-direction:row;width:auto;gap:8px}
+  .crono-day{padding:8px}
+  .crono-sup .card-title{font-size:14px}
   .sidebar{display:none!important}
   .main-content{width:100%}
   .screens-wrap{padding:10px;padding-bottom:68px}
@@ -1763,13 +1767,21 @@ function launchApp(){
   saveCache();
   aplicarPermissoesNav();
   if(currentRole==='supervisor')checkinSupId=currentUser.supervisorId;
-  goTo(currentRole==='supervisor'?'supervisores':'dashboard');
+  goTo('supervisores');
   startAutoSync();
 }
 // Supervisor enxerga todas as telas do sistema; o que fica restrito é o cronograma, as
 // rotas e o checklist dos OUTROS supervisores (ver supervisoresVisiveis()).
+// Modo "só cronograma": desativa o registro de presença (Dashboard, Presença, Histórico, Absenteísmo)
+// e o checklist/métricas/relatório de visitas. Para reativar tudo, troque para false.
+const SO_CRONOGRAMA=true;
+const TELAS_OFF=['dashboard','presenca','historico','absenteismo'];
+const SV_OFF=['checkin','metricas','relatorio'];
 function aplicarPermissoesNav(){
   document.querySelectorAll('.snav-item,.bn').forEach(b=>{ b.style.display=''; });
+  if(!SO_CRONOGRAMA)return;
+  TELAS_OFF.forEach(k=>['snav-','bn-'].forEach(pf=>{const e=document.getElementById(pf+k);if(e)e.style.display='none';}));
+  SV_OFF.forEach(k=>{const e=document.getElementById('svtog-'+k);if(e)e.style.display='none';});
 }
 // Chamado a cada sincronização: se o supervisor logado foi desativado/removido ou teve o
 // usuário trocado por um administrador, encerra a sessão dele.
@@ -1811,6 +1823,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeColabModal();c
 // === NAVIGATION ===
 const SCREEN_TITLES={dashboard:'Dashboard',presenca:'Presença',historico:'Histórico',absenteismo:'Absenteísmo',clientes:'Clientes',equipe:'Equipe',supervisores:'Supervisores',config:'Config'};
 function goTo(sc){
+  if(SO_CRONOGRAMA&&TELAS_OFF.includes(sc))sc='supervisores';
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.bn,.snav-item').forEach(b=>b.classList.remove('active'));
   const scEl=document.getElementById('sc-'+sc);if(scEl)scEl.classList.add('active');
@@ -3055,9 +3068,11 @@ function weekDates(mondaySt){
 
 let supervisoresView='cronograma';
 function setSupervisoresView(v){
+  if(SO_CRONOGRAMA&&SV_OFF.includes(v))v='cronograma';
   if(currentRole==='supervisor'&&v==='rotas')v='cronograma';
   supervisoresView=v;
   const tr=document.getElementById('svtog-rotas'); if(tr)tr.style.display=(currentRole==='supervisor')?'none':'';
+  if(SO_CRONOGRAMA)SV_OFF.forEach(k=>{const e=document.getElementById('svtog-'+k);if(e)e.style.display='none';});
   ['cronograma','rotas','checkin','metricas','relatorio'].forEach(k=>{
     const tog=document.getElementById('svtog-'+k); if(tog)tog.className='vtog'+(v===k?' active':'');
     const pane=document.getElementById('sv-'+k); if(pane)pane.style.display=(v===k?'block':'none');
@@ -4058,7 +4073,8 @@ function cronoChip(it){
   const r=it.r;
   const sub=[];
   if(it.ag&&!it.ag.legacy){const v=visitaCurto(it.ag);if(v)sub.push(v);}
-  if(it.st==='feito')sub.push(it.hora?'visitado '+it.hora:'visitado');
+  if(SO_CRONOGRAMA){}
+  else if(it.st==='feito')sub.push(it.hora?'visitado '+it.hora:'visitado');
   else if(it.st==='hoje')sub.push('pendente hoje');
   else if(it.st==='perdida')sub.push('não visitado');
   else if(it.st==='extra')sub.push(it.hora?'fora do dia · '+it.hora:'fora do dia previsto');
@@ -4066,7 +4082,8 @@ function cronoChip(it){
   if(r.diaInteiro)sub.push('dia inteiro');
   { const gp=grupoParceiros(r); if(gp.length)sub.push('junto com '+gp.join(', ')); }
   const end=rotaEnderecoTxt(r);
-  return '<div class="crono-chip '+it.st+'" title="'+supEsc(rotaLabel(r)+(end?' — '+end:''))+'"><i class="ti '+CRONO_ICONE[it.st]+'"></i><div><div>'+(it.ag&&!it.ag.legacy?it.ag.ordem+'. ':'')+supEsc(rotaLabel(r))+'</div>'+(sub.length?'<small>'+supEsc(sub.join(' · '))+'</small>':'')+'</div></div>';
+  const stx=SO_CRONOGRAMA?'':it.st;
+  return '<div class="crono-chip '+stx+'" title="'+supEsc(rotaLabel(r)+(end?' — '+end:''))+'"><i class="ti '+(SO_CRONOGRAMA?'ti-map-pin':CRONO_ICONE[it.st])+'"></i><div><div>'+(it.ag&&!it.ag.legacy?it.ag.ordem+'. ':'')+supEsc(rotaLabel(r))+'</div>'+(sub.length?'<small>'+supEsc(sub.join(' · '))+'</small>':'')+'</div></div>';
 }
 function renderSupervisoresCrono(){
   const cont=document.getElementById('supervisores-crono-content');if(!cont)return;
@@ -4100,14 +4117,14 @@ function renderSupervisoresCrono(){
   let tPrev=0,tReal=0,tHoje=0,tAtraso=0;
   sups.forEach(s=>{ const c=cronoCalc(s,dates,hoje); calc[s.id]=c; tPrev+=c.previstas;tReal+=c.cumpridas;tHoje+=c.hojePend;tAtraso+=c.perdidas; });
 
-  html+='<div class="crono-kpis">'+
+  if(!SO_CRONOGRAMA)html+='<div class="crono-kpis">'+
     '<div class="kpi"><div class="kpi-lbl">Visitas previstas</div><div class="kpi-val purple">'+tPrev+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Realizadas</div><div class="kpi-val green">'+tReal+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Pendentes hoje</div><div class="kpi-val" style="color:var(--cyan)">'+(isSemanaAtual?tHoje:'—')+'</div></div>'+
     '<div class="kpi"><div class="kpi-lbl">Em atraso</div><div class="kpi-val red">'+tAtraso+'</div></div>'+
     '</div>';
 
-  html+='<div class="crono-legenda">'+
+  if(!SO_CRONOGRAMA)html+='<div class="crono-legenda">'+
     '<span><b style="background:var(--green)"></b>Visitado</span>'+
     '<span><b style="background:var(--cyan)"></b>Pendente hoje</span>'+
     '<span><b style="background:var(--red)"></b>Não visitado no dia</span>'+
@@ -4122,7 +4139,7 @@ function renderSupervisoresCrono(){
     const pctCor=pct===null?'var(--text2)':(pct>=100?'var(--green)':pct>=60?'var(--warn)':'var(--red)');
     html+='<div class="card crono-sup" style="--sup-cor:'+cor+'">';
     html+='<div class="card-title" style="flex-wrap:wrap;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:'+cor+';display:inline-block"></span>'+supEsc(sup.nome);
-    html+=''+(cronAtivo(sup)?'<span class="badge b-warn" style="margin-left:6px;background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-bd)">'+(cronSemanaIdx(sup,dates[0])<0?'rodízio começa em '+dateFmt(sup.cronograma.inicio):'semana '+(cronSemanaIdx(sup,dates[0])+1)+'/'+sup.cronograma.semanas+' do rodízio')+'</span>':'')+'<span style="margin-left:auto;font-size:12px;font-weight:700;color:'+pctCor+'">'+c.cumpridas+' / '+c.previstas+' visitas'+(pct===null?'':' · '+pct+'%')+'</span></div>';
+    html+=''+(cronAtivo(sup)?'<span class="badge b-warn" style="margin-left:6px;background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-bd)">'+(cronSemanaIdx(sup,dates[0])<0?'rodízio começa em '+dateFmt(sup.cronograma.inicio):'semana '+(cronSemanaIdx(sup,dates[0])+1)+'/'+sup.cronograma.semanas+' do rodízio')+'</span>':'')+(SO_CRONOGRAMA?'<span style="margin-left:auto;font-size:12px;color:var(--text2)">'+c.previstas+' visita(s) na semana</span>':'<span style="margin-left:auto;font-size:12px;font-weight:700;color:'+pctCor+'">'+c.cumpridas+' / '+c.previstas+' visitas'+(pct===null?'':' · '+pct+'%')+'</span>')+'</div>';
     if(!(sup.rota||[]).length){
       html+='<div style="font-size:13px;color:var(--text2)">Nenhum cliente na rota deste supervisor.</div></div>';
       return;
@@ -4131,7 +4148,7 @@ function renderSupervisoresCrono(){
     dates.forEach(d=>{
       const dow=new Date(d+'T12:00').getDay();
       const itens=c.porDia[d];
-      html+='<div class="crono-day'+(d===hoje?' hoje':'')+((dow===0||dow===6)?' fds':'')+'">';
+      html+='<div class="crono-day'+(d===hoje?' hoje':'')+((dow===0||dow===6)?' fds':'')+(!itens.length&&!cronDiaExp(sup,d)&&!cronScrumDia(sup,d)?' vazio':'')+'">';
       html+='<div class="crono-day-h"><span>'+DIAS_CURTO[dow]+'</span><span>'+d.slice(8)+'/'+d.slice(5,7)+'</span></div>';
       const ex=cronDiaExp(sup,d);
       if(ex)html+='<div style="font-size:9px;color:'+(ex.noturno?'var(--warn)':'var(--text3)')+';padding:0 2px 5px;line-height:1.35">'+supEsc(expTxt(ex))+'</div>';

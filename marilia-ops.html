@@ -837,6 +837,18 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     </div>
   </div>
 </div>
+<div id="mov-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharMudarDia()">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-calendar-share" style="color:var(--cyan)"></i>Mudar o dia da visita</div>
+    <div id="mov-info" style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5"></div>
+    <div class="field"><label>Novo dia</label><input type="date" id="mov-para" onchange="_movParaChange()"><div id="mov-dow" style="font-size:11px;color:var(--cyan);margin-top:4px"></div></div>
+    <div class="field"><label>Motivo (opcional)</label><input type="text" id="mov-motivo" maxlength="120" placeholder="Ex.: cliente pediu para vir na segunda"></div>
+    <div class="modal-btns">
+      <button class="modal-btn-ghost" onclick="fecharMudarDia()">Cancelar</button>
+      <button class="modal-btn-primary" onclick="salvarMudarDia()"><i class="ti ti-check" style="font-size:14px"></i> Salvar</button>
+    </div>
+  </div>
+</div>
 <div id="afast-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeAfastModal()">
   <div class="modal-box">
     <div class="modal-title"><i class="ti ti-file-certificate" style="color:var(--cyan)"></i>Novo Atestado / Afastamento</div>
@@ -1345,6 +1357,7 @@ function dateFmt(d){
   const dias=['dom','seg','ter','qua','qui','sex','sab'];
   return dias[new Date(d+'T12:00').getDay()]+', '+p[2]+'/'+p[1];
 }
+function fmtDM(d){ return d?d.slice(8,10)+'/'+d.slice(5,7):''; }
 function dateFull(d){
   if(!d)return'';
   return new Date(d+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
@@ -1409,7 +1422,9 @@ async function fbPut(data,condicional){
 }
 
 // === CACHE ===
+let _ckV=0,_movRef=null,_movV=-1,_movMap={};
 function saveCache(){
+  _ckV++;
   try{
     localStorage.setItem(LS_CACHE, JSON.stringify(state));
     _fbSalvaV();
@@ -3018,7 +3033,9 @@ function rotaEnderecoTxt(r){
   const f=findPosto(r.postoId);
   return f&&f.posto.endereco?enderecoResumo(f.posto.endereco):'';
 }
-function checkinsDoDia(date,supId){ return (((state.checkins||{})[date]||{})[supId]||[]).filter(c=>!c.nao); }
+function checkinsDoDia(date,supId){ return (((state.checkins||{})[date]||{})[supId]||[]).filter(c=>!c.nao&&!c.mov); }
+// Remarcações de visita (mudar o dia): ficam junto dos check-ins na data ORIGINAL, marcadas com mov:true {rotaId,para,motivo}
+function movsDoDia(date,supId){ return (((state.checkins||{})[date]||{})[supId]||[]).filter(c=>c.mov); }
 // Justificativas de visita não realizada ficam junto dos check-ins (mesma sincronização/exclusão), marcadas com nao:true
 function justifsDoDia(date,supId){ return (((state.checkins||{})[date]||{})[supId]||[]).filter(c=>c.nao); }
 function fmtYMD(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -3380,7 +3397,25 @@ function cronSemanaIdx(sup,date){
 }
 // O que está previsto para esse cliente nesse dia: item do cronograma automático ou, se o cliente
 // tem dias fixos antigos (ou o rodízio ainda não começou), o dia fixo.
+function movIdx(){
+  if(_movRef===state.checkins&&_movV===_ckV)return _movMap;
+  const m={};
+  Object.entries(state.checkins||{}).forEach(([d,bySup])=>Object.entries(bySup||{}).forEach(([sid,l])=>(l||[]).forEach(c=>{
+    if(c&&c.mov&&c.rotaId&&c.para){ const k=sid+'|'+c.rotaId; (m[k]=m[k]||[]).push({id:c.id,de:d,para:c.para,motivo:c.motivo,por:c.por}); }
+  })));
+  _movRef=state.checkins;_movV=_ckV;_movMap=m;return m;
+}
+function movsDaRota(sup,r){ return movIdx()[sup.id+'|'+r.id]||[]; }
 function agendaItem(sup,r,date){
+  const ms=movsDaRota(sup,r);
+  if(ms.length){
+    if(ms.some(m=>m.de===date))return null;
+    const mv=ms.find(m=>m.para===date);
+    if(mv){ const b=agendaItemBase(sup,r,mv.de); return Object.assign({},b||{legacy:true,ordem:98,turno:null},{remarcada:true,de:mv.de,movId:mv.id}); }
+  }
+  return agendaItemBase(sup,r,date);
+}
+function agendaItemBase(sup,r,date){
   const dow=new Date(date+'T12:00').getDay();
   if(r.escritorio&&cronAtivo(sup)&&sup.cronograma.scrum)return cronScrumDia(sup,date)?{legacy:true,ordem:0,turno:null,scrum:true}:null;
   if(rotaNoCron(sup,r)){
@@ -4610,7 +4645,7 @@ function renderSupervisoresCheckin(){
   if(!checkinSupId||!sups.some(s=>s.id===checkinSupId))checkinSupId=sups[0].id;
   const sup=findSupervisor(checkinSupId);
   const pode=podePreencherCheckin(sup.id);
-  if(!admin||!checkinDate||checkinDate>hoje)checkinDate=hoje;
+  if(!pode||!checkinDate||checkinDate>hoje)checkinDate=hoje;
   const date=checkinDate;
   const dow=new Date(date+'T12:00').getDay();
 
@@ -4622,7 +4657,7 @@ function renderSupervisoresCheckin(){
     selEl.dataset.sig=sig;
   }
   if(selEl&&document.activeElement!==selEl)selEl.value=checkinSupId;
-  document.getElementById('checkin-date-field').style.display=admin?'block':'none';
+  document.getElementById('checkin-date-field').style.display=pode?'block':'none';
   if(dateEl){ dateEl.max=hoje; if(document.activeElement!==dateEl)dateEl.value=date; }
   if(infoEl){
     infoEl.innerHTML=(sups.length===1?'<b style="color:var(--text)">'+supEsc(sup.nome)+'</b> · ':'')+dateFull(date)+(date===hoje?'':' <span class="badge b-warn" style="margin-left:4px">data anterior</span>');
@@ -4656,8 +4691,9 @@ function renderSupervisoresCheckin(){
     let h='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--border)">';
     h+='<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+supEsc(rotaLabel(r))+(r.avulso?' <span class="badge b-warn" style="margin-left:4px">não cadastrado</span>':'')+'</div>';
     const ag=agItem(r);
+    const mvOut=movsDaRota(sup,r).find(m=>m.de===date);
     const agTxt=ag&&!ag.legacy?(ag.ordem+'ª visita do dia'+(visitaTxt(ag)?' · '+visitaTxt(ag):'')):'';
-    h+='<div style="font-size:11px;color:var(--text2)">'+(agTxt?'<b style="color:var(--cyan)">'+supEsc(agTxt)+'</b>':supEsc(rotaDiasTxt(r,sup)))+(end?' · '+supEsc(end):'')+'</div>'+(r.todosPostos?'<div style="font-size:11px;color:var(--cyan);margin-top:2px"><i class="ti ti-route" style="font-size:11px"></i> Passar em todos os postos: '+supEsc(rotaPostosTxt(r)||'nenhum posto cadastrado')+'</div>':'')+'</div>';
+    h+=(mvOut?'<div style="font-size:11px;color:var(--warn);margin-top:1px"><i class="ti ti-calendar-share" style="font-size:11px"></i> Remarcada para '+supEsc(fmtDM(mvOut.para))+(pode?' · <a style="color:var(--red);cursor:pointer" onclick="desfazerMudarDiaDe(\''+sup.id+'\',\''+r.id+'\')">desfazer</a>':'')+'</div>':'')+(ag&&ag.remarcada?'<div style="font-size:11px;color:var(--warn);margin-top:1px"><i class="ti ti-calendar-share" style="font-size:11px"></i> Remarcada de '+supEsc(fmtDM(ag.de))+(pode?' · <a style="color:var(--cyan);cursor:pointer" onclick="abrirMudarDia(\''+sup.id+'\',\''+r.id+'\')">mudar</a> · <a style="color:var(--red);cursor:pointer" onclick="desfazerMudarDia(\''+sup.id+'\',\''+r.id+'\')">desfazer</a>':'')+'</div>':'')+'<div style="font-size:11px;color:var(--text2)">'+(agTxt?'<b style="color:var(--cyan)">'+supEsc(agTxt)+'</b>':supEsc(rotaDiasTxt(r,sup)))+(end?' · '+supEsc(end):'')+'</div>'+(r.todosPostos?'<div style="font-size:11px;color:var(--cyan);margin-top:2px"><i class="ti ti-route" style="font-size:11px"></i> Passar em todos os postos: '+supEsc(rotaPostosTxt(r)||'nenhum posto cadastrado')+'</div>':'')+'</div>';
     if(f){
       h+='<div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><span class="badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)"><i class="ti ti-check" style="font-size:11px"></i> '+(f.hora?supEsc(f.hora):'visitado')+'</span>';
       if(pode)h+='<i class="ti ti-x" title="Desfazer" style="color:var(--red);cursor:pointer;font-size:15px" onclick="excluirCheckin(\''+date+'\',\''+sup.id+'\',\''+f.id+'\')"></i>';
@@ -4667,7 +4703,7 @@ function renderSupervisoresCheckin(){
       if(pode)h+='<span style="font-size:11px"><a style="color:var(--cyan);cursor:pointer" onclick="abrirJustVisita(\''+sup.id+'\',\''+r.id+'\')">editar</a> · <a style="color:var(--red);cursor:pointer" onclick="removerJustVisita(\''+date+'\',\''+sup.id+'\',\''+j.id+'\')">remover</a> · <a style="color:var(--green);cursor:pointer" onclick="registrarCheckin(\''+sup.id+'\',\''+r.id+'\')">registrar visita</a></span>';
       h+='</div>';
     }else if(pode){
-      h+='<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0"><button class="btn btn-purple btn-sm" onclick="registrarCheckin(\''+sup.id+'\',\''+r.id+'\')"><i class="ti ti-map-pin-check"></i> Registrar visita</button><button class="btn btn-sm" style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bd)" onclick="abrirJustVisita(\''+sup.id+'\',\''+r.id+'\')"><i class="ti ti-message-2"></i> Não fui · justificar</button></div>';
+      h+='<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0"><button class="btn btn-purple btn-sm" onclick="registrarCheckin(\''+sup.id+'\',\''+r.id+'\')"><i class="ti ti-map-pin-check"></i> Registrar visita</button><button class="btn btn-sm" style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bd)" onclick="abrirJustVisita(\''+sup.id+'\',\''+r.id+'\')"><i class="ti ti-message-2"></i> Não fui · justificar</button><button class="btn btn-sm" style="background:var(--bg3);color:var(--text2);border:1px solid var(--border)" onclick="abrirMudarDia(\''+sup.id+'\',\''+r.id+'\')"><i class="ti ti-calendar-share"></i> Mudar dia</button></div>';
     }else{
       h+='<span style="font-size:11px;color:var(--text3);flex-shrink:0">Pendente</span>';
     }
@@ -4707,7 +4743,7 @@ function _justMotivoChange(){
 function abrirJustVisita(supervisorId,rotaId){
   if(!podePreencherCheckin(supervisorId)){showToast('Somente o próprio supervisor ou um administrador pode justificar.','err');return;}
   const sup=findSupervisor(supervisorId),r=sup&&(sup.rota||[]).find(x=>x.id===rotaId);if(!r)return;
-  const hoje=today(),date=(ehAdminSup()&&checkinDate&&checkinDate<=hoje)?checkinDate:hoje;
+  const hoje=today(),date=(checkinDate&&checkinDate<=hoje)?checkinDate:hoje;
   const ex=justifsDoDia(date,supervisorId).find(c=>rotaMatchCheckin(r,c));
   _justCtx={supervisorId,rotaId,date,velho:ex?ex.id:null};
   document.getElementById('just-info').innerHTML='<b style="color:var(--text)">'+supEsc(rotaLabel(r))+'</b><br>'+supEsc(dateFull(date))+' · '+supEsc(sup.nome);
@@ -4736,6 +4772,70 @@ async function salvarJustVisita(){
   fecharJustVisita();showToast('Justificativa salva.','ok');
   saveCache();renderSupervisoresCheckin();await pushToCloud();
 }
+let _movCtx=null;
+function abrirMudarDia(supId,rotaId){
+  if(!podePreencherCheckin(supId)){showToast('Sem permissão.','err');return;}
+  const sup=findSupervisor(supId),r=sup&&(sup.rota||[]).find(x=>x.id===rotaId);if(!r)return;
+  const date=(checkinDate&&checkinDate<=today())?checkinDate:today();
+  const ag=agendaItem(sup,r,date);
+  const orig=ag&&ag.remarcada?movsDaRota(sup,r).find(m=>m.id===ag.movId):null;
+  const de=orig?orig.de:date;
+  if(!orig&&(checkinsDoDia(date,supId).some(c=>rotaMatchCheckin(r,c))||justifsDoDia(date,supId).some(c=>rotaMatchCheckin(r,c)))){
+    showToast('Esta visita já tem registro neste dia. Desfaça o registro antes de mudar o dia.','warn');return;
+  }
+  _movCtx={supId,rotaId,de,velho:orig?orig.id:null};
+  document.getElementById('mov-info').innerHTML='<b style="color:var(--text)">'+supEsc(rotaLabel(r))+'</b><br>Dia original: '+supEsc(dateFull(de))+' · '+supEsc(sup.nome);
+  const inp=document.getElementById('mov-para');
+  inp.value=orig?orig.para:'';
+  document.getElementById('mov-motivo').value=orig?(orig.motivo||''):'';
+  _movParaChange();
+  document.getElementById('mov-modal').style.display='flex';
+}
+function fecharMudarDia(){document.getElementById('mov-modal').style.display='none';_movCtx=null;}
+function _movParaChange(){
+  const v=document.getElementById('mov-para').value;
+  document.getElementById('mov-dow').textContent=v?new Date(v+'T12:00').toLocaleDateString('pt-BR',{weekday:'long'}):'';
+}
+async function salvarMudarDia(){
+  const c=_movCtx;if(!c)return;
+  if(!podePreencherCheckin(c.supId)){showToast('Sem permissão.','err');return;}
+  const sup=findSupervisor(c.supId),r=sup&&(sup.rota||[]).find(x=>x.id===c.rotaId);if(!r)return;
+  const para=document.getElementById('mov-para').value,motivo=document.getElementById('mov-motivo').value.trim();
+  if(!para){showToast('Escolha o novo dia.','warn');return;}
+  if(para===c.de){showToast('Escolha um dia diferente do original.','warn');return;}
+  if(!state.checkins)state.checkins={};
+  if(!state.checkins[c.de])state.checkins[c.de]={};
+  if(!state.checkins[c.de][c.supId])state.checkins[c.de][c.supId]=[];
+  if(c.velho){
+    state.checkins[c.de][c.supId]=state.checkins[c.de][c.supId].filter(x=>x.id!==c.velho);
+    addPendingCheckinDelete(c.de,c.supId,c.velho);
+  }
+  state.checkins[c.de][c.supId].push({id:uid(),mov:true,rotaId:r.id,para,motivo,por:currentUser?currentUser.user:'?',ts:new Date().toISOString()});
+  fecharMudarDia();showToast('Visita remarcada para '+fmtDM(para)+'.','ok');
+  saveCache();renderSupervisoresCheckin();await pushToCloud();
+}
+async function desfazerMudarDiaDe(supId,rotaId){
+  if(!podePreencherCheckin(supId)){showToast('Sem permissão.','err');return;}
+  const sup=findSupervisor(supId),r=sup&&(sup.rota||[]).find(x=>x.id===rotaId);if(!r)return;
+  const date=(checkinDate&&checkinDate<=today())?checkinDate:today();
+  const mv=movsDaRota(sup,r).find(m=>m.de===date);if(!mv)return;
+  state.checkins[mv.de][supId]=(state.checkins[mv.de][supId]||[]).filter(x=>x.id!==mv.id);
+  addPendingCheckinDelete(mv.de,supId,mv.id);
+  showToast('Remarcação desfeita.','ok');
+  saveCache();renderSupervisoresCheckin();await pushToCloud();
+}
+async function desfazerMudarDia(supId,rotaId){
+  if(!podePreencherCheckin(supId)){showToast('Sem permissão.','err');return;}
+  const sup=findSupervisor(supId),r=sup&&(sup.rota||[]).find(x=>x.id===rotaId);if(!r)return;
+  const date=(checkinDate&&checkinDate<=today())?checkinDate:today();
+  const ag=agendaItem(sup,r,date);if(!ag||!ag.remarcada)return;
+  const mv=movsDaRota(sup,r).find(m=>m.id===ag.movId);if(!mv)return;
+  if(!confirm('Voltar esta visita para o dia original ('+fmtDM(mv.de)+')?'))return;
+  state.checkins[mv.de][supId]=(state.checkins[mv.de][supId]||[]).filter(x=>x.id!==mv.id);
+  addPendingCheckinDelete(mv.de,supId,mv.id);
+  showToast('Remarcação desfeita.','ok');
+  saveCache();renderSupervisoresCheckin();await pushToCloud();
+}
 async function removerJustVisita(date,supervisorId,id){
   if(!podePreencherCheckin(supervisorId)){showToast('Sem permissão.','err');return;}
   if(!confirm('Remover esta justificativa?'))return;
@@ -4752,7 +4852,7 @@ async function registrarCheckin(supervisorId,rotaId){
   const r=(sup.rota||[]).find(x=>x.id===rotaId);
   if(!r)return;
   const hoje=today();
-  const date=(ehAdminSup()&&checkinDate&&checkinDate<=hoje)?checkinDate:hoje;
+  const date=(checkinDate&&checkinDate<=hoje)?checkinDate:hoje;
   if(!state.checkins)state.checkins={};
   if(!state.checkins[date])state.checkins[date]={};
   if(!state.checkins[date][supervisorId])state.checkins[date][supervisorId]=[];

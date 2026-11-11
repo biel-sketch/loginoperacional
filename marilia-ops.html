@@ -247,6 +247,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .crono-chip.extra{border-style:dashed;color:var(--text2)}
 .crono-chip.futuro{color:var(--text2)}
 .crono-vazio{font-size:10px;color:var(--text3)}
+.crono-chip{position:relative}
+.crono-acts{margin-left:auto;display:flex;gap:8px;align-items:center;flex-shrink:0;padding-left:6px}
+.crono-acts i{font-size:14px;color:var(--text2);cursor:pointer;margin:0!important}
+.crono-acts i:hover{color:var(--cyan)}
+.crono-add{font-size:13px;color:var(--cyan);cursor:pointer;margin-left:4px;padding:2px}
 .crono-legenda{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text2);margin-bottom:12px}
 .crono-legenda span{display:flex;align-items:center;gap:5px}
 .crono-legenda b{width:10px;height:10px;border-radius:3px;display:inline-block}
@@ -255,11 +260,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 @media(max-width:768px){
   .crono-kpis{grid-template-columns:repeat(2,1fr);gap:8px}
   .crono-grid{grid-template-columns:1fr}
-  .crono-day{min-height:0;flex-direction:row;align-items:flex-start}
-  .crono-day-h{width:78px;flex-shrink:0;flex-direction:column;gap:1px}
-  .crono-day.vazio{padding:5px 8px;align-items:center;opacity:.7}
-  .crono-day.vazio .crono-day-h{flex-direction:row;width:auto;gap:8px}
-  .crono-day{padding:8px}
+  .crono-day{min-height:0;flex-direction:column;align-items:stretch;padding:8px 10px;gap:7px}
+  .crono-day-h{width:auto;flex-direction:row;justify-content:space-between;font-size:11px}
+  .crono-day-h .crono-add{font-size:18px;padding:4px 6px}
+  .crono-acts i{font-size:18px;padding:3px}
+  .crono-day.vazio{padding:6px 10px;opacity:.7}
+  .crono-chip{font-size:12px}
   .crono-sup .card-title{font-size:14px}
   .sidebar{display:none!important}
   .main-content{width:100%}
@@ -838,6 +844,17 @@ const LOGO_B64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABHEAAAMGCAYAAAB1aB
     <div class="modal-btns">
       <button class="modal-btn-ghost" onclick="fecharJustVisita()">Cancelar</button>
       <button class="modal-btn-primary" onclick="salvarJustVisita()"><i class="ti ti-check" style="font-size:14px"></i> Salvar justificativa</button>
+    </div>
+  </div>
+</div>
+<div id="cadd-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharAddVisita()">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-plus" style="color:var(--cyan)"></i>Incluir visita no dia</div>
+    <div id="cadd-info" style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5"></div>
+    <div class="field"><label>Cliente</label><select id="cadd-sel"></select></div>
+    <div class="modal-btns">
+      <button class="modal-btn-ghost" onclick="fecharAddVisita()">Cancelar</button>
+      <button class="modal-btn-primary" onclick="salvarAddVisita()"><i class="ti ti-check" style="font-size:14px"></i> Incluir</button>
     </div>
   </div>
 </div>
@@ -1772,11 +1789,11 @@ function launchApp(){
 }
 // Supervisor enxerga todas as telas do sistema; o que fica restrito é o cronograma, as
 // rotas e o checklist dos OUTROS supervisores (ver supervisoresVisiveis()).
-// Modo "só cronograma": desativa o registro de presença (Dashboard, Presença, Histórico, Absenteísmo)
-// e o checklist/métricas/relatório de visitas. Para reativar tudo, troque para false.
+// Modo "só supervisores": desativa as telas de presença (Dashboard, Presença, Histórico, Absenteísmo, Equipe).
+// A aba Supervisores fica completa. Para reativar tudo, troque para false.
 const SO_CRONOGRAMA=true;
 const TELAS_OFF=['dashboard','presenca','historico','absenteismo','equipe'];
-const SV_OFF=['checkin','metricas','relatorio'];
+const SV_OFF=[];
 function aplicarPermissoesNav(){
   document.querySelectorAll('.snav-item,.bn').forEach(b=>{ b.style.display=''; });
   if(!SO_CRONOGRAMA)return;
@@ -3416,7 +3433,7 @@ function movIdx(){
   if(_movRef===state.checkins&&_movV===_ckV)return _movMap;
   const m={};
   Object.entries(state.checkins||{}).forEach(([d,bySup])=>Object.entries(bySup||{}).forEach(([sid,l])=>(l||[]).forEach(c=>{
-    if(c&&c.mov&&c.rotaId&&c.para){ const k=sid+'|'+c.rotaId; (m[k]=m[k]||[]).push({id:c.id,de:d,para:c.para,motivo:c.motivo,por:c.por}); }
+    if(c&&c.mov&&c.rotaId&&(c.para||c.rem)){ const k=sid+'|'+c.rotaId; (m[k]=m[k]||[]).push({id:c.id,de:c.add?'':d,para:c.rem?'':c.para,rem:!!c.rem,add:!!c.add,motivo:c.motivo,por:c.por,chave:d}); }
   })));
   _movRef=state.checkins;_movV=_ckV;_movMap=m;return m;
 }
@@ -3426,7 +3443,10 @@ function agendaItem(sup,r,date){
   if(ms.length){
     if(ms.some(m=>m.de===date))return null;
     const mv=ms.find(m=>m.para===date);
-    if(mv){ const b=agendaItemBase(sup,r,mv.de); return Object.assign({},b||{legacy:true,ordem:98,turno:null},{remarcada:true,de:mv.de,movId:mv.id}); }
+    if(mv){
+      if(mv.add){ const b=agendaItemBase(sup,r,date); return Object.assign({},b||{legacy:true,ordem:98,turno:null},{extra:true,movId:mv.id}); }
+      const b=agendaItemBase(sup,r,mv.de); return Object.assign({},b||{legacy:true,ordem:98,turno:null},{remarcada:true,de:mv.de,movId:mv.id});
+    }
   }
   return agendaItemBase(sup,r,date);
 }
@@ -3440,7 +3460,7 @@ function agendaItemBase(sup,r,date){
   return (r.dias&&r.dias.includes(dow)&&!rotaAlguns(r)&&!r.freqCiclo)?{legacy:true,ordem:99,turno:null}:null;
 }
 function previstoSemanaRota(sup,r,dates){
-  return rotaProgramada(sup,r)?dates.filter(d=>!!agendaItem(sup,r,d)).length:(Number(r.frequenciaSemanal)||0);
+  return (rotaProgramada(sup,r)||movsDaRota(sup,r).length)?dates.filter(d=>!!agendaItem(sup,r,d)).length:(Number(r.frequenciaSemanal)||0);
 }
 function rotaPrevistoMedio(sup,r){
   if(rotaNoCron(sup,r))return sup.cronograma.itens.filter(i=>i.rotaId===r.id).length/(sup.cronograma.semanas||4);
@@ -4029,7 +4049,7 @@ function cronoCalc(sup,dates,hoje){
   let previstas=0,cumpridas=0,perdidas=0,hojePend=0;
   const semFixo=[];
   (sup.rota||[]).forEach(r=>{
-    const fixo=rotaProgramada(sup,r);
+    const fixo=rotaProgramada(sup,r)||movsDaRota(sup,r).length>0;
     const previsto=previstoSemanaRota(sup,r,dates);
     let realizado=0,perdidasItem=0,extrasItem=0;
     dates.forEach(d=>{
@@ -4069,7 +4089,7 @@ function grupoParceiros(r){
   }
   return [];
 }
-function cronoChip(it){
+function cronoChip(it,sup,d){
   const r=it.r;
   const sub=[];
   if(it.ag&&!it.ag.legacy){const v=visitaCurto(it.ag);if(v)sub.push(v);}
@@ -4082,7 +4102,7 @@ function cronoChip(it){
   { const gp=grupoParceiros(r); if(gp.length)sub.push('junto com '+gp.join(', ')); }
   const end=rotaEnderecoTxt(r);
   const stx=it.st;
-  return '<div class="crono-chip '+stx+'" title="'+supEsc(rotaLabel(r)+(end?' — '+end:''))+'"><i class="ti '+CRONO_ICONE[it.st]+'"></i><div><div>'+(it.ag&&!it.ag.legacy?it.ag.ordem+'. ':'')+supEsc(rotaLabel(r))+'</div>'+(sub.length?'<small>'+supEsc(sub.join(' · '))+'</small>':'')+'</div></div>';
+  return '<div class="crono-chip '+stx+'" title="'+supEsc(rotaLabel(r)+(end?' — '+end:''))+'"><i class="ti '+CRONO_ICONE[it.st]+'"></i><div><div>'+(it.ag&&!it.ag.legacy?it.ag.ordem+'. ':'')+supEsc(rotaLabel(r))+'</div>'+(sub.length?'<small>'+supEsc(sub.join(' · '))+'</small>':'')+'</div>'+((sup&&d&&podeEditarSupervisores())?'<span class="crono-acts"><i class="ti ti-calendar-share" title="Mudar o dia" onclick="event.stopPropagation();abrirMudarDia(\''+sup.id+'\',\''+r.id+'\',\''+d+'\')"></i><i class="ti ti-trash" title="Tirar da semana" onclick="event.stopPropagation();cronoRemoverVisita(\''+sup.id+'\',\''+r.id+'\',\''+d+'\')"></i></span>':'')+'</div>';
 }
 function renderSupervisoresCrono(){
   const cont=document.getElementById('supervisores-crono-content');if(!cont)return;
@@ -4148,13 +4168,13 @@ function renderSupervisoresCrono(){
       const dow=new Date(d+'T12:00').getDay();
       const itens=c.porDia[d];
       html+='<div class="crono-day'+(d===hoje?' hoje':'')+((dow===0||dow===6)?' fds':'')+(!itens.length&&!cronDiaExp(sup,d)&&!cronScrumDia(sup,d)?' vazio':'')+'">';
-      html+='<div class="crono-day-h"><span>'+DIAS_CURTO[dow]+'</span><span>'+d.slice(8)+'/'+d.slice(5,7)+'</span></div>';
+      html+='<div class="crono-day-h"><span>'+DIAS_CURTO[dow]+'</span><span>'+d.slice(8)+'/'+d.slice(5,7)+(podeEditarSupervisores()?' <i class="ti ti-plus crono-add" title="Incluir visita neste dia" onclick="abrirAddVisita(\''+sup.id+'\',\''+d+'\')"></i>':'')+'</span></div>';
       const ex=cronDiaExp(sup,d);
       if(ex)html+='<div style="font-size:9px;color:'+(ex.noturno?'var(--warn)':'var(--text3)')+';padding:0 2px 5px;line-height:1.35">'+supEsc(expTxt(ex))+'</div>';
       const scd=cronScrumDia(sup,d);
       if(ex||scd)html+=cronBarra(sup,ex,itens,scd);
       if(scd)html+='<div class="crono-chip" style="border-style:dashed" title="'+supEsc(scrumTxt(scd))+'"><i class="ti ti-users"></i><div><div>Daily scrum</div><small>'+_fmtMin(scd.ini)+' · escritório</small></div></div>';
-      html+='<div class="crono-chips">'+(itens.length?itens.map(cronoChip).join(''):'<span class="crono-vazio">—</span>')+'</div></div>';
+      html+='<div class="crono-chips">'+(itens.length?itens.map(it=>cronoChip(it,sup,d)).join(''):'<span class="crono-vazio">—</span>')+'</div></div>';
     });
     html+='</div>';
     if(c.semFixo.length){
@@ -4707,7 +4727,7 @@ function renderSupervisoresCheckin(){
     let h='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--border)">';
     h+='<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+supEsc(rotaLabel(r))+(r.avulso?' <span class="badge b-warn" style="margin-left:4px">não cadastrado</span>':'')+'</div>';
     const ag=agItem(r);
-    const mvOut=movsDaRota(sup,r).find(m=>m.de===date);
+    const mvOut=movsDaRota(sup,r).find(m=>m.de===date&&!m.rem);
     const agTxt=ag&&!ag.legacy?(ag.ordem+'ª visita do dia'+(visitaTxt(ag)?' · '+visitaTxt(ag):'')):'';
     h+=(mvOut?'<div style="font-size:11px;color:var(--warn);margin-top:1px"><i class="ti ti-calendar-share" style="font-size:11px"></i> Remarcada para '+supEsc(fmtDM(mvOut.para))+(pode?' · <a style="color:var(--red);cursor:pointer" onclick="desfazerMudarDiaDe(\''+sup.id+'\',\''+r.id+'\')">desfazer</a>':'')+'</div>':'')+(ag&&ag.remarcada?'<div style="font-size:11px;color:var(--warn);margin-top:1px"><i class="ti ti-calendar-share" style="font-size:11px"></i> Remarcada de '+supEsc(fmtDM(ag.de))+(pode?' · <a style="color:var(--cyan);cursor:pointer" onclick="abrirMudarDia(\''+sup.id+'\',\''+r.id+'\')">mudar</a> · <a style="color:var(--red);cursor:pointer" onclick="desfazerMudarDia(\''+sup.id+'\',\''+r.id+'\')">desfazer</a>':'')+'</div>':'')+'<div style="font-size:11px;color:var(--text2)">'+(agTxt?'<b style="color:var(--cyan)">'+supEsc(agTxt)+'</b>':supEsc(rotaDiasTxt(r,sup)))+(end?' · '+supEsc(end):'')+'</div>'+(r.todosPostos?'<div style="font-size:11px;color:var(--cyan);margin-top:2px"><i class="ti ti-route" style="font-size:11px"></i> Passar em todos os postos: '+supEsc(rotaPostosTxt(r)||'nenhum posto cadastrado')+'</div>':'')+'</div>';
     if(f){
@@ -4788,14 +4808,65 @@ async function salvarJustVisita(){
   fecharJustVisita();showToast('Justificativa salva.','ok');
   saveCache();renderSupervisoresCheckin();await pushToCloud();
 }
+async function cronoRemoverVisita(supId,rotaId,date){
+  if(!podeEditarSupervisores()){showToast('Sem permissão.','err');return;}
+  const sup=findSupervisor(supId),r=sup&&(sup.rota||[]).find(x=>x.id===rotaId);if(!r)return;
+  const ag=agendaItem(sup,r,date);if(!ag)return;
+  if(checkinsDoDia(date,supId).some(c=>rotaMatchCheckin(r,c))){showToast('Esta visita já foi registrada neste dia. Desfaça o registro no Checklist antes.','warn');return;}
+  if(!confirm('Tirar "'+rotaLabel(r)+'" do dia '+fmtDM(date)+'? (vale só para esta data; o rodízio não muda)'))return;
+  const L=((state.checkins[date]||{})[supId])||[];
+  if(ag.extra){
+    state.checkins[date][supId]=L.filter(x=>x.id!==ag.movId);addPendingCheckinDelete(date,supId,ag.movId);
+  }else{
+    if(ag.remarcada){
+      const mv=movsDaRota(sup,r).find(m=>m.id===ag.movId);
+      if(mv){state.checkins[mv.chave][supId]=(state.checkins[mv.chave][supId]||[]).filter(x=>x.id!==mv.id);addPendingCheckinDelete(mv.chave,supId,mv.id);}
+      date=ag.de;
+    }
+    if(!state.checkins[date])state.checkins[date]={};
+    if(!state.checkins[date][supId])state.checkins[date][supId]=[];
+    state.checkins[date][supId].push({id:uid(),mov:true,rem:true,rotaId:r.id,por:currentUser?currentUser.user:'?',ts:new Date().toISOString()});
+  }
+  showToast('Visita retirada.','ok');
+  saveCache();setSupervisoresView(supervisoresView);await pushToCloud();
+}
+let _addCtx=null;
+function abrirAddVisita(supId,date){
+  if(!podeEditarSupervisores()){showToast('Sem permissão.','err');return;}
+  const sup=findSupervisor(supId);if(!sup)return;
+  const livres=(sup.rota||[]).filter(r=>!agendaItem(sup,r,date));
+  if(!livres.length){showToast('Todos os clientes da rota já estão neste dia.','warn');return;}
+  _addCtx={supId,date};
+  document.getElementById('cadd-info').innerHTML='<b style="color:var(--text)">'+supEsc(sup.nome)+'</b><br>'+supEsc(dateFull(date));
+  document.getElementById('cadd-sel').innerHTML=livres.map(r=>'<option value="'+r.id+'">'+supEsc(rotaLabel(r))+'</option>').join('');
+  document.getElementById('cadd-modal').style.display='flex';
+}
+function fecharAddVisita(){document.getElementById('cadd-modal').style.display='none';_addCtx=null;}
+async function salvarAddVisita(){
+  const c=_addCtx;if(!c)return;
+  if(!podeEditarSupervisores()){showToast('Sem permissão.','err');return;}
+  const rotaId=document.getElementById('cadd-sel').value;if(!rotaId)return;
+  const sup=findSupervisor(c.supId),r=sup&&(sup.rota||[]).find(x=>x.id===rotaId);if(!r)return;
+  if(!state.checkins)state.checkins={};
+  if(!state.checkins[c.date])state.checkins[c.date]={};
+  if(!state.checkins[c.date][c.supId])state.checkins[c.date][c.supId]=[];
+  // se havia uma retirada para este cliente neste dia, apenas a desfaz
+  const L=state.checkins[c.date][c.supId];
+  const rem=L.filter(x=>x.mov&&x.rem&&x.rotaId===r.id);
+  if(rem.length){ rem.forEach(x=>addPendingCheckinDelete(c.date,c.supId,x.id)); state.checkins[c.date][c.supId]=L.filter(x=>!(x.mov&&x.rem&&x.rotaId===r.id)); }
+  if(!agendaItem(sup,r,c.date))state.checkins[c.date][c.supId].push({id:uid(),mov:true,add:true,rotaId:r.id,para:c.date,por:currentUser?currentUser.user:'?',ts:new Date().toISOString()});
+  fecharAddVisita();showToast('Visita incluída.','ok');
+  saveCache();setSupervisoresView(supervisoresView);await pushToCloud();
+}
 let _movCtx=null;
-function abrirMudarDia(supId,rotaId){
+function abrirMudarDia(supId,rotaId,dataRef){
   if(!podePreencherCheckin(supId)){showToast('Sem permissão.','err');return;}
   const sup=findSupervisor(supId),r=sup&&(sup.rota||[]).find(x=>x.id===rotaId);if(!r)return;
-  const date=(checkinDate&&checkinDate<=today())?checkinDate:today();
+  const date=dataRef||((checkinDate&&checkinDate<=today())?checkinDate:today());
   const ag=agendaItem(sup,r,date);
   const orig=ag&&ag.remarcada?movsDaRota(sup,r).find(m=>m.id===ag.movId):null;
   const de=orig?orig.de:date;
+  if(ag&&ag.extra){showToast('Visita incluída avulsa: tire-a da semana e inclua no dia desejado.','warn');return;}
   if(!orig&&(checkinsDoDia(date,supId).some(c=>rotaMatchCheckin(r,c))||justifsDoDia(date,supId).some(c=>rotaMatchCheckin(r,c)))){
     showToast('Esta visita já tem registro neste dia. Desfaça o registro antes de mudar o dia.','warn');return;
   }
@@ -4828,7 +4899,7 @@ async function salvarMudarDia(){
   }
   state.checkins[c.de][c.supId].push({id:uid(),mov:true,rotaId:r.id,para,motivo,por:currentUser?currentUser.user:'?',ts:new Date().toISOString()});
   fecharMudarDia();showToast('Visita remarcada para '+fmtDM(para)+'.','ok');
-  saveCache();renderSupervisoresCheckin();await pushToCloud();
+  saveCache();setSupervisoresView(supervisoresView);await pushToCloud();
 }
 async function desfazerMudarDiaDe(supId,rotaId){
   if(!podePreencherCheckin(supId)){showToast('Sem permissão.','err');return;}
@@ -4838,7 +4909,7 @@ async function desfazerMudarDiaDe(supId,rotaId){
   state.checkins[mv.de][supId]=(state.checkins[mv.de][supId]||[]).filter(x=>x.id!==mv.id);
   addPendingCheckinDelete(mv.de,supId,mv.id);
   showToast('Remarcação desfeita.','ok');
-  saveCache();renderSupervisoresCheckin();await pushToCloud();
+  saveCache();setSupervisoresView(supervisoresView);await pushToCloud();
 }
 async function desfazerMudarDia(supId,rotaId){
   if(!podePreencherCheckin(supId)){showToast('Sem permissão.','err');return;}
@@ -4850,7 +4921,7 @@ async function desfazerMudarDia(supId,rotaId){
   state.checkins[mv.de][supId]=(state.checkins[mv.de][supId]||[]).filter(x=>x.id!==mv.id);
   addPendingCheckinDelete(mv.de,supId,mv.id);
   showToast('Remarcação desfeita.','ok');
-  saveCache();renderSupervisoresCheckin();await pushToCloud();
+  saveCache();setSupervisoresView(supervisoresView);await pushToCloud();
 }
 async function removerJustVisita(date,supervisorId,id){
   if(!podePreencherCheckin(supervisorId)){showToast('Sem permissão.','err');return;}

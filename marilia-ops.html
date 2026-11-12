@@ -243,7 +243,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .crono-chip small{display:block;font-size:9px;opacity:.85;margin-top:1px}
 .crono-chip.feito{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}
 .crono-chip.hoje{background:var(--cyan-bg);border-color:var(--cyan-bd);color:var(--cyan)}
-.crono-chip.perdida{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}
+.crono-chip.perdida,.crono-chip.reprov{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}
+.crono-chip.aprovada{background:var(--blue-bg);border-color:var(--blue-bd);color:#6ea8ff}
+.crono-chip.justif{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}
 .crono-chip.extra{border-style:dashed;color:var(--text2)}
 .crono-chip.futuro{color:var(--text2)}
 .crono-vazio{font-size:10px;color:var(--text3)}
@@ -4051,14 +4053,17 @@ function cronoCalc(sup,dates,hoje){
   (sup.rota||[]).forEach(r=>{
     const fixo=rotaProgramada(sup,r)||movsDaRota(sup,r).length>0;
     const previsto=previstoSemanaRota(sup,r,dates);
-    let realizado=0,perdidasItem=0,extrasItem=0;
+    let realizado=0,perdidasItem=0,extrasItem=0,aprItem=0;
     dates.forEach(d=>{
       const feitos=checkinsDoDia(d,sup.id).filter(c=>rotaMatchCheckin(r,c));
       realizado+=feitos.length;
       const ag=fixo?agendaItem(sup,r,d):null;
       if(ag){
-        const st=feitos.length?'feito':(d>hoje?'futuro':(d===hoje?'hoje':'perdida'));
-        if(st==='perdida')perdidasItem++;
+        const jj=(!feitos.length&&d<=hoje)?justifsDoDia(d,sup.id).find(c=>rotaMatchCheckin(r,c)):null;
+        let st=feitos.length?'feito':(d>hoje?'futuro':(d===hoje?'hoje':'perdida'));
+        if(jj)st=jj.apr==='a'?'aprovada':(jj.apr==='r'?'reprov':'justif');
+        if(st==='aprovada')aprItem++;
+        if(st==='perdida'||st==='reprov'||st==='justif')perdidasItem++;
         if(st==='hoje')hojePend++;
         porDia[d].push({r,st,ag,hora:feitos.length?feitos[0].hora:''});
       }else if(feitos.length){
@@ -4067,7 +4072,7 @@ function cronoCalc(sup,dates,hoje){
       }
     });
     previstas+=previsto;
-    cumpridas+=Math.min(realizado,previsto);
+    cumpridas+=Math.min(realizado+aprItem,previsto);
     if(fixo){
       // visita feita fora do dia previsto "cobre" um dia não visitado da mesma semana
       perdidas+=Math.max(0,perdidasItem-extrasItem);
@@ -4080,7 +4085,7 @@ function cronoCalc(sup,dates,hoje){
   return {previstas,cumpridas,perdidas,hojePend,porDia,semFixo};
 }
 
-const CRONO_ICONE={feito:'ti-circle-check',hoje:'ti-clock',perdida:'ti-circle-x',futuro:'ti-circle-dashed',extra:'ti-plus'};
+const CRONO_ICONE={feito:'ti-circle-check',hoje:'ti-clock',perdida:'ti-circle-x',futuro:'ti-circle-dashed',extra:'ti-plus',aprovada:'ti-shield-check',justif:'ti-message-2',reprov:'ti-circle-x'};
 // Quem é visitado junto com este cliente (mesmo grupo), de qualquer supervisor
 function grupoParceiros(r){
   if(!r||!r.grupoDia)return [];
@@ -4096,6 +4101,9 @@ function cronoChip(it,sup,d){
   if(it.st==='feito')sub.push(it.hora?'visitado '+it.hora:'visitado');
   else if(it.st==='hoje')sub.push('pendente hoje');
   else if(it.st==='perdida')sub.push('não visitado');
+  else if(it.st==='aprovada')sub.push('justificativa aprovada');
+  else if(it.st==='justif')sub.push('justificada · aguarda aprovação');
+  else if(it.st==='reprov')sub.push('justificativa reprovada');
   else if(it.st==='extra')sub.push(it.hora?'fora do dia · '+it.hora:'fora do dia previsto');
   if(r.avulso)sub.push('não cadastrado');
   if(r.diaInteiro)sub.push('dia inteiro');
@@ -4146,7 +4154,9 @@ function renderSupervisoresCrono(){
   html+='<div class="crono-legenda">'+
     '<span><b style="background:var(--green)"></b>Visitado</span>'+
     '<span><b style="background:var(--cyan)"></b>Pendente hoje</span>'+
-    '<span><b style="background:var(--red)"></b>Não visitado no dia</span>'+
+    '<span><b style="background:var(--red)"></b>Não visitado / justificativa reprovada</span>'+
+    '<span><b style="background:var(--blue2)"></b>Justificativa aprovada (conta como visita)</span>'+
+    '<span><b style="background:var(--warn)"></b>Justificada, aguardando aprovação</span>'+
     '<span><b style="background:var(--text3)"></b>Previsto (futuro)</span>'+
     '<span><b style="border:1px dashed var(--text2)"></b>Visita fora do dia previsto</span>'+
     '</div>';
@@ -4735,7 +4745,7 @@ function renderSupervisoresCheckin(){
       if(pode)h+='<i class="ti ti-x" title="Desfazer" style="color:var(--red);cursor:pointer;font-size:15px" onclick="excluirCheckin(\''+date+'\',\''+sup.id+'\',\''+f.id+'\')"></i>';
       h+='</div>';
     }else if(j){
-      h+='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;max-width:52%"><span class="badge b-warn"><i class="ti ti-message-2" style="font-size:11px"></i> Justificada</span><span style="font-size:11px;color:var(--text2);text-align:right;line-height:1.35">'+supEsc(j.motivo||'')+(j.det?' — '+supEsc(j.det):'')+'</span>';
+      h+='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;max-width:52%"><span class="badge b-warn"><i class="ti ti-message-2" style="font-size:11px"></i> '+(j.apr==='a'?'Justificativa aprovada':j.apr==='r'?'Justificativa reprovada':'Justificada · aguarda aprovação')+'</span><span style="font-size:11px;color:var(--text2);text-align:right;line-height:1.35">'+supEsc(j.motivo||'')+(j.det?' — '+supEsc(j.det):'')+'</span>';
       if(pode)h+='<span style="font-size:11px"><a style="color:var(--cyan);cursor:pointer" onclick="abrirJustVisita(\''+sup.id+'\',\''+r.id+'\')">editar</a> · <a style="color:var(--red);cursor:pointer" onclick="removerJustVisita(\''+date+'\',\''+sup.id+'\',\''+j.id+'\')">remover</a> · <a style="color:var(--green);cursor:pointer" onclick="registrarCheckin(\''+sup.id+'\',\''+r.id+'\')">registrar visita</a></span>';
       h+='</div>';
     }else if(pode){
@@ -5002,14 +5012,15 @@ function renderSupervisoresMetricas(){
     rota.forEach(r=>{
       const label=rotaLabel(r);
       const previsto=previstoSemanaRota(sup,r,dates);
-      let realizado=0;
-      dates.forEach(d=>{ realizado+=checkinsDoDia(d,sup.id).filter(c=>rotaMatchCheckin(r,c)).length; });
+      let realizado=0,aprov=0;
+      dates.forEach(d=>{ realizado+=checkinsDoDia(d,sup.id).filter(c=>rotaMatchCheckin(r,c)).length; aprov+=justifsDoDia(d,sup.id).filter(c=>c.apr==='a'&&rotaMatchCheckin(r,c)).length; });
+      const realReg=realizado; realizado=Math.min(realizado+aprov,Math.max(previsto,realizado));
       previstoTotal+=previsto;realizadoTotal+=Math.min(realizado,previsto);
       const pct=previsto?Math.min(100,Math.round(realizado/previsto*100)):100;
       const atrasado=semanaPassou&&realizado<previsto;
       const cor=atrasado?'var(--red)':(pct>=100?'var(--green)':'var(--warn)');
       linhas+='<div style="padding:8px 0;border-top:1px solid var(--border)">';
-      linhas+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>'+supEsc(label)+(r.avulso?' <span style="font-size:9px;color:var(--text3)">(não cadastrado)</span>':'')+'</span><span style="color:'+cor+';font-weight:700">'+realizado+' / '+previsto+(atrasado?' · em atraso':'')+'</span></div>';
+      linhas+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>'+supEsc(label)+(r.avulso?' <span style="font-size:9px;color:var(--text3)">(não cadastrado)</span>':'')+'</span><span style="color:'+cor+';font-weight:700">'+realizado+' / '+previsto+(aprov?' · '+aprov+' justif. aprovada(s)':'')+(atrasado?' · em atraso':'')+'</span></div>';
       linhas+='<div style="background:var(--bg3);border-radius:6px;height:6px;overflow:hidden"><div style="background:'+cor+';width:'+pct+'%;height:100%"></div></div>';
       linhas+='</div>';
     });
@@ -5042,18 +5053,49 @@ function relDados(mes){
       const prev=prog?dates.filter(d=>!!agendaItem(sup,r,d)).length:Math.round((Number(r.frequenciaSemanal)||0)*uteis/5);
       let real=0;const just=[];
       dates.forEach(d=>{real+=checkinsDoDia(d,sup.id).filter(c=>rotaMatchCheckin(r,c)).length;justifsDoDia(d,sup.id).filter(c=>rotaMatchCheckin(r,c)).forEach(c=>just.push({d,c}));});
-      const faltou=Math.max(0,prev-real),jc=Math.min(just.length,faltou);
-      return{r,label:rotaLabel(r),prev,real,realC:Math.min(real,prev),just,jc,sem:faltou-jc,pct:prev?Math.round(Math.min(real,prev)/prev*100):null};
+      const faltou=Math.max(0,prev-real);
+      const nA=just.filter(j=>j.c.apr==='a').length,nR=just.filter(j=>j.c.apr==='r').length,nP=just.length-nA-nR;
+      const ap=Math.min(nA,faltou),pe=Math.min(nP,faltou-ap),rj=Math.min(nR,faltou-ap-pe),sem=faltou-ap-pe-rj;
+      const realC=Math.min(real,prev);
+      return{r,label:rotaLabel(r),prev,real,realC,just,ap,pe,rj,sem,pct:prev?Math.round((realC+ap)/prev*100):null};
     }).filter(l=>l.prev||l.real||l.just.length);
-    const T=linhas.reduce((t,l)=>({prev:t.prev+l.prev,real:t.real+l.realC,jc:t.jc+l.jc,sem:t.sem+l.sem}),{prev:0,real:0,jc:0,sem:0});
-    const lista=[];linhas.forEach(l=>l.just.forEach(j=>lista.push({d:j.d,label:l.label,motivo:j.c.motivo||'',det:j.c.det||'',por:j.c.por||''})));
+    const T=linhas.reduce((t,l)=>({prev:t.prev+l.prev,real:t.real+l.realC,ap:t.ap+l.ap,pe:t.pe+l.pe,rj:t.rj+l.rj,sem:t.sem+l.sem}),{prev:0,real:0,ap:0,pe:0,rj:0,sem:0});
+    const lista=[];linhas.forEach(l=>l.just.forEach(j=>lista.push({d:j.d,id:j.c.id,supId:sup.id,label:l.label,motivo:j.c.motivo||'',det:j.c.det||'',por:j.c.por||'',apr:j.c.apr||'',aprPor:j.c.aprPor||'',aprTs:j.c.aprTs||''})));
     lista.sort((a,b)=>a.d.localeCompare(b.d));
-    return{sup,linhas,T,pct:T.prev?Math.round(T.real/T.prev*100):null,lista};
+    return{sup,linhas,T,pct:T.prev?Math.round((T.real+T.ap)/T.prev*100):null,lista};
   });
-  const G=sups.reduce((t,x)=>({prev:t.prev+x.T.prev,real:t.real+x.T.real,jc:t.jc+x.T.jc,sem:t.sem+x.T.sem}),{prev:0,real:0,jc:0,sem:0});
-  return{mes,sups,G,pct:G.prev?Math.round(G.real/G.prev*100):null};
+  const G=sups.reduce((t,x)=>({prev:t.prev+x.T.prev,real:t.real+x.T.real,ap:t.ap+x.T.ap,pe:t.pe+x.T.pe,rj:t.rj+x.T.rj,sem:t.sem+x.T.sem}),{prev:0,real:0,ap:0,pe:0,rj:0,sem:0});
+  return{mes,sups,G,pct:G.prev?Math.round((G.real+G.ap)/G.prev*100):null};
 }
 function relCor(p){return p===null?'var(--text2)':(p>=90?'var(--green)':p>=60?'var(--warn)':'var(--red)');}
+function relAprBadge(j){
+  if(j.apr==='a')return '<span class="badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);flex-shrink:0"><i class="ti ti-check" style="font-size:11px"></i> Aprovada</span>';
+  if(j.apr==='r')return '<span class="badge" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);flex-shrink:0"><i class="ti ti-x" style="font-size:11px"></i> Reprovada</span>';
+  return '<span class="badge b-warn" style="flex-shrink:0"><i class="ti ti-clock" style="font-size:11px"></i> Aguardando</span>';
+}
+function relAprBtns(j){
+  if(!ehAdminSup())return '';
+  const a="decidirJustif('"+j.d+"','"+j.supId+"','"+j.id+"',";
+  let h='<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">';
+  if(j.apr!=='a')h+='<button class="btn btn-sm" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)" onclick="'+a+'\'a\')"><i class="ti ti-check"></i> Aprovar</button>';
+  if(j.apr!=='r')h+='<button class="btn btn-sm" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)" onclick="'+a+'\'r\')"><i class="ti ti-x"></i> Reprovar</button>';
+  if(j.apr)h+='<button class="btn btn-sm" style="background:var(--bg3);color:var(--text2);border:1px solid var(--border)" onclick="'+a+'\'\')">Voltar p/ aguardando</button>';
+  return h+'</div>';
+}
+// Aprovar/reprovar justificativa: só administradores (nível Gabriel/Simone). O registro é recriado com novo id
+// (o antigo vira tombstone) para a decisão sincronizar entre aparelhos.
+async function decidirJustif(date,supId,id,dec){
+  if(!ehAdminSup()){showToast('Somente administradores aprovam justificativas.','err');return;}
+  const L=((state.checkins||{})[date]||{})[supId]||[];
+  const c=L.find(x=>x.id===id&&x.nao);if(!c){showToast('Justificativa não encontrada.','warn');return;}
+  const n=Object.assign({},c,{id:uid()});
+  delete n.apr;delete n.aprPor;delete n.aprTs;
+  if(dec){n.apr=dec;n.aprPor=currentUser?currentUser.user:'?';n.aprTs=new Date().toISOString();}
+  state.checkins[date][supId]=L.filter(x=>x.id!==id).concat([n]);
+  addPendingCheckinDelete(date,supId,id);
+  showToast(dec==='a'?'Justificativa aprovada.':dec==='r'?'Justificativa reprovada.':'Decisão removida.','ok');
+  saveCache();renderSupervisoresRelatorio();await pushToCloud();
+}
 function renderSupervisoresRelatorio(){
   const cont=document.getElementById('supervisores-relatorio-content');if(!cont)return;
   if(!relMes)relMes=today().slice(0,7);
@@ -5063,29 +5105,29 @@ function renderSupervisoresRelatorio(){
    '<button class="btn btn-sm" style="margin-left:auto" onclick="imprimirRelatorioVisitas()"><i class="ti ti-printer"></i> Imprimir / PDF</button></div>';
   if(!D.sups.length){cont.innerHTML=html+'<div class="empty"><i class="ti ti-route" style="font-size:24px"></i><h3>Nenhum supervisor cadastrado</h3></div>';return;}
   html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px">'+
-   tile('Cumprimento',D.pct===null?'—':D.pct+'%',relCor(D.pct),'das visitas previstas')+tile('Previstas',D.G.prev)+tile('Realizadas',D.G.real,'var(--green)')+tile('Justificadas',D.G.jc,'var(--warn)')+tile('Sem justificativa',D.G.sem,D.G.sem?'var(--red)':'var(--green)')+'</div>';
+   tile('Cumprimento',D.pct===null?'—':D.pct+'%',relCor(D.pct),'das visitas previstas')+tile('Previstas',D.G.prev)+tile('Realizadas',D.G.real,'var(--green)')+tile('Justif. aprovadas',D.G.ap,'var(--green)','contam como visita')+tile('Aguardando aprovação',D.G.pe,D.G.pe?'var(--warn)':'var(--text2)')+tile('Reprovadas',D.G.rj,D.G.rj?'var(--red)':'var(--text2)')+tile('Sem justificativa',D.G.sem,D.G.sem?'var(--red)':'var(--green)')+'</div>';
   D.sups.forEach(x=>{
     const pc=x.pct;
     html+='<div class="card crono-sup" style="--sup-cor:'+supCor(x.sup)+'"><div class="card-title"><i class="ti ti-user-check" style="color:'+supCor(x.sup)+'"></i>'+supEsc(x.sup.nome)+'<span style="margin-left:auto;font-size:15px;font-weight:800;color:'+relCor(pc)+'">'+(pc===null?'—':pc+'%')+'</span></div>'+
-     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;text-align:center;font-size:11px;color:var(--text2)"><div><b style="display:block;font-size:16px;color:var(--text)">'+x.T.prev+'</b>previstas</div><div><b style="display:block;font-size:16px;color:var(--green)">'+x.T.real+'</b>realizadas</div><div><b style="display:block;font-size:16px;color:var(--warn)">'+x.T.jc+'</b>justificadas</div><div><b style="display:block;font-size:16px;color:'+(x.T.sem?'var(--red)':'var(--green)')+'">'+x.T.sem+'</b>sem justif.</div></div>'+
+     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:6px;margin-bottom:10px;text-align:center;font-size:11px;color:var(--text2)"><div><b style="display:block;font-size:16px;color:var(--text)">'+x.T.prev+'</b>previstas</div><div><b style="display:block;font-size:16px;color:var(--green)">'+x.T.real+'</b>realizadas</div><div><b style="display:block;font-size:16px;color:var(--green)">'+x.T.ap+'</b>aprovadas</div><div><b style="display:block;font-size:16px;color:var(--warn)">'+x.T.pe+'</b>aguardando</div><div><b style="display:block;font-size:16px;color:'+(x.T.rj?'var(--red)':'var(--text2)')+'">'+x.T.rj+'</b>reprovadas</div><div><b style="display:block;font-size:16px;color:'+(x.T.sem?'var(--red)':'var(--green)')+'">'+x.T.sem+'</b>sem justif.</div></div>'+
      '<div style="background:var(--bg3);border-radius:6px;height:6px;overflow:hidden;margin-bottom:10px"><div style="background:'+relCor(pc)+';width:'+(pc||0)+'%;height:100%"></div></div>';
     if(x.linhas.length){
-      html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--text2);text-align:right"><th style="text-align:left;padding:4px 6px 6px 0">Cliente</th><th style="padding:4px 6px">Prev.</th><th style="padding:4px 6px">Real.</th><th style="padding:4px 6px">Just.</th><th style="padding:4px 6px">Sem</th><th style="padding:4px 0 4px 6px">%</th></tr></thead><tbody>'+
-       x.linhas.map(l=>'<tr style="border-top:1px solid var(--border);text-align:right"><td style="text-align:left;padding:6px 6px 6px 0">'+supEsc(l.label)+'</td><td style="padding:6px">'+l.prev+'</td><td style="padding:6px;color:var(--green)">'+l.real+'</td><td style="padding:6px;color:var(--warn)">'+l.jc+'</td><td style="padding:6px;color:'+(l.sem?'var(--red)':'var(--text2)')+'">'+l.sem+'</td><td style="padding:6px 0 6px 6px;font-weight:700;color:'+relCor(l.pct)+'">'+(l.pct===null?'—':l.pct+'%')+'</td></tr>').join('')+'</tbody></table></div>';
+      html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--text2);text-align:right"><th style="text-align:left;padding:4px 6px 6px 0">Cliente</th><th style="padding:4px 6px">Prev.</th><th style="padding:4px 6px">Real.</th><th style="padding:4px 6px">Aprov.</th><th style="padding:4px 6px">Aguard.</th><th style="padding:4px 6px">Reprov.</th><th style="padding:4px 6px">Sem</th><th style="padding:4px 0 4px 6px">%</th></tr></thead><tbody>'+
+       x.linhas.map(l=>'<tr style="border-top:1px solid var(--border);text-align:right"><td style="text-align:left;padding:6px 6px 6px 0">'+supEsc(l.label)+'</td><td style="padding:6px">'+l.prev+'</td><td style="padding:6px;color:var(--green)">'+l.real+'</td><td style="padding:6px;color:var(--green)">'+l.ap+'</td><td style="padding:6px;color:var(--warn)">'+l.pe+'</td><td style="padding:6px;color:'+(l.rj?'var(--red)':'var(--text2)')+'">'+l.rj+'</td><td style="padding:6px;color:'+(l.sem?'var(--red)':'var(--text2)')+'">'+l.sem+'</td><td style="padding:6px 0 6px 6px;font-weight:700;color:'+relCor(l.pct)+'">'+(l.pct===null?'—':l.pct+'%')+'</td></tr>').join('')+'</tbody></table></div>';
     }else html+='<div style="font-size:13px;color:var(--text2)">Sem visitas previstas no período.</div>';
     html+='<div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);margin:14px 0 4px">Justificativas ('+x.lista.length+')</div>'+
-     (x.lista.length?x.lista.map(j=>'<div style="padding:8px 0;border-top:1px solid var(--border);font-size:12px"><b>'+j.d.slice(8)+'/'+j.d.slice(5,7)+'</b> · '+supEsc(j.label)+'<div style="color:var(--warn);margin-top:2px">'+supEsc(j.motivo)+(j.det?' <span style="color:var(--text2)">— '+supEsc(j.det)+'</span>':'')+'</div></div>').join(''):'<div style="font-size:12px;color:var(--text2)">Nenhuma justificativa no período.</div>')+'</div>';
+     (x.lista.length?x.lista.map(j=>'<div style="padding:8px 0;border-top:1px solid var(--border);font-size:12px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div style="min-width:0"><b>'+j.d.slice(8)+'/'+j.d.slice(5,7)+'</b> · '+supEsc(j.label)+'</div>'+relAprBadge(j)+'</div><div style="color:var(--warn);margin-top:2px">'+supEsc(j.motivo)+(j.det?' <span style="color:var(--text2)">— '+supEsc(j.det)+'</span>':'')+'</div>'+(j.apr&&j.aprPor?'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(j.apr==='a'?'Aprovada':'Reprovada')+' por '+supEsc(j.aprPor)+'</div>':'')+relAprBtns(j)+'</div>').join(''):'<div style="font-size:12px;color:var(--text2)">Nenhuma justificativa no período.</div>')+'</div>';
   });
   cont.innerHTML=html;
 }
 function imprimirRelatorioVisitas(){
   const D=relDados(relMes||today().slice(0,7));
   const cor=p=>p===null?'#555':(p>=90?'#0a7a4f':p>=60?'#b26a00':'#c0243e');
-  let h='<h1>Relatório de visitas dos supervisores — '+supEsc(relMesLabel(D.mes))+'</h1><p class="r">Cumprimento geral: <b style="color:'+cor(D.pct)+'">'+(D.pct===null?'—':D.pct+'%')+'</b> · Previstas '+D.G.prev+' · Realizadas '+D.G.real+' · Justificadas '+D.G.jc+' · Sem justificativa '+D.G.sem+'</p>';
+  let h='<h1>Relatório de visitas dos supervisores — '+supEsc(relMesLabel(D.mes))+'</h1><p class="r">Cumprimento geral: <b style="color:'+cor(D.pct)+'">'+(D.pct===null?'—':D.pct+'%')+'</b> · Previstas '+D.G.prev+' · Realizadas '+D.G.real+' · Justif. aprovadas '+D.G.ap+' · Aguardando '+D.G.pe+' · Reprovadas '+D.G.rj+' · Sem justificativa '+D.G.sem+'</p>';
   D.sups.forEach(x=>{
-    h+='<h2>'+supEsc(x.sup.nome)+' <span style="color:'+cor(x.pct)+'">'+(x.pct===null?'—':x.pct+'%')+'</span></h2><p class="r">Previstas '+x.T.prev+' · Realizadas '+x.T.real+' · Justificadas '+x.T.jc+' · Sem justificativa '+x.T.sem+'</p>';
-    h+='<table><tr><th>Cliente</th><th>Prev.</th><th>Real.</th><th>Just.</th><th>Sem</th><th>%</th></tr>'+x.linhas.map(l=>'<tr><td>'+supEsc(l.label)+'</td><td>'+l.prev+'</td><td>'+l.real+'</td><td>'+l.jc+'</td><td>'+l.sem+'</td><td style="color:'+cor(l.pct)+'"><b>'+(l.pct===null?'—':l.pct+'%')+'</b></td></tr>').join('')+'</table>';
-    h+='<h3>Justificativas ('+x.lista.length+')</h3>'+(x.lista.length?'<table><tr><th>Data</th><th>Cliente</th><th>Motivo</th></tr>'+x.lista.map(j=>'<tr><td>'+j.d.slice(8)+'/'+j.d.slice(5,7)+'</td><td>'+supEsc(j.label)+'</td><td>'+supEsc(j.motivo)+(j.det?' — '+supEsc(j.det):'')+'</td></tr>').join('')+'</table>':'<p class="r">Nenhuma justificativa no período.</p>');
+    h+='<h2>'+supEsc(x.sup.nome)+' <span style="color:'+cor(x.pct)+'">'+(x.pct===null?'—':x.pct+'%')+'</span></h2><p class="r">Previstas '+x.T.prev+' · Realizadas '+x.T.real+' · Justif. aprovadas '+x.T.ap+' · Aguardando '+x.T.pe+' · Reprovadas '+x.T.rj+' · Sem justificativa '+x.T.sem+'</p>';
+    h+='<table><tr><th>Cliente</th><th>Prev.</th><th>Real.</th><th>Aprov.</th><th>Aguard.</th><th>Reprov.</th><th>Sem</th><th>%</th></tr>'+x.linhas.map(l=>'<tr><td>'+supEsc(l.label)+'</td><td>'+l.prev+'</td><td>'+l.real+'</td><td>'+l.ap+'</td><td>'+l.pe+'</td><td>'+l.rj+'</td><td>'+l.sem+'</td><td style="color:'+cor(l.pct)+'"><b>'+(l.pct===null?'—':l.pct+'%')+'</b></td></tr>').join('')+'</table>';
+    h+='<h3>Justificativas ('+x.lista.length+')</h3>'+(x.lista.length?'<table><tr><th>Data</th><th>Cliente</th><th>Situação</th><th>Motivo</th></tr>'+x.lista.map(j=>'<tr><td>'+j.d.slice(8)+'/'+j.d.slice(5,7)+'</td><td>'+supEsc(j.label)+'</td><td>'+(j.apr==='a'?'Aprovada':j.apr==='r'?'Reprovada':'Aguardando')+(j.aprPor?' ('+supEsc(j.aprPor)+')':'')+'</td><td>'+supEsc(j.motivo)+(j.det?' — '+supEsc(j.det):'')+'</td></tr>').join('')+'</table>':'<p class="r">Nenhuma justificativa no período.</p>');
   });
   const w=window.open('','_blank');
   if(!w){showToast('Libere pop-ups para imprimir o relatório.','warn');return;}
